@@ -13,7 +13,7 @@ Index.html:
     <script type="module">
       Holbert.setup({
         termLanguage: FirstOrderTerms, //also planned: HigherOrderTerms, Strings
-        components: [GrammarDefinition, FunctionDefinition] // examples of extra components provided by planned plugins
+        components: [GrammarDefinition, FunctionDefinition], // examples of extra components provided by planned plugins
         methods: [CalculationalProof, HoareDerivation] // examples of extra proof methods provided by planned plugins.
       })
     </script>
