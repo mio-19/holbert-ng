@@ -1,6 +1,5 @@
 import * as ComponentGraph2 from './componentgraph'
-import { make as SExpBaseView, RuleSExpTE } from './Test.mjs'
-import { parseTopLevel, prettyPrintTopLevel } from './Test.mjs'
+import { make as SExpBaseView, RuleSExpTE } from './Scratch.mjs'
 import ReactDOM from 'react-dom/client';
 import React from 'react';
 

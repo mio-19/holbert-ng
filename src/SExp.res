@@ -1,6 +1,5 @@
 module IntCmp = Belt.Id.MakeComparable({type t = int;let cmp = Pervasives.compare })
 
-
 type rec t =
     Symbol({name: string }) 
   | Compound({subexps: array<t>}) 
