@@ -6,6 +6,8 @@ module type TERM = {
   type subst = Map.t<schematic,t>
   let substitute : (t, subst) => t
   let unify : (t, t) => array<subst>
+  // law: unify(a,b) == [{}] iff equivalent(a,b)
+  let equivalent : (t, t) => bool
   let substDeBruijn  : (t, array<t>, ~from:int=?) => t
   let upshift : (t, int, ~from:int=?) => t    
   type gen
@@ -23,6 +25,7 @@ module type JUDGMENT = {
   module Term : TERM
   type t
   let substitute : (t, Term.subst) => t
+  let equivalent : (t,t) => bool
   let unify : (t, t) => array<Term.subst>
   let substDeBruijn  : (t, array<Term.t>, ~from:int=?) => t
   let upshift : (t, int, ~from:int=?) => t

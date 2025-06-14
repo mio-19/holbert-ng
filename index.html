@@ -263,13 +263,32 @@
   </head>
   <body>
     <hol-comp id="test.html/baz" deps="test.html/myconfig">
-      x.y.
-      [z. (P z) (R [] z) |- (Q z)]  [x. (P x)]
-      (And x y \3) [ Foo ]
-      ---- name
-      Baz
+      x.y. 
+      (/\ x y)
+      ---- AE1
+      x
+      
+      x.y. 
+      (/\ x y)
+      ---- AE2
+      y
+      
+      x.y. 
+      x  y
+      ---- AI
+      (/\ x y)
     </hol-comp>
     <hol-config id="test.html/myconfig">Gentzen</hol-config>
+    <hol-proof id="test.html/prooftest" deps="test.html/baz">
+      x.y. ayx |- have x 
+        |- by (AE2 x y) {
+          |- by (ayx) {} }
+      asm |- by (AI x y) {
+        |- by (asm) {}
+        |- by (AE1 x y) {
+          |- by (ayx) {} } 
+      }
+    </hol-proof>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
 </html>

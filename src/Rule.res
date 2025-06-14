@@ -1,7 +1,8 @@
 open Signatures
 // the tree sitter plugin hates backslashes in string literals unless they're on the top
 // level..
-let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+([^\\n\\-—][^\\n]*)?"
+let ruleNamePattern = "^[^|()\\s\\-—][^()\\s]*"
+let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s]*)?"
 module Make = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
   type rec t = {vars: array<Term.meta>, premises: array<t>, conclusion: Judgment.t}
   let rec substitute = (rule: t, subst: Term.subst) => {
@@ -41,7 +42,17 @@ module Make = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
       conclusion: rule.conclusion->Judgment.substDeBruijn(terms')
     }
   }
-  
+  let parseRuleName = (str) => {
+    let re = RegExp.fromStringWithFlags(ruleNamePattern,~flags="y")
+    switch re->RegExp.exec(String.trim(str)) {
+    | None => Error("expected rule name")
+    | Some(res) => { switch res[0] {
+      | Some(Some(n)) if String.trim(n) != "" 
+          => Ok(n,String.sliceToEnd(String.trim(str),~start=RegExp.lastIndex(re)))
+      | _ => Error("expected rule name")
+      }}
+    }
+  }
   let parseVinculum = (str) => {
     let re = RegExp.fromStringWithFlags(vinculumRES,~flags="y")
     switch re->RegExp.exec(str) {

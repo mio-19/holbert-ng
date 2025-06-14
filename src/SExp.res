@@ -8,6 +8,9 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Map.t<schematic,t>
+let equivalent = (a : t, b: t) => {
+  a == b
+}
 let rec schematicsIn : (t) => Belt.Set.t<int, IntCmp.identity> = (it : t) => switch it {
 | Schematic({schematic,_}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
 | Compound({subexps}) => subexps->Array.reduce(

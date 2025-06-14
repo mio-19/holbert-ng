@@ -1,5 +1,5 @@
 import * as ComponentGraph2 from './componentgraph'
-import { make as SExpBaseView, RuleSExpTE } from './Scratch.mjs'
+import { make as SExpBaseView, RuleSExpTE, PM } from './Scratch.mjs'
 import ReactDOM from 'react-dom/client';
 import React from 'react';
 
@@ -56,5 +56,36 @@ export class TestComponent implements Component {
 		};
 	}
 }
-//window.localStorage.clear()
-ComponentGraph.setup({"hol-comp": TestComponent,"hol-config": ConfigComponent});
+
+
+export class ProofComponent implements Component {
+	data : any;
+	dependencies : Record<string,any>;
+	dependencyChanged : (id: string, comp: Component) => void;
+	root : ReactDOM.Root;
+	toString() {
+		return ""
+	}
+	constructor(str : string, deps : Record<string,Component>, signal : (msg: any) => void, view? : HTMLElement) {
+		console.log("FOO")
+		for (const x in deps) {
+			if (deps[x] instanceof TestComponent) {
+				this.dependencies = deps[x].data
+			}
+		}
+		var gen = {contents:0};
+		this.data = PM.parse(str, [], gen);
+		console.log(this.data)
+		if (view != null) {
+			//this.root = ReactDOM.createRoot(view);
+			//this.root.render(<SExpBaseView rules={this.data} style={this.config}
+		//	onChange={ e => { this.data = e.rules; signal("changed") }} />)
+		}
+		this.dependencyChanged = (_depName, comp) => { 
+		};
+	}
+}
+
+
+window.localStorage.clear()
+ComponentGraph.setup({"hol-comp": TestComponent,"hol-config": ConfigComponent, "hol-proof":ProofComponent});
