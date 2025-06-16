@@ -1,14 +1,19 @@
 open Editable
-open ProofEngine
-module RuleSExpTE = RuleSetSB(SExp,SExp,SExpJView)
-module RuleSExpView = WithTextArea(RuleSExpTE)
-include RuleSExpView//(RuleSExpView.Hypothetical(RuleSExpView.Inline))
-module Method = Combine(SExp,SExp,Derivation(SExp,SExp),Lemma(SExp,SExp))
-module PM = Proof(SExp,SExp,Method)
-module TheoremTE = TheoremSB(SExp,SExp,SExpJView, Method)
-module TheoremView = WithTextArea(TheoremTE)
+open Method
 
-let \"Theorem" = TheoremView.make
+module AxiomS = TextAreaEditor(AxiomSet(SExp,SExp,SExpJView))
+module DerivationsOrLemmas = Combine(SExp,SExp,Derivation(SExp,SExp),Lemma(SExp,SExp))
+module TheoremS = TextAreaEditor(Theorem(SExp,SExp,SExpJView,DerivationsOrLemmas))
+module Conf = Config(SExp,SExp)
+//module RuleSExpTE = RuleSetSB(SExp,SExp,SExpJView)
+//module RuleSExpView = WithTextArea(RuleSExpTE)
+//include RuleSExpView//(RuleSExpView.Hypothetical(RuleSExpView.Inline))
+//
+//module PM = Proof.Make(SExp,SExp,DerivationsOrLemmas)
+
+//module TheoremView = WithTextArea(TheoremTE)
+
+let \"AxiomSet" = AxiomS.make
 
 //include SExpBaseView
 

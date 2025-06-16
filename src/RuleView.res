@@ -1,12 +1,11 @@
 open Signatures
+type style = Gentzen | Linear | Hybrid
 module Make = (
   Term : TERM,
   Judgment : JUDGMENT with module Term := Term,
   JudgmentView : JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment
 ) => {
-  module Rule = Rule.Make(Term, Judgment)
-
-  type style = Gentzen | Linear | Hybrid
+  module Rule = Rule.Make(Term, Judgment)  
   
   type props = {
     rule:Rule.t, 

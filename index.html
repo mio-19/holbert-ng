@@ -8,7 +8,7 @@
   font-weight: normal;
   src: local('Neo Euler Medium'), url('euler.woff') format('woff');
   }
-  hol-comp {
+  .inline-rule {
     font-family:'Neo Euler Medium';
   }
   :root {
@@ -253,7 +253,7 @@
   </style>
   </head>
   <body>
-    <hol-comp id="test.html/baz" deps="test.html/myconfig">
+    <hol-comp id="index.html/baz" deps="index.html/myconfig">
       x.y. 
       (/\ x y)
       ---- AE1
@@ -269,8 +269,8 @@
       ---- AI
       (/\ x y)
     </hol-comp>
-    <hol-config id="test.html/myconfig">Gentzen</hol-config>
-    <hol-proof id="test.html/prooftest" deps="test.html/myconfig test.html/baz">
+    <hol-config id="index.html/myconfig">Gentzen</hol-config>
+    <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz">
       a.b.
         (/\ b a)
         -------- theorem

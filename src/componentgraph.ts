@@ -64,6 +64,7 @@ class Handler {
 			data: string,
 			deps: Record<string, Component>,
 			signal: (msg: any) => void,
+			initialised: (msg: any) => void,
 			view?: HTMLElement) => Component,
 		view?: HTMLElement) {
 		this.url = url;
@@ -96,15 +97,20 @@ class Handler {
 				})
 			}
 			if (awaiting.length == 0) {
+				console.trace();
+				console.log("MAKING", this.url)
 				this.component = new maker(textual, {},
-					(msg) => { this.notifySubscribers(msg) }, view);
-				this.status = "ready";
-				for (let sub of this.subscribers) {
-					sub.dependencyReady(this.url);
-				}
+					(msg) => { this.notifySubscribers(msg) }, (msg) => {
+						console.log("LOADED", this.url)
+						this.status = "ready";
+						for (let sub of this.subscribers) {
+							sub.dependencyReady(this.url);
+						}
+					}, view);
 			}
 		}
 		this.dependencyReady = function(url) {
+			console.log("READY",this.url,url)
 			let index = awaiting.indexOf(url);
 			if (index > -1) {
 				awaiting.splice(index, 1);
@@ -118,12 +124,16 @@ class Handler {
 						deps2[dep] = v;
 					}
 				}
+				console.trace();
+				console.log("MAKING", this.url)
 				this.component = new maker(textual, deps2,
-					(msg) => { this.notifySubscribers(msg) }, view);
-				this.status = "ready";
-				for (let sub of this.subscribers) {
-					sub.dependencyReady(this.url);
-				}
+					(msg) => { this.notifySubscribers(msg) }, (msg) => {
+						console.log("LOADED", this.url)
+						this.status = "ready";
+						for (let sub of this.subscribers) {
+							sub.dependencyReady(this.url);
+						}
+					}, view);
 			}
 		}
 	}
@@ -137,6 +147,7 @@ export function setup(
 		new (data: string,
 			deps: Record<string, Component>,
 			signal: (msg: any) => void,
+			initialised: (msg: any) => void,
 			view?: HTMLElement) => Component>) {
 	let promises = [];
 	for (const name in spec) {
