@@ -20,7 +20,7 @@ module Ports = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
 
 module type COMPONENT = {
   module Ports : PORTS
-  type props = { content: string, imports: Ports.t, onChange: (string,~exports:Ports.t) => (), onLoad: (~exports:Ports.t) => ()  }
+  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t) => (),onChange: (string,~exports:Ports.t) => ()  }
   let make :  props => React.element
 }
 
@@ -75,9 +75,7 @@ module TextAreaEditor = (Underlying : COMPONENT) => {
     }
     if editing {
       <div>
-        <textarea className="editor-textArea" onChange={onTextChange}>
-          {React.string(text)}
-        </textarea>
+        <textarea className="editor-textArea" value={text} onChange={onTextChange} />
         <div className="editor-controls">
         <span className="editor-button button-icon button-icon-blue typcn typcn-tick" onClick={done}>
         </span>
@@ -85,15 +83,14 @@ module TextAreaEditor = (Underlying : COMPONENT) => {
       </div>
     } else {
       <div>
-      {Underlying.make({
-        content:text, 
-        imports: props.imports, 
-        onLoad: props.onLoad,
-        onChange: (string, ~exports) => {
+      <Underlying
+        content={text}
+        imports={props.imports}
+        onLoad={props.onLoad}
+        onChange={(string, ~exports) => {
           setText(_=>string)
           props.onChange(string,~exports)
-        }
-      })}
+        }} />
       <div className="editor-controls">
       <span className="editor-button button-icon button-icon-blue typcn typcn-edit" onClick={_ => setEditing(_ => true)}>
       </span>
