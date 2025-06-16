@@ -1,13 +1,14 @@
 type props = {term: SExp.t, scope: array<string>}
-
-let viewVar = (idx, scope:array<string>) => switch scope[idx] {
-| Some(n) if Array.indexOf(scope,n) == idx => 
+open Util
+type idx_props = {idx:int, scope:array<string>}
+let viewVar = (props : idx_props) => switch props.scope[props.idx] {
+| Some(n) if Array.indexOf(props.scope,n) == props.idx => 
   <span className="term-metavar">
     { React.string(n)}
   </span>
 | _ => 
   <span className="term-metavar-unnamed">
-    {React.string("\\")} { React.int(idx) }
+    {React.string("\\")} { React.int(props.idx) }
   </span>
 }
 
@@ -28,24 +29,26 @@ let parenthesise = (f) => [
     
 let intersperse = (a) => 
   a->Array.flatMapWithIndex((e, i) => if i == 0 { [e] } else { [React.string(" "),e] })
+  
 
 @react.componentWithProps
 let rec make = ({term, scope}) => switch term {
 | Compound({subexps:bits}) => {
     <span className="term-compound">
     {bits
-      ->Array.map(t => make({term:t,scope}))
+      ->Array.mapWithIndex( (t, i) => 
+        React.createElement(make,withKey({term:t,scope },i)))
       ->intersperse->parenthesise->React.array} 
     </span>
     }
-| Var({idx:idx}) => viewVar(idx,scope)
+| Var({idx:idx}) => viewVar({idx,scope})
 | Symbol({name:s}) => <span className="term-const"> { React.string(s) } </span>
 | Schematic({schematic:s, allowed:vs}) => 
     <span className="term-schematic">
       {React.string("?")} {React.int(s)} 
       <span className="term-schematic-telescope">
         {vs
-          ->Array.map(v => viewVar(v,scope))
+          ->Array.mapWithIndex( (v,i) => React.createElement(viewVar, withKey({idx:v,scope},i)))
           ->intersperse->parenthesise->React.array}
       </span>
     </span>

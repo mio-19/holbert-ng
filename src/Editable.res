@@ -20,9 +20,8 @@ module Ports = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
 
 module type COMPONENT = {
   module Ports : PORTS
-  type props = { content: string, imports: Ports.t, onChange: (string,~exports:Ports.t) => () }
+  type props = { content: string, imports: Ports.t, onChange: (string,~exports:Ports.t) => (), onLoad: (~exports:Ports.t) => ()  }
   let make :  props => React.element
-  let 
 }
 
 module Config = (
@@ -47,8 +46,10 @@ module Config = (
     let onChange= (e) => {
       let target = JsxEvent.Form.target(e)
       let value: string = target["value"]
-      setStyle(_ => deserialise(value))
-      props.onChange(value,~exports={Ports.facts: Dict.make(), ruleStyle:Some(style)})
+      let sty = deserialise(value)
+      setStyle(_ => sty)
+      
+      props.onChange(value,~exports={Ports.facts: Dict.make(), ruleStyle:Some(sty)})
     }
     [Gentzen,Linear,Hybrid]->Array.map(n =>
       <input type_="radio" id={"style_"->String.concat(String.make(n))} name="style" onChange value={String.make(n)} checked={style==n}/>
@@ -141,10 +142,15 @@ module AxiomSet = (
   let make = (props ) => {
     switch deserialise(props.content) {
     | Ok(s) => {
-        props.onLoad(~exports= {Ports.facts: s, ruleStyle: None});
+        React.useEffect(() => {
+          // Run effects
+          props.onLoad(~exports= {Ports.facts: s, ruleStyle: None});
+          None // or Some(() => {})
+        }, [])
+        
         <div className={"axiom-set axiom-set-"->String.concat(String.make(props.imports.ruleStyle->Option.getOr(Hybrid)))}>
-        { Dict.toArray(s)->Array.map(((n,r)) => 
-          <RuleView rule={r} scope={[]} style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+        { Dict.toArray(s)->Array.mapWithIndex(((n,r), i) => 
+          <RuleView rule={r} scope={[]} key={String.make(i)} style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
             {React.string(n)}
             //<Name content={n} onChange={(_) => Error("BLAH!")} />
           </RuleView>)
@@ -152,7 +158,14 @@ module AxiomSet = (
         }
         </div>
       }
-    | Error(e) => <div className="error"> {React.string(e)} </div>
+    | Error(e) => {
+    React.useEffect(() => {
+      // Run effects
+      props.onLoad(~exports= {Ports.facts: Dict.make(), ruleStyle: None});
+        None // or Some(() => {})
+      }, [])
+      <div className="error"> {React.string(e)} </div>
+      }
     }
   }
 }

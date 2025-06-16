@@ -1,4 +1,5 @@
 open Signatures
+open Util
 type style = Gentzen | Linear | Hybrid
 module Make = (
   Term : TERM,
@@ -29,8 +30,8 @@ module Make = (
         {if Array.length(arr) > 0 { <span className="rule-binders">{React.array(arr)}</span> }
           else { React.string("") }}
         {React.array(premises
-          ->Array.map(p=><span className="rule-context">
-              {make({rule:p, scope,children:React.string(""),style:props.style})}</span>)
+          ->Array.mapWithIndex((p,i)=><span className="rule-context">
+              {React.createElement(make,withKey({rule:p, scope,children:React.string(""),style:props.style}, i))}</span>)
           ->Array.flatMapWithIndex( (e, i) => 
               if i == 0 {
                 [e]
@@ -55,7 +56,7 @@ module Make = (
       let arr = vars->Array.map(JudgmentView.TermView.makeMeta)
       Array.reverse(arr)
       let scope = vars->Array.concat(props.scope->Option.getOr([]))
-      <table className="inference">
+      <table className="inference"><tbody>
       <tr><td className="rule-cell rule-binderbox" rowSpan=3>{React.array(arr)}</td>
         {React.array(premises->Array.map(p=>
           <td className="rule-cell rule-premise">
@@ -77,7 +78,7 @@ module Make = (
         <td colSpan={premises->Array.length + 1} className="rule-cell rule-hypothetical-conclusion">
           <JudgmentView judgment={conclusion} scope={scope} />
         </td>
-      </tr></table>
+      </tr></tbody></table>
     }
   }
   module TopLevel = (Premise : RULE_COMPONENT) => {
@@ -86,7 +87,7 @@ module Make = (
       let arr = vars->Array.map(JudgmentView.TermView.makeMeta)
       Array.reverse(arr)
       let scope = vars->Array.concat(props.scope->Option.getOr([]))
-      <div className="axiom"><table className="inference">
+      <div className="axiom"><table className="inference"><tbody>
       <tr><td className="rule-cell rule-binderbox" rowSpan=2>{React.array(arr)}</td>
         {React.array(premises->Array.map(p=>
           <td className="rule-cell rule-premise">
@@ -105,7 +106,7 @@ module Make = (
         <td colSpan={premises->Array.length + 1} className="rule-cell rule-conclusion">
           <JudgmentView judgment={conclusion} scope={scope} />
         </td>
-      </tr></table></div>
+      </tr></tbody></table></div>
     }
   }
   module Gentzen = TopLevel(Hypothetical(Inline))
