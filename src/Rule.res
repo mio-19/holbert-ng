@@ -156,8 +156,9 @@ module Make = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
     switch rule {
     | {vars: [], premises: [], conclusion: c} => Judgment.prettyPrint(c,~scope)
     | _ => {
-      "["->String.concat(
-        rule.vars
+      let vars' = Array.copy(rule.vars)
+      Array.reverse(vars')
+      "["->String.concat(vars'
         ->Array.map(Term.prettyPrintMeta)
         ->Array.join("")
         ->String.concat(" ")

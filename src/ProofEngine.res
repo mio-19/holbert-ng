@@ -8,7 +8,7 @@ module Context = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => 
     facts: Dict.t<Rule.t>,
   }
 }
-
+let newline = "\n"
 module type PROOF_METHOD = {
   module Term : TERM
   module Judgment : JUDGMENT with module Term := Term
@@ -23,6 +23,10 @@ module type PROOF_METHOD = {
               ~subparser: (string, ~scope: array<Term.meta>, ~gen: Term.gen) 
                           => result<('a,string),string> )
           => result<(t<'a>,string),string>
+  let prettyPrint : (t<'a>,~scope: array<Term.meta>,~indentation:int=?,
+                    ~subprinter: ('a,~scope:array<Term.meta>,~indentation:int=?)
+                    =>string) 
+          => string
 }
 
 
@@ -44,6 +48,18 @@ module Derivation = (
   }
   exception InternalParseError(string)
   let keywords = ["by"]
+  let prettyPrint = (it : t<'a>, ~scope,~indentation=0,
+    ~subprinter: ('a,~scope:array<Term.meta>, ~indentation:int=?)=>string) => {
+    let args = it.instantiation->Array.map(t => Term.prettyPrint(t,~scope));
+    "by ("
+      ->String.concat(Array.join([it.ruleName,...args]," "))
+      ->String.concat(") {")
+      ->String.concat(if Array.length(it.subgoals) > 0 { newline } else { "" })
+      ->String.concat(it.subgoals
+          ->Array.map(s => subprinter(s, ~scope,~indentation=indentation+2))
+          ->Array.join(newline))
+      ->String.concat("}")
+  }
   let parse = (input, ~keyword as _, ~scope, ~gen, ~subparser) => {
     let cur = ref(String.trim(input))
     if (cur.contents->String.get(0) == Some("(")) {
@@ -112,7 +128,13 @@ module Derivation = (
             Error("Incorrect number of subgoals")
           }
         } else {
-          Error("Conclusion of rule doesn't match goal")
+          let concString = Judgment.prettyPrint(conclusion,~scope=ctx.fixes)
+          let goalString = Judgment.prettyPrint(j,~scope=ctx.fixes)
+          Error("Conclusion of rule '"
+            ->String.concat(concString)
+            ->String.concat("' doesn't match goal '")
+            ->String.concat(goalString)
+            ->String.concat("'"))
         }
       } 
     | _ => Error("Incorrect number of binders")
@@ -136,6 +158,14 @@ module Lemma = (
     }
   }
   let keywords = ["have"]
+  let prettyPrint = (it : t<'a>, ~scope,~indentation=0,
+     ~subprinter: ('a,~scope:array<Term.meta>, ~indentation:int=?)=>string) => {
+    "have "->String.concat(Rule.prettyPrintInline(it.rule,~scope))
+      ->String.concat(newline)
+      ->String.concat(subprinter(it.proof,~scope,~indentation))
+      ->String.concat(newline)
+      ->String.concat(subprinter(it.show,~scope,~indentation))
+  }
   let parse = (input, ~keyword as _, ~scope, ~gen, ~subparser) => {
     //todo add toplevel
     switch Rule.parseInner(input, ~scope, ~gen) {
@@ -176,6 +206,10 @@ module Combine = (
   | First(m) => m->Method1.check(ctx,j,f)->Result.map(x => First(x))
   | Second(m) => m->Method2.check(ctx,j,f)->Result.map(x => Second(x))
   }
+  let prettyPrint = (it : t<'a>, ~scope, ~indentation=0,~subprinter) => switch it {
+  | First(m) => m->Method1.prettyPrint(~scope,~indentation,~subprinter)
+  | Second(m) => m->Method2.prettyPrint(~scope,~indentation,~subprinter)
+  }
   let parse = (input, ~keyword, ~scope, ~gen, ~subparser) => {
     if Method1.keywords->Array.indexOf(keyword) > -1 {
       Method1.parse(input,~keyword,~scope,~gen,~subparser)->Result.map(((x,r)) => (First(x),r))
@@ -207,6 +241,26 @@ module Proof = (
     Method.keywords
       ->Array.concat(["?"])
       ->Array.find(kw => String.trim(input)->String.startsWith(kw))
+  }
+  let rec prettyPrint = (prf : t, ~scope, ~indentation=0) => {
+    let mtd = switch prf.method {
+    | None => "?"
+    | Some(m) => Method.prettyPrint(m,
+        ~scope=prf.fixes->Array.concat(scope),
+        ~indentation=indentation+2,
+        ~subprinter=prettyPrint)
+    }
+    String.padStart("",indentation," ")
+      ->String.concat(prf.fixes->Array.map(Term.prettyPrintMeta)->Array.join(""))
+      ->String.concat(prf.assumptions
+        ->Array.map(s => String.concat(" ", s))
+        ->Array.join(""))
+      ->String.concat(if Array.length(prf.assumptions) == 0 { 
+          "|- " 
+        } else { 
+          " |- "
+        })
+      ->String.concat(mtd)
   }
   let rec parse = (input, ~scope,~gen) => {
     let it = ref(Error(""))
@@ -272,6 +326,8 @@ module Proof = (
     }
   }
   let rec check = (ctx : Context.t, prf: t, rule: Rule.t) => {
+    let ruleStr = Rule.prettyPrintInline(rule,~scope=[])
+    Console.log(("CHECK",ctx,prf,ruleStr))
     switch enter(ctx,prf,rule) {
     | Ok(ctx') => switch prf.method {
       | Some(m) =>

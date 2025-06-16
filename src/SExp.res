@@ -142,7 +142,7 @@ let fresh = (g : gen, ~replacing as _ =?) => {
   v
 }
 let prettyPrintVar = (idx: int, scope: array<string>) => switch scope[idx] {
-| Some(n) if Array.indexOf(scope,n) == idx => n
+| Some(n) if Array.indexOf(scope,n) == idx && false => n
 | _ => "\\"->String.concat(String.make(idx))
 }
 let makeGen = () => {

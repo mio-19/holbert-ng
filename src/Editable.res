@@ -22,7 +22,6 @@ module WithTextArea = (Underlying : STRING_BASED) => {
   type props = Underlying.props
   @react.componentWithProps
   let make = props => {
-    Console.log(("MK",props))
     let (editing,setEditing) = React.useState (_ => "off")
     let (tree,setTree) = React.useState (_=>Underlying.getState(props))
     let (text,setText) = 
@@ -30,7 +29,9 @@ module WithTextArea = (Underlying : STRING_BASED) => {
     let done = _ => {
       switch Underlying.deserialise(props,text) {
       | Ok(t) => {
-          switch Underlying.onChange(Underlying.setState(props,t)) {
+          let foo = Underlying.onChange(Underlying.setState(props,t))
+          Console.log(foo)
+          switch foo {
           | Ok(()) => {
               setTree(_ => t)
               setText(_=> Underlying.serialise(props,t))
@@ -219,14 +220,14 @@ module RuleSB =  (
   JudgmentView : JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment
 ) => {
   module Rule = Rule.Make(Term,Judgment)
-  module TheRuleView = RuleView.Make(Term,Judgment,JudgmentView)
+  module RuleView = RuleView.Make(Term,Judgment,JudgmentView)
   
   type rec props = {
     rule: Rule.t, 
     scope: array<Term.meta>,
     name?: string,
     gen?: Term.gen,
-    style: TheRuleView.style,
+    style: RuleView.style,
     onChange: props => ()
   }
   type state = (Rule.t, string)
@@ -244,25 +245,80 @@ module RuleSB =  (
     }
   }
   let make = (props) => {
-    <TheRuleView rule={props.rule} scope={props.scope} 
+    <RuleView rule={props.rule} scope={props.scope} 
        style={props.style}>
        {React.string(props.name->Option.getOr(""))} 
-    </TheRuleView>
+    </RuleView>
   }
 }
-
+module TheoremSB = (
+  Term : TERM,
+  Judgment : JUDGMENT with module Term := Term,
+  JudgmentView : JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment,
+  Method : PROOF_METHOD with module Term := Term and module Judgment := Judgment
+) => {
+  module Rule = Rule.Make(Term, Judgment)
+  module RuleView = RuleView.Make(Term,Judgment,JudgmentView)
+  module Proof = Proof(Term,Judgment,Method)
+  module Context = Context(Term,Judgment)
+  type state = { name : string, rule: Rule.t, proof: Proof.checked }
+  type rec props = {
+    name: string,
+    rule: Rule.t,
+    proof: Proof.checked,
+    facts: Dict.t<Rule.t>,
+    gen : Term.gen,
+    style : RuleView.style,
+    onChange: props => result<(),string>
+  }
+  let getState : props => state 
+    = ({name,rule,proof,gen:_,onChange:_,style:_,facts:_}) 
+      => {name,rule,proof}
+  let setState : (props,state) => props = (props,{name,rule,proof}) 
+    => {name,rule,proof, style:props.style,
+        onChange:props.onChange,gen: props.gen,facts: props.facts}
+  let onChange = (props) => props.onChange(props)
+  let serialise = (props : props, state : state) => {
+    state.rule
+      ->Rule.prettyPrintTopLevel(~scope=[],~name=state.name)
+      ->String.concat(newline)
+      ->String.concat(Proof.prettyPrint(Proof.uncheck(state.proof), ~scope=[]))
+  }
+  let deserialise = (props : props, str : string) => {
+    let cur = ref(str)
+    Console.log("P1")
+    switch Rule.parseTopLevel(cur.contents,~scope=[],~gen=props.gen) {
+    | Error(e) => {Console.log("P2"); Error(e)}
+    | Ok(((r,n),s)) => switch Proof.parse(s,~scope=[],~gen=props.gen) {
+      | Error(e) => Error(e)
+      | Ok((_,s')) if String.length(String.trim(s')) > 0 =>
+          Error("Trailing input")
+      | Ok((prf,_)) => {
+          let ctx : Context.t = {fixes:[],facts:props.facts}
+          Ok({name:n,rule:r,proof:Proof.check(ctx,prf,r)})
+        }
+      }
+    }
+  }
+  let make = (props) => {
+    <RuleView rule={props.rule} scope={[]} 
+       style={props.style}>
+       {React.string(props.name)} 
+    </RuleView>
+  }
+}
 module RuleSetSB = (
   Term : TERM,
   Judgment : JUDGMENT with module Term := Term,
   JudgmentView : JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment
 ) => {
   module Rule = Rule.Make(Term, Judgment)
-  module TheRuleView = RuleView.Make(Term,Judgment,JudgmentView)
+  module RuleView = RuleView.Make(Term,Judgment,JudgmentView)
   module Name = WithTextBox(StringSB)
   type state = Dict.t<Rule.t>
   type rec props = {
     rules: Dict.t<Rule.t>,
-    style: TheRuleView.style,
+    style: RuleView.style,
     onChange: props => result<(),string>
   }
   let getState = (props) => props.rules
@@ -278,7 +334,7 @@ module RuleSetSB = (
   let deserialise = (props : props, str : string) => {
     let cur = ref(str)
     let go = ref(true)
-    let results = Dict.make()
+    let results = Dict.make()    
     let ret = ref(Error("impossible"))
     while go.contents {
       switch Rule.parseTopLevel(cur.contents,~scope=[]) {
@@ -304,9 +360,9 @@ module RuleSetSB = (
   let make = (props) => {
     <div className={"axiom-set axiom-set-"->String.concat(String.make(props.style))}>
     { Dict.toArray(props.rules)->Array.map(((n,r)) => 
-      <TheRuleView rule={r} scope={[]} style={props.style}>
+      <RuleView rule={r} scope={[]} style={props.style}>
         <Name content={n} onChange={(_) => Error("BLAH!")} />
-      </TheRuleView>)
+      </RuleView>)
     ->React.array
     }
     </div>

@@ -1,5 +1,5 @@
 import * as ComponentGraph2 from './componentgraph'
-import { make as SExpBaseView, RuleSExpTE, PM } from './Scratch.mjs'
+import { make as SExpBaseView, Theorem,TheoremTE, RuleSExpTE } from './Scratch.mjs'
 import ReactDOM from 'react-dom/client';
 import React from 'react';
 
@@ -44,14 +44,18 @@ export class TestComponent implements Component {
 		if (view != null) {
 			this.root = ReactDOM.createRoot(view);
 			this.root.render(<SExpBaseView rules={this.data} style={this.config}
-			onChange={ e => { this.data = e.rules; signal("changed") }} />)
+			onChange={ e => { this.data = e.rules; 
+				signal("changed");
+				return {"TAG":"Ok","_0":{}} }} />)
 		}
 		this.dependencyChanged = (_depName, comp) => { 
 			if (comp instanceof ConfigComponent) {
 				this.config = comp.data
-				console.log(this.config)
 				this.root.render(<SExpBaseView rules={this.data} style={this.config} 
-					onChange={ e => { this.data = e.rules; signal("changed") }} />)
+					onChange={ e => { 
+						this.data = e.rules; 
+						signal("changed");
+						return {"TAG":"Ok","_0":{}} }} />)
 			}
 		};
 	}
@@ -60,29 +64,55 @@ export class TestComponent implements Component {
 
 export class ProofComponent implements Component {
 	data : any;
-	dependencies : Record<string,any>;
+	deps : Record<string,Component>;
 	dependencyChanged : (id: string, comp: Component) => void;
 	root : ReactDOM.Root;
+	gen : {contents: number}
+  config : string;
 	toString() {
-		return ""
+		return TheoremTE.serialise({name:this.data.name,rule:this.data.rule,proof:this.data.proof},{name:this.data.name,rule:this.data.rule,proof:this.data.proof})
 	}
-	constructor(str : string, deps : Record<string,Component>, signal : (msg: any) => void, view? : HTMLElement) {
-		console.log("FOO")
-		for (const x in deps) {
-			if (deps[x] instanceof TestComponent) {
-				this.dependencies = deps[x].data
+	refreshData(str) {
+		let dependencies = {}
+		for (const x in this.deps) {
+			if (this.deps[x] instanceof TestComponent) {
+				for (let k in this.deps[x].data) {
+					dependencies[k] = this.deps[x].data[k]
+				}
+			}
+			if (this.deps[x] instanceof ConfigComponent) {
+				this.config = this.deps[x].data
 			}
 		}
-		var gen = {contents:0};
-		this.data = PM.parse(str, [], gen);
-		console.log(this.data)
-		if (view != null) {
-			//this.root = ReactDOM.createRoot(view);
-			//this.root.render(<SExpBaseView rules={this.data} style={this.config}
-		//	onChange={ e => { this.data = e.rules; signal("changed") }} />)
+		this.data = {rule:undefined, name: "", proof:undefined}
+		this.gen = {contents:0};
+		this.data = (TheoremTE.deserialise({gen:this.gen,facts:dependencies},str))["_0"]
+		if (this.root) {
+			this.root.render(
+				<Theorem 
+					rule={this.data.rule} 
+					proof={this.data.proof} 
+					name={this.data.name} 
+					style={this.config} 
+					onChange={(e) => { 
+						this.data.rule = e.rule;
+						this.data.proof = e.proof;
+						this.data.name = e.name;
+						 return {"TAG":"Ok","_0":{}} }} 
+					gen={this.gen} 
+					facts={dependencies} />);
 		}
+		
+	}
+	constructor(str : string, deps : Record<string,Component>, signal : (msg: any) => void, view? : HTMLElement) {
+		this.deps = deps;
+		if (view != null) { this.root = ReactDOM.createRoot(view); }
+		this.refreshData(str)
 		this.dependencyChanged = (_depName, comp) => { 
+			this.refreshData(this.toString()); signal("changed");
+			console.log(this.data)
 		};
+		
 	}
 }
 
