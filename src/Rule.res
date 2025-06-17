@@ -75,7 +75,6 @@ module Make = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
         Array.unshift(vars,str)
         cur := rest
       }
-      let it = ref(Error(""))
       let premises = []
       switch {  
         while (cur.contents->String.trim->String.slice(~start=0,~end=2) != "|-" 
@@ -174,7 +173,7 @@ module Make = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
       }
     }
   }
-  let rec prettyPrintTopLevel = (rule: t,~name="",~scope=[]:array<Term.meta>) => {
+  let prettyPrintTopLevel = (rule: t,~name="",~scope=[]:array<Term.meta>) => {
     let vinculise = (strs: array<string>) => {
       let l = strs->Array.map(String.length)->Array.concat([4])->Math.Int.maxMany
       strs->Array.concat(["-"->String.repeat(l)->String.concat(" ")->String.concat(name)])

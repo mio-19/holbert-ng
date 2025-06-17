@@ -18,11 +18,11 @@ let makeMeta = (str : string) =>
   </span>
 
 let parenthesise = (f) => [
-  <span className="symbol">
+  <span className="symbol" key={"-1"}>
     {React.string("(")}
   </span>,
   ...f,
-  <span className="symbol">
+  <span className="symbol" key={"-2"}>
     {React.string(")")}
   </span>
 ]

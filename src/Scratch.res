@@ -1,19 +1,5 @@
-open Editable
-open Method
-open Util
-module AxiomS = TextAreaEditor(AxiomSet(SExp,SExp,SExpJView))
-module DerivationsOrLemmas = Combine(SExp,SExp,Derivation(SExp,SExp),Lemma(SExp,SExp))
-module TheoremS = TextAreaEditor(Theorem(SExp,SExp,SExpJView,DerivationsOrLemmas))
-module Conf = Config(SExp,SExp)
-//module RuleSExpTE = RuleSetSB(SExp,SExp,SExpJView)
-//module RuleSExpView = WithTextArea(RuleSExpTE)
-//include RuleSExpView//(RuleSExpView.Hypothetical(RuleSExpView.Inline))
-//
-//module PM = Proof.Make(SExp,SExp,DerivationsOrLemmas)
-
-//module TheoremView = WithTextArea(TheoremTE)
-
-let \"AxiomSet" = AxiomS.make
-
-//include SExpBaseView
+module AxiomS = Editable.TextArea(AxiomSet.Make(SExp,SExp,SExpJView))
+module DerivationsOrLemmas = Method.Combine(SExp,SExp,Method.Derivation(SExp,SExp),Method.Lemma(SExp,SExp))
+module TheoremS = Editable.TextArea(Theorem.Make(SExp,SExp,SExpJView,DerivationsOrLemmas))
+module ConfS = ConfigBlock.Make(SExp,SExp)
 

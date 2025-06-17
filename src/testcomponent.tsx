@@ -1,5 +1,5 @@
 import * as ComponentGraph from './componentgraph'
-import { AxiomS, Conf, TheoremS } from './Scratch.mjs'
+import { AxiomS, ConfS, TheoremS } from './Scratch.mjs'
 import ReactDOM from 'react-dom/client';
 import React from 'react';
 
@@ -25,7 +25,6 @@ function HolComp(RComp : any) {
 			let ret = RComp.Ports.empty
 			for (const x in this.deps) {
 				if ("exports" in this.deps[x]) {
-					console.log(x,this.deps[x])
 					ret = RComp.Ports.combine(ret,this.deps[x]["exports"])
 				}
 			}
@@ -73,6 +72,6 @@ function HolComp(RComp : any) {
 window.localStorage.clear()
 ComponentGraph.setup({
 	"hol-comp": HolComp(AxiomS),
-	"hol-config":HolComp(Conf),
+	"hol-config":HolComp(ConfS),
 	"hol-proof": HolComp(TheoremS)
 });//"hol-config": ConfigComponent, "hol-proof":ProofComponent});

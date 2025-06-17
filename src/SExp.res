@@ -293,10 +293,4 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   | Some(e) => Ok((e,cur.contents)) 
   }
 }
-let testParse = (str : string, scope: array<string>) => {
-  let gen = ref(0)
-  switch parse(str,~scope=scope,~gen=gen) {
-  | Ok(t,_) => {Console.log(t); Some(t)}
-  | Error(e) => {Console.log(e); None}
-  }
-}
+

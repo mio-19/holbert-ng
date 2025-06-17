@@ -21,7 +21,9 @@ module Make = (
     let rec make = (props : props) => {
       let {vars, premises,conclusion} = props.rule
       let scope = vars->Array.concat(props.scope->Option.getOr([]))
-      let arr = vars->Array.map(JudgmentView.TermView.makeMeta)
+      let arr = vars->Array.mapWithIndex((m,i) => 
+        <React.Fragment key={String.make(i)}>{JudgmentView.TermView.makeMeta(m)}</React.Fragment>
+      )
       Array.reverse(arr)
       <span className="inline-rule">
         <span className="rule-rulename-defined">
@@ -30,13 +32,13 @@ module Make = (
         {if Array.length(arr) > 0 { <span className="rule-binders">{React.array(arr)}</span> }
           else { React.string("") }}
         {React.array(premises
-          ->Array.mapWithIndex((p,i)=><span className="rule-context">
+          ->Array.mapWithIndex((p,i)=><span key={String.make(i)} className="rule-context">
               {React.createElement(make,withKey({rule:p, scope,children:React.string(""),style:props.style}, i))}</span>)
           ->Array.flatMapWithIndex( (e, i) => 
               if i == 0 {
                 [e]
               } else {
-                [<span className="symbol symbol-bold symbol-comma">{React.string(",")}</span>,e]
+                [<span key={String.make(-i)} className="symbol symbol-bold symbol-comma">{React.string(",")}</span>,e]
               }))}
         {if premises->Array.length > 0 { 
           <span className="symbol symbol-turnstile symbol-bold">
@@ -53,14 +55,16 @@ module Make = (
   module Hypothetical = (Premise : RULE_COMPONENT) => {
     let make = (props : props) => if Array.length(props.rule.premises) == 0 { Inline.make(props) } else {
       let {vars, premises,conclusion} = props.rule
-      let arr = vars->Array.map(JudgmentView.TermView.makeMeta)
+      let arr = vars->Array.mapWithIndex((m,i) => 
+        <React.Fragment key={String.make(i)}>{JudgmentView.TermView.makeMeta(m)}</React.Fragment>
+      )
       Array.reverse(arr)
       let scope = vars->Array.concat(props.scope->Option.getOr([]))
       <table className="inference"><tbody>
       <tr><td className="rule-cell rule-binderbox" rowSpan=3>{React.array(arr)}</td>
-        {React.array(premises->Array.map(p=>
-          <td className="rule-cell rule-premise">
-            <Premise rule={p} scope={scope} style={props.style}>
+        {React.array(premises->Array.mapWithIndex((p,i)=>
+          <td className="rule-cell rule-premise" key={String.make(i)}>
+            <Premise rule={p} scope={scope} key={String.make(i)} style={props.style}>
               {React.string("")}
             </Premise>
           </td>))}
@@ -84,14 +88,16 @@ module Make = (
   module TopLevel = (Premise : RULE_COMPONENT) => {
     let make = (props : props) => {
       let {vars, premises,conclusion} = props.rule
-      let arr = vars->Array.map(JudgmentView.TermView.makeMeta)
+      let arr = vars->Array.mapWithIndex((m,i) => 
+        <React.Fragment key={String.make(i)}>{JudgmentView.TermView.makeMeta(m)}</React.Fragment>
+      )
       Array.reverse(arr)
       let scope = vars->Array.concat(props.scope->Option.getOr([]))
       <div className="axiom"><table className="inference"><tbody>
       <tr><td className="rule-cell rule-binderbox" rowSpan=2>{React.array(arr)}</td>
-        {React.array(premises->Array.map(p=>
-          <td className="rule-cell rule-premise">
-            <Premise rule={p} scope={scope} style={props.style}>
+        {React.array(premises->Array.mapWithIndex((p,i)=>
+          <td className="rule-cell rule-premise" key={String.make(i)}>
+            <Premise rule={p} scope={scope} key={String.make(i)} style={props.style}>
               {React.string("")}
             </Premise>
           </td>))}

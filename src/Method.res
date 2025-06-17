@@ -7,7 +7,7 @@ module Context = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => 
     facts: Dict.t<Rule.t>,
   }
 }
-let newline = "\n"
+
 module type PROOF_METHOD = {
   module Term : TERM
   module Judgment : JUDGMENT with module Term := Term
@@ -181,7 +181,7 @@ module Lemma = (
     | Error(e) => Error(e)
     }
   }
-  let check = (it: t<'a>, ctx : Context.t, j: Judgment.t, f : ('a, Rule.t) => 'b) => {
+  let check = (it: t<'a>, _ctx : Context.t, j: Judgment.t, f : ('a, Rule.t) => 'b) => {
     let first = f(it.proof,it.rule)
     let second = f(it.show,{vars:[],premises:[it.rule],conclusion:j})
     Ok({rule:it.rule, proof:first, show:second})

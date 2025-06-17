@@ -97,11 +97,8 @@ class Handler {
 				})
 			}
 			if (awaiting.length == 0) {
-				console.trace();
-				console.log("MAKING", this.url)
 				this.component = new maker(textual, {},
 					(msg) => { this.notifySubscribers(msg) }, (msg) => {
-						console.log("LOADED", this.url)
 						this.status = "ready";
 						for (let sub of this.subscribers) {
 							sub.dependencyReady(this.url);
@@ -110,7 +107,6 @@ class Handler {
 			}
 		}
 		this.dependencyReady = function(url) {
-			console.log("READY",this.url,url)
 			let index = awaiting.indexOf(url);
 			if (index > -1) {
 				awaiting.splice(index, 1);
@@ -124,11 +120,8 @@ class Handler {
 						deps2[dep] = v;
 					}
 				}
-				console.trace();
-				console.log("MAKING", this.url)
 				this.component = new maker(textual, deps2,
 					(msg) => { this.notifySubscribers(msg) }, (msg) => {
-						console.log("LOADED", this.url)
 						this.status = "ready";
 						for (let sub of this.subscribers) {
 							sub.dependencyReady(this.url);
