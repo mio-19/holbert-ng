@@ -7,7 +7,7 @@ module Make = (
   module Rule = Rule.Make(Term,Judgment)
   module RuleView = RuleView.Make(Term,Judgment,JudgmentView)
   module Ports = Ports(Term,Judgment)
-  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t) => (), onChange: (string,~exports:Ports.t) => () }
+  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t,~string:string=?) => (), onChange: (string,~exports:Ports.t) => () }
   
   let deserialise = (str: string) => {
     let cur = ref(str)
@@ -40,7 +40,7 @@ module Make = (
     switch deserialise(props.content) {
     | Ok(s) => {
         React.useEffect(() => {
-          // Run effects
+          // Run effects          
           props.onLoad(~exports= {Ports.facts: s, ruleStyle: None});
           None // or Some(() => {})
         }, [])

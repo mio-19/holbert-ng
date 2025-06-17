@@ -28,6 +28,7 @@ function HolComp(RComp : any) {
 					ret = RComp.Ports.combine(ret,this.deps[x]["exports"])
 				}
 			}
+			console.log("EXPORTS",ret)
 			return ret
 		}
 		render(signal : (msg: any) => void,loaded : (msg: any) => void) {
@@ -40,11 +41,16 @@ function HolComp(RComp : any) {
 						signal(null)
 						this.render(signal, loaded)
 					}} 
-					onLoad={ (exports) => {				
+					onLoad={ (exports,str) => {				
 						this.exports = exports
+						if (str) {
+							this.stringRep = str;
+						}
 						if (!this.loaded) {
 							this.loaded = true;
 							loaded(null)
+						} else {
+							signal(null)
 						}
 					}}
 				/>

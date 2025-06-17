@@ -16,6 +16,6 @@ module Ports = (Term : TERM, Judgment : JUDGMENT with module Term := Term) => {
 }
 module type COMPONENT = {
   module Ports : PORTS
-  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t) => (),onChange: (string,~exports:Ports.t) => ()  }
+  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t, ~string:string=?) => (),onChange: (string,~exports:Ports.t) => ()  }
   let make :  props => React.element
 }

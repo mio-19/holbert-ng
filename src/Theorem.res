@@ -1,20 +1,20 @@
 open Signatures
 open Component
-open Method
+open MethodView
 module Make = (
   Term : TERM, 
   Judgment : JUDGMENT with module Term := Term,
   JudgmentView : JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment,
-  Method : PROOF_METHOD with module Term := Term and module Judgment := Judgment
+  MethodView : METHOD_VIEW with module Term := Term and module Judgment := Judgment
 ) => {
   module Rule = Rule.Make(Term,Judgment)
-  module Proof = Proof.Make(Term,Judgment,Method)
-  module Context = Context(Term,Judgment)
-  
+  module Proof = Proof.Make(Term,Judgment,MethodView.Method)
+  module Context = Method.Context(Term,Judgment)
+  module ProofView = ProofView.Make(Term,Judgment,JudgmentView,MethodView)
   open RuleView
   module RuleView = RuleView.Make(Term,Judgment,JudgmentView)
   module Ports = Ports(Term,Judgment)
-  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t) => (), onChange: (string,~exports:Ports.t) => () }
+  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t,~string:string=?) => (), onChange: (string,~exports:Ports.t) => () }
   type state = {name: string, rule: Rule.t, proof: Proof.checked}
   let deserialise = (facts : Dict.t<Rule.t>, gen : Term.gen, str : string) : result<state,string> => {
     let cur = ref(str)
@@ -36,13 +36,26 @@ module Make = (
     let gen = Term.makeGen()
     switch deserialise(props.imports.facts, gen, props.content) {
     | Ok(state) => {
-        props.onLoad(~exports={facts: Dict.fromArray([(state.name,state.rule)]), ruleStyle: None})
-        <RuleView rule={state.rule} scope={[]} 
-          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+        React.useEffect(() => {
+          let export = Dict.fromArray([(state.name,state.rule)])
+          props.onLoad(~exports= {Ports.facts: export, ruleStyle: None});
+          None
+        }, [])
+        let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
+        <>
+        <RuleView rule={state.rule} scope={[]} style={ruleStyle}>
           {React.string(state.name)} 
         </RuleView>
+        <ProofView ruleStyle={ruleStyle} scope={[]} proof=state.proof />
+        </>
       }
-    | Error(err) => <div className="error"> {React.string(err)} </div>
+    | Error(err) => {
+        React.useEffect(() => {
+          props.onLoad(~exports={Ports.facts: Dict.make(), ruleStyle: None});
+          None
+        }, [])
+        <div className="error"> {React.string(err)} </div>
+      } 
     }
   }
 }

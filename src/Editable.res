@@ -2,7 +2,7 @@ open Component
 
 module TextArea = (Underlying : COMPONENT) => {
   module Ports = Underlying.Ports
-  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t) => (), onChange: (string,~exports:Ports.t) => () }
+  type props = { content: string, imports: Ports.t, onLoad: (~exports:Ports.t, ~string:string=?) => (), onChange: (string,~exports:Ports.t) => () }
   let make = (props) => {
     let (editing,setEditing) = React.useState (_ => false)
     let (text,setText) = React.useState (_ => props.content)
@@ -27,7 +27,9 @@ module TextArea = (Underlying : COMPONENT) => {
       <Underlying
         content={text}
         imports={props.imports}
-        onLoad={props.onLoad}
+        onLoad={(~exports,~string=?) => {
+          props.onLoad(~exports,~string=string->Option.getOr(text))
+        }}
         onChange={(string, ~exports) => {
           setText(_=>string)
           props.onChange(string,~exports)

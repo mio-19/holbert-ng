@@ -80,6 +80,7 @@ class Handler {
 		}
 		this.component = null;
 		this.notifySubscribers = function(msg: any) {
+			console.log(this.url, this.subscribers)
 			if (this.component != null) {
 				for (let sub of this.subscribers) {
 					if (sub.component != null) {

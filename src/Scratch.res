@@ -1,5 +1,5 @@
 module AxiomS = Editable.TextArea(AxiomSet.Make(SExp,SExp,SExpJView))
-module DerivationsOrLemmas = Method.Combine(SExp,SExp,Method.Derivation(SExp,SExp),Method.Lemma(SExp,SExp))
-module TheoremS = Editable.TextArea(Theorem.Make(SExp,SExp,SExpJView,DerivationsOrLemmas))
+module DerivationsOrLemmasView = MethodView.CombineMethodView(SExp,SExp,MethodView.DerivationView(SExp,SExp),MethodView.LemmaView(SExp,SExp,SExpJView))
+module TheoremS = Editable.TextArea(Theorem.Make(SExp,SExp,SExpJView,DerivationsOrLemmasView))
 module ConfS = ConfigBlock.Make(SExp,SExp)
 
