@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "res:build": "rescript",
     "res:clean": "rescript clean",
-    "res:dev": "rescript -w"
+    "res:dev": "rescript -w",
+    "res:format": "rescript format -all"
   },
   "dependencies": {
     "@rescript/react": "^0.13.1",
