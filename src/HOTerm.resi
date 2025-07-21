@@ -5,6 +5,7 @@ type rec t =
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
   | Lam({name: masked<string>, body: t})
+  | App({func: t, arg: t})
 
 include Signatures.TERM
   with type t := t
