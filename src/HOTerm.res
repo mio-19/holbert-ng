@@ -1,3 +1,4 @@
+open Util
 module IntCmp = Belt.Id.MakeComparable({
   type t = int
   let cmp = Pervasives.compare
@@ -8,6 +9,8 @@ type rec t =
   | Compound({subexps: array<t>})
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
+  | Lam({name: masked<string>, body: t})
+  | App({func: t, arg: t})
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
