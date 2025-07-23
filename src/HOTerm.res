@@ -83,7 +83,7 @@ let singletonSubst: (int, t) => subst = (schematic, term) => {
 let app = (func: t, arg: t) => {
   switch func {
   | Lam({name, body}) => raise(TODO("TODO: app with lambda"))
-  | _ => App({func, arg})
+  | _ => raise(TODO("impossible"))
   }
 }
 // returns {func: t, args: array<t>}
@@ -101,6 +101,10 @@ let rec peelApp = (term: t): peelAppT => {
 }
 let betaApp = (a: peelAppT) => {
   assert(Array.length(a.args) > 0)
+  assert(switch a.func {
+  | Lam(_) => true
+  | _ => false
+  })
   {func: app(a.func, a.args[0]->Option.getUnsafe), args: Array.sliceToEnd(a.args, ~start=1)}
 }
 let rec unifyTerm = (a: t, b: t) =>
