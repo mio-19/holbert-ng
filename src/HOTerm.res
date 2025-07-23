@@ -124,10 +124,39 @@ let rec unifyTerm = (a: t, b: t) =>
   | (App(_), App(_)) => unifyApp(peelApp(a), peelApp(b))
   | (_, _) => None
   }
+and unifyArray = (a: array<(t, t)>) => {
+  if Array.length(a) == 0 {
+    Some(emptySubst)
+  } else {
+    let (x, y) = a[0]->Option.getUnsafe
+    switch unifyTerm(x, y) {
+    | None => None
+    | Some(s1) =>
+      switch a
+      ->Array.sliceToEnd(~start=1)
+      ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
+      ->unifyArray {
+      | None => None
+      | Some(s2) => Some(combineSubst(s1, s2))
+      }
+    }
+  }
+}
 and unifyApp = (a: peelAppT, b: peelAppT) => {
   switch (a.func, b.func) {
   | (Lam(_), _) => unifyApp(betaApp(a), b)
   | (_, Lam(_)) => unifyApp(a, betaApp(b))
+  | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
+    switch unifyTerm(a.func, b.func) {
+    | None => None
+    | Some(s) =>
+      if a.args->Array.length == b.args->Array.length {
+        assert(s->Map.size == 0)
+        unifyArray(Belt.Array.zip(a.args, b.args))
+      } else {
+        None
+      }
+    }
   | (_, _) => raise(TODO("TODO"))
   }
 }
