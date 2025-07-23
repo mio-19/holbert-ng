@@ -14,8 +14,19 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
-let equivalent = (a: t, b: t) => {
-  a == b
+let rec equivalent = (a: t, b: t) => {
+  switch (a, b) {
+  | (Symbol({name: na}), Symbol({name: nb})) => na == nb
+  | (Var({idx: ia}), Var({idx: ib})) => ia == ib
+  | (Schematic({schematic: sa, allowed: aa}), Schematic({schematic: sb, allowed: ab})) =>
+    sa == sb && Array.equal(aa, ab, (a, b) => a == b)
+  | (Compound({subexps: xa}), Compound({subexps: xb})) =>
+    Array.length(xa) == Array.length(xb) &&
+      Belt.Array.every(Belt.Array.zip(xa, xb), ((x, y)) => equivalent(x, y))
+  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => equivalent(ba, bb)
+  | (App({func: fa, arg: aa}), App({func: fb, arg: ab})) => equivalent(fa, fb) && equivalent(aa, ab)
+  | (_, _) => false
+  }
 }
 let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   switch it {
@@ -92,7 +103,8 @@ and unifyArray = (a: array<(t, t)>) => {
     let (x, y) = a[0]->Option.getUnsafe
     switch unifyTerm(x, y) {
     | None => None
-    | Some(s1) => switch a
+    | Some(s1) =>
+      switch a
       ->Array.sliceToEnd(~start=1)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
       ->unifyArray {
@@ -306,7 +318,8 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
               Array.push(bits, it.contents->getVar->Option.getUnsafe)
             }
             switch it.contents {
-            | Some(RParen) => switch gen {
+            | Some(RParen) =>
+              switch gen {
               | Some(g) => {
                   seen(g, num)
                   Some(Schematic({schematic: num, allowed: bits}))
