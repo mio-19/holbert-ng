@@ -147,15 +147,10 @@ and unifyApp = (a: peelAppT, b: peelAppT) => {
   | (Lam(_), _) => unifyApp(betaApp(a), b)
   | (_, Lam(_)) => unifyApp(a, betaApp(b))
   | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
-    switch unifyTerm(a.func, b.func) {
-    | None => None
-    | Some(s) =>
-      if a.args->Array.length == b.args->Array.length {
-        assert(s->Map.size == 0)
-        unifyArray(Belt.Array.zip(a.args, b.args))
-      } else {
-        None
-      }
+    if a.args->Array.length == b.args->Array.length && equivalent(a.func, b.func) {
+      unifyArray(Belt.Array.zip(a.args, b.args))
+    } else {
+      None
     }
   | (_, _) => raise(TODO("TODO"))
   }
