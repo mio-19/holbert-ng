@@ -99,6 +99,10 @@ let rec peelApp = (term: t): peelAppT => {
   | _ => {func: term, args: []}
   }
 }
+let betaApp = (a: peelAppT) => {
+  assert(Array.length(a.args) > 0)
+  {func: app(a.func, a.args[0]->Option.getUnsafe), args: Array.sliceToEnd(a.args, ~start=1)}
+}
 let rec unifyTerm = (a: t, b: t) =>
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
@@ -118,6 +122,8 @@ let rec unifyTerm = (a: t, b: t) =>
   }
 and unifyApp = (a: peelAppT, b: peelAppT) => {
   switch (a.func, b.func) {
+  | (Lam(_), _) => unifyApp(betaApp(a), b)
+  | (_, Lam(_)) => unifyApp(a, betaApp(b))
   | (_, _) => raise(TODO("TODO"))
   }
 }
