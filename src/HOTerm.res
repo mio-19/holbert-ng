@@ -246,8 +246,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     "(lambda "
     ->String.concat(name)
     ->String.concat(" ")
-    // TODO: update scope to include name
-    ->String.concat(prettyPrint(body, ~scope))
+    ->String.concat(prettyPrint(body, ~scope=scope->Array.concat([name])))
     ->String.concat(")")
   | App({func, arg}) =>
     "("
