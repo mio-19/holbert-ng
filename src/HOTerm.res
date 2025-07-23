@@ -80,6 +80,25 @@ let singletonSubst: (int, t) => subst = (schematic, term) => {
   s->Map.set(schematic, term)
   s
 }
+let app = (func: t, arg: t) => {
+  switch func {
+  | Lam({name, body}) => raise(TODO("TODO: app with lambda"))
+  | _ => App({func, arg})
+  }
+}
+// returns {func: t, args: array<t>}
+type peelAppT = {
+  func: t,
+  args: array<t>,
+}
+let rec peelApp = (term: t): peelAppT => {
+  switch term {
+  | App({func, arg}) =>
+    let {func: peeledFunc, args: peeledArgs} = peelApp(func)
+    {func: peeledFunc, args: [arg, ...peeledArgs]}
+  | _ => {func: term, args: []}
+  }
+}
 let rec unifyTerm = (a: t, b: t) =>
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
@@ -94,25 +113,12 @@ let rec unifyTerm = (a: t, b: t) =>
     Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
     Some(singletonSubst(schematic, t))
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb)
-  | (App({func: fa, arg: aa}), App({func: fb, arg: ab})) => raise(TODO("pattern unification"))
+  | (App(_), App(_)) => unifyApp(peelApp(a), peelApp(b))
   | (_, _) => None
   }
-and unifyArray = (a: array<(t, t)>) => {
-  if Array.length(a) == 0 {
-    Some(emptySubst)
-  } else {
-    let (x, y) = a[0]->Option.getUnsafe
-    switch unifyTerm(x, y) {
-    | None => None
-    | Some(s1) =>
-      switch a
-      ->Array.sliceToEnd(~start=1)
-      ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
-      ->unifyArray {
-      | None => None
-      | Some(s2) => Some(combineSubst(s1, s2))
-      }
-    }
+and unifyApp = (a: peelAppT, b: peelAppT) => {
+  switch (a.func, b.func) {
+  | (_, _) => raise(TODO("TODO"))
   }
 }
 let unify = (a: t, b: t) => {
