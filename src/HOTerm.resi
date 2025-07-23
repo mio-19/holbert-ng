@@ -1,6 +1,5 @@
 type rec t =
   | Symbol({name: string})
-  | Compound({subexps: array<t>})
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
   | Lam({name: string, body: t})

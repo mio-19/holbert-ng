@@ -6,7 +6,6 @@ module IntCmp = Belt.Id.MakeComparable({
 
 type rec t =
   | Symbol({name: string})
-  | Compound({subexps: array<t>})
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
   | Lam({name: string, body: t})
@@ -20,9 +19,6 @@ let rec equivalent = (a: t, b: t) => {
   | (Var({idx: ia}), Var({idx: ib})) => ia == ib
   | (Schematic({schematic: sa, allowed: aa}), Schematic({schematic: sb, allowed: ab})) =>
     sa == sb && Array.equal(aa, ab, (a, b) => a == b)
-  | (Compound({subexps: xa}), Compound({subexps: xb})) =>
-    Array.length(xa) == Array.length(xb) &&
-      Belt.Array.every(Belt.Array.zip(xa, xb), ((x, y)) => equivalent(x, y))
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => equivalent(ba, bb)
   | (App({func: fa, arg: aa}), App({func: fb, arg: ab})) => equivalent(fa, fb) && equivalent(aa, ab)
   | (_, _) => false
@@ -31,10 +27,6 @@ let rec equivalent = (a: t, b: t) => {
 let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   switch it {
   | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
-  | Compound({subexps}) =>
-    subexps->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s, x) =>
-      Belt.Set.union(s, schematicsIn(x))
-    )
   | Lam({body}) => schematicsIn(body)
   | App({func, arg}) => Belt.Set.union(schematicsIn(func), schematicsIn(arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
@@ -42,17 +34,12 @@ let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
 let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   switch it {
   | Var({idx}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(idx)
-  | Compound({subexps}) =>
-    subexps->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s, x) =>
-      Belt.Set.union(s, freeVarsIn(x))
-    )
   | Lam({name: _, body}) => freeVarsIn(body)
   | App({func, arg}) => Belt.Set.union(freeVarsIn(func), freeVarsIn(arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
 let rec substitute = (term: t, subst: subst) =>
   switch term {
-  | Compound({subexps}) => Compound({subexps: Array.map(subexps, x => substitute(x, subst))})
   | Schematic({schematic, _}) =>
     switch Map.get(subst, schematic) {
     | None => term
@@ -98,8 +85,6 @@ let rec unifyTerm = (a: t, b: t) =>
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
   | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
   | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
-  | (Compound({subexps: xa}), Compound({subexps: xb})) if Array.length(xa) == Array.length(xb) =>
-    unifyArray(Belt.Array.zip(xa, xb))
   | (Schematic({schematic, allowed}), t)
     if !Belt.Set.has(schematicsIn(t), schematic) &&
     Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
@@ -139,8 +124,6 @@ let unify = (a: t, b: t) => {
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
   | Symbol(_) => term
-  | Compound({subexps}) =>
-    Compound({subexps: Array.map(subexps, x => substDeBruijn(x, substs, ~from))})
   | Var({idx: var}) =>
     if var < from {
       term
@@ -174,7 +157,6 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
 let rec upshift = (term: t, amount: int, ~from: int=0) =>
   switch term {
   | Symbol(_) => term
-  | Compound({subexps}) => Compound({subexps: Array.map(subexps, x => upshift(x, amount, ~from))})
   | Var({idx}) =>
     Var({
       idx: if idx >= from {
@@ -238,10 +220,6 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat("(")
     ->String.concat(Array.join(allowed->Array.map(idx => prettyPrintVar(idx, scope)), " "))
     ->String.concat(")")
-  | Compound({subexps}) =>
-    "("
-    ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
-    ->String.concat(")")
   | Lam({name, body}) =>
     "(lambda "
     ->String.concat(name)
@@ -275,132 +253,5 @@ let parseMeta = (str: string) => {
   }
 }
 let parse = (str: string, ~scope: array<string>, ~gen=?) => {
-  let cur = ref(String.make(str))
-  let lex: unit => option<lexeme> = () => {
-    let str = String.trim(cur.contents)
-    cur := str
-    let checkVariable = (candidate: string) => {
-      let varRegexp = RegExp.fromString(varRegexpString)
-      switch Array.indexOf(scope, candidate) {
-      | -1 =>
-        switch varRegexp->RegExp.exec(candidate) {
-        | Some(res') =>
-          switch RegExp.Result.matches(res') {
-          | [idx] => Some(idx->Int.fromString->Option.getUnsafe)
-          | _ => None
-          }
-        | None => None
-        }
-      | idx => Some(idx)
-      }
-    }
-    if String.get(str, 0) == Some("(") {
-      cur := String.sliceToEnd(str, ~start=1)
-      Some(LParen)
-    } else if String.get(str, 0) == Some(")") {
-      cur := String.sliceToEnd(str, ~start=1)
-      Some(RParen)
-    } else {
-      let symbolRegexp = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
-      switch symbolRegexp->RegExp.exec(str) {
-      | None => None
-      | Some(res) =>
-        switch RegExp.Result.matches(res) {
-        | [symb] => {
-            cur := String.sliceToEnd(str, ~start=RegExp.lastIndex(symbolRegexp))
-            switch checkVariable(symb) {
-            | Some(idx) => Some(VarT(idx))
-            | None => {
-                let schematicRegexp = RegExp.fromString(schematicRegexpString)
-                switch schematicRegexp->RegExp.exec(symb) {
-                | None => Some(SymbolT(symb))
-                | Some(res') =>
-                  switch RegExp.Result.matches(res') {
-                  | [s] => Some(SchematicT(s->Int.fromString->Option.getUnsafe))
-                  | _ => Some(SymbolT(symb))
-                  }
-                }
-              }
-            }
-          }
-        | _ => None
-        }
-      }
-    }
-  }
-
-  let peek = () => {
-    // a bit slow, better would be to keep a backlog of lexed tokens..
-    let str = String.make(cur.contents)
-    let tok = lex()
-    cur := str
-    tok
-  }
-  exception ParseError(string)
-  let rec parseExp = () => {
-    let tok = peek()
-    switch tok {
-    | Some(SymbolT(s)) => {
-        let _ = lex()
-        Some(Symbol({name: s}))
-      }
-    | Some(VarT(idx)) => {
-        let _ = lex()
-        Some(Var({idx: idx}))
-      }
-    | Some(SchematicT(num)) => {
-        let _ = lex()
-        switch lex() {
-        | Some(LParen) => {
-            let it = ref(None)
-            let bits = []
-            let getVar = (t: option<lexeme>) =>
-              switch t {
-              | Some(VarT(idx)) => Some(idx)
-              | _ => None
-              }
-            while {
-              it := lex()
-              it.contents->getVar->Option.isSome
-            } {
-              Array.push(bits, it.contents->getVar->Option.getUnsafe)
-            }
-            switch it.contents {
-            | Some(RParen) =>
-              switch gen {
-              | Some(g) => {
-                  seen(g, num)
-                  Some(Schematic({schematic: num, allowed: bits}))
-                }
-              | None => raise(ParseError("Schematics not allowed here"))
-              }
-            | _ => raise(ParseError("Expected closing parenthesis"))
-            }
-          }
-        | _ => raise(ParseError("Expected opening parenthesis"))
-        }
-      }
-    | Some(LParen) => {
-        let _ = lex()
-        let bits = []
-        let it = ref(None)
-        while {
-          it := parseExp()
-          it.contents->Option.isSome
-        } {
-          Array.push(bits, it.contents->Option.getUnsafe)
-        }
-        switch lex() {
-        | Some(RParen) => Some(Compound({subexps: bits}))
-        | _ => raise(ParseError("Expected closing parenthesis"))
-        }
-      }
-    | _ => None
-    }
-  }
-  switch parseExp() {
-  | exception ParseError(s) => Error(s)
-  | None => Error("No expression to parse")
-  | Some(e) => Ok((e, cur.contents))
-  }
+  raise(TODO("parse not implemented"))
 }
