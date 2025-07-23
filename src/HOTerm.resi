@@ -1,10 +1,9 @@
-open Util
 type rec t =
   | Symbol({name: string})
   | Compound({subexps: array<t>})
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
-  | Lam({name: masked<string>, body: t})
+  | Lam({name: string, body: t})
   | App({func: t, arg: t})
 
 include Signatures.TERM
