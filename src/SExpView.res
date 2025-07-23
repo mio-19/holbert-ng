@@ -37,7 +37,8 @@ let intersperse = a =>
 @react.componentWithProps
 let rec make = ({term, scope}) =>
   switch term {
-  | Compound({subexps: bits}) => <span className="term-compound">
+  | Compound({subexps: bits}) =>
+    <span className="term-compound">
       {bits
       ->Array.mapWithIndex((t, i) => React.createElement(make, withKey({term: t, scope}, i)))
       ->intersperse
