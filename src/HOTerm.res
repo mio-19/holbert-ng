@@ -1,3 +1,4 @@
+open Util
 module IntCmp = Belt.Id.MakeComparable({
   type t = int
   let cmp = Pervasives.compare
@@ -34,6 +35,8 @@ let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
     subexps->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s, x) =>
       Belt.Set.union(s, schematicsIn(x))
     )
+  | Lam({body}) => schematicsIn(body)
+  | App({func, arg}) => Belt.Set.union(schematicsIn(func), schematicsIn(arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
 let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
@@ -43,6 +46,8 @@ let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
     subexps->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s, x) =>
       Belt.Set.union(s, freeVarsIn(x))
     )
+  | Lam({name: _, body}) => freeVarsIn(body)
+  | App({func, arg}) => Belt.Set.union(freeVarsIn(func), freeVarsIn(arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
 let rec substitute = (term: t, subst: subst) =>
@@ -53,6 +58,16 @@ let rec substitute = (term: t, subst: subst) =>
     | None => term
     | Some(found) => found
     }
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: substitute(body, subst),
+    })
+  | App({func, arg}) =>
+    App({
+      func: substitute(func, subst),
+      arg: substitute(arg, subst),
+    })
   | _ => term
   }
 
@@ -93,6 +108,8 @@ let rec unifyTerm = (a: t, b: t) =>
     if !Belt.Set.has(schematicsIn(t), schematic) &&
     Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
     Some(singletonSubst(schematic, t))
+  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb)
+  | (App({func: fa, arg: aa}), App({func: fb, arg: ab})) => raise(TODO("pattern unification"))
   | (_, _) => None
   }
 and unifyArray = (a: array<(t, t)>) => {
@@ -143,6 +160,16 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
         }
       ),
     })
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: substDeBruijn(body, substs, ~from),
+    })
+  | App({func, arg}) =>
+    App({
+      func: substDeBruijn(func, substs, ~from),
+      arg: substDeBruijn(arg, substs, ~from),
+    })
   }
 let rec upshift = (term: t, amount: int, ~from: int=0) =>
   switch term {
@@ -166,6 +193,16 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
           i
         }
       ),
+    })
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: upshift(body, amount, ~from),
+    })
+  | App({func, arg}) =>
+    App({
+      func: upshift(func, amount, ~from),
+      arg: upshift(arg, amount, ~from),
     })
   }
 let place = (x: int, ~scope: array<string>) => Schematic({
@@ -204,6 +241,19 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
   | Compound({subexps}) =>
     "("
     ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
+    ->String.concat(")")
+  | Lam({name, body}) =>
+    "(lambda "
+    ->String.concat(name)
+    ->String.concat(" ")
+    // TODO: update scope to include name
+    ->String.concat(prettyPrint(body, ~scope))
+    ->String.concat(")")
+  | App({func, arg}) =>
+    "("
+    ->String.concat(prettyPrint(func, ~scope))
+    ->String.concat(" ")
+    ->String.concat(prettyPrint(arg, ~scope))
     ->String.concat(")")
   }
 let symbolRegexpString = "^([^\\s()]+)"
