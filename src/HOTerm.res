@@ -114,6 +114,16 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
       arg: upshift(arg, amount, ~from),
     })
   }
+let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
+  let nu = Map.make()
+  Map.entries(subst)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, term)) => nu->Map.set(key, upshift(term, amount, ~from))
+    }
+  )
+  nu
+}
 let rec lam = (amount: int, term: t): t =>
   if amount <= 0 {
     term
@@ -235,6 +245,7 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   | Lam({name, body}) =>
     Lam({
       name,
+      // TODO: upshift the body
       body: substDeBruijn(body, substs, ~from),
     })
   | App({func, arg}) =>
