@@ -335,11 +335,11 @@ let varRegexpString = "^\\\\([0-9]+)$"
 let schematicRegexpString = "^\\?([0-9]+)$"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)
-type rec token = LParen | RParen | VarT(int) | AtomT(string) | DotT | EOF
+type token = LParen | RParen | VarT(int) | AtomT(string) | DotT | EOF
 let trim = (str: string): string => {
   str->String.trim
 }
-let rec tokenize = (str0: string): (token, string) => {
+let tokenize = (str0: string): (token, string) => {
   let str = str0->trim
   if str->String.length == 0 {
     (EOF, "")
@@ -391,6 +391,21 @@ let rec lex = (str: string): array<token> => {
     }
   }
   result.contents
+}
+type rec simple =
+  | ListS({xs: array<simple>})
+  | AtomS({name: string})
+  | VarS({idx: int})
+  | LambdaS({name: string, body: simple})
+let rec parseSimple = (tokens: array<token>): (simple, array<token>) => {
+  switch tokens[0]->Option.getUnsafe {
+  | LParen => raise(TODO(""))
+  | RParen => raise(ParseError("unexpected right parenthesis"))
+  | VarT(idx) => (VarS({idx: idx}), Array.sliceToEnd(tokens, ~start=1))
+  | AtomT(name) => (AtomS({name: name}), Array.sliceToEnd(tokens, ~start=1))
+  | DotT => raise(ParseError("unexpected dot"))
+  | EOF => raise(ParseError("unexpected end of file"))
+  }
 }
 let prettyPrintMeta = (str: string) => {
   String.concat(str, ".")
