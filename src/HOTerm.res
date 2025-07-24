@@ -113,7 +113,21 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
       arg: upshift(arg, amount, ~from),
     })
   }
-// returns {func: t, args: array<t>}
+let rec lam = (amount: int, term: t): t =>
+  if amount <= 0 {
+    term
+  } else {
+    Lam({
+      name: "",
+      body: lam(amount - 1, term),
+    })
+  }
+let rec app = (term: t, args: array<t>): t =>
+  if args->Array.length == 0 {
+    term
+  } else {
+    app(App({func: term, arg: args[0]->Option.getUnsafe}), args->Array.sliceToEnd(~start=1))
+  }
 type peelAppT = {
   func: t,
   args: array<t>,
@@ -141,7 +155,7 @@ let rec unifyTerm = (a: t, b: t, ~from: int) =>
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, ~from=from + 1)
   | (Lam({name: _, body: ba}), b) => unifyTerm(ba, upshift(b, 1, ~from), ~from=from + 1)
   | (a, Lam({name: _, body: bb})) => unifyTerm(upshift(a, 1, ~from), bb, ~from=from + 1)
-  | (_, _) => cases(peelApp(a), peelApp(b), ~from)
+  | (_, _) => cases(a, peelApp(a), b, peelApp(b), ~from)
   }
 and unifyArray = (a: array<(t, t)>, ~from: int) => {
   if Array.length(a) == 0 {
@@ -161,7 +175,7 @@ and unifyArray = (a: array<(t, t)>, ~from: int) => {
     }
   }
 }
-and cases = (a: peelAppT, b: peelAppT, ~from: int) => {
+and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~from: int) => {
   switch (a.func, b.func) {
   // rigid-rigid
   | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
@@ -171,8 +185,11 @@ and cases = (a: peelAppT, b: peelAppT, ~from: int) => {
       None
     }
   // rigid-flex
-  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => raise(TODO("TODO"))
-  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(b, a, ~from)
+  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => {
+      let term: t = upshift(at, b.args->Array.length, ~from)
+      Some(singletonSubst(schematic, lam(b.args->Array.length, app(term, b.args))))
+    }
+  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(bt, b, at, a, ~from)
   // flex-flex
   | (Schematic(_), Schematic(_)) => raise(TODO("TODO"))
   | (_, _) => raise(Unreachable("unreachable case in unifyTerm"))
