@@ -207,24 +207,39 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT) => {
     } else {
       None
     }
-  // rigid-flex
-  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) =>
+  // flex-rigid
+  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) =>
     if (
-      !Belt.Set.has(schematicsIn(at), schematic) &&
-      Belt.Set.subset(freeVarsIn(at), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
+      !Belt.Set.has(schematicsIn(bt), schematic) &&
+      Belt.Set.subset(freeVarsIn(bt), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
     ) {
-      let allowed: array<int> = a.args->Array.filterMap(v =>
+      let map: array<option<int>> = a.args->Array.map(v =>
         switch v {
         | Var({idx}) => Some(idx)
         | _ => None
         }
       )
-      let term: t = raise(TODO("TODO"))
-      Some(singletonSubst(schematic, term))
+      if map->Array.find(v => v->Option.isNone)->Option.isSome {
+        None
+      } else {
+        let map1 = map->Array.map(v => v->Option.getUnsafe)
+        let allowed: array<int> = Array.fromInitializer(~length=a.args->Array.length, i => i)
+        let hs: array<t> = Array.fromInitializer(~length=b.args->Array.length, _ => Schematic({
+          schematic: raise(TODO("TODO")),
+          allowed,
+        }))
+        switch unifyArray(Belt.Array.zip(raise(TODO("TODO")), hs)) {
+        | Some(s) => {
+            let term: t = raise(TODO("TODO"))
+            Some(singletonSubst(schematic, term))
+          }
+        | None => None
+        }
+      }
     } else {
       None
     }
-  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(bt, b, at, a)
+  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => cases(bt, b, at, a)
   // flex-flex
   | (Schematic(_), Schematic(_)) => raise(TODO("TODO"))
   | (_, _) => None
