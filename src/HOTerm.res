@@ -157,8 +157,8 @@ let rec unifyTerm = (a: t, b: t) =>
   | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
   | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb)
-  | (Lam({name: _, body: ba}), b) => unifyTerm(ba, upshift(b, 1))
-  | (a, Lam({name: _, body: bb})) => unifyTerm(upshift(a, 1), bb)
+  | (Lam({name: _, body: ba}), b) => unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}))
+  | (a, Lam({name: _, body: bb})) => unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb)
   | (_, _) => cases(a, peelApp(a), b, peelApp(b))
   }
 and unifyArray = (a: array<(t, t)>) => {
