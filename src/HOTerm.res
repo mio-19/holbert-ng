@@ -48,6 +48,7 @@ let rec substitute = (term: t, subst: subst) =>
   | Lam({name, body}) =>
     Lam({
       name,
+      // TODO: upshift the body
       body: substitute(body, subst),
     })
   | App({func, arg}) =>
@@ -132,81 +133,79 @@ type peelAppT = {
   func: t,
   args: array<t>,
 }
-let rec reduce = (term: t, ~from: int) => {
+let rec reduce = (term: t) => {
   switch term {
   | App({func, arg}) =>
-    switch reduce(func, ~from) {
-    | Lam({body}) => reduce(substitute(body, singletonSubst(from, arg)), ~from=from + 1)
+    switch reduce(func) {
+    | Lam({body}) => reduce(substitute(body, singletonSubst(0, arg)))
     | _ => term
     }
   | term => term
   }
 }
-let rec peelApp = (term: t, ~from: int): peelAppT => {
-  switch reduce(term, ~from) {
+let rec peelApp = (term: t): peelAppT => {
+  switch reduce(term) {
   | App({func, arg}) =>
-    let {func: peeledFunc, args: peeledArgs} = peelApp(func, ~from)
+    let {func: peeledFunc, args: peeledArgs} = peelApp(func)
     {func: peeledFunc, args: [arg, ...peeledArgs]}
   | _ => {func: term, args: []}
   }
 }
-let rec unifyTerm = (a: t, b: t, ~from: int) =>
-  switch (reduce(a, ~from), reduce(b, ~from)) {
+let rec unifyTerm = (a: t, b: t) =>
+  switch (reduce(a), reduce(b)) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
   | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
   | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
-  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, ~from=from + 1)
-  | (Lam({name: _, body: ba}), b) => unifyTerm(ba, upshift(b, 1, ~from), ~from=from + 1)
-  | (a, Lam({name: _, body: bb})) => unifyTerm(upshift(a, 1, ~from), bb, ~from=from + 1)
-  | (_, _) => cases(a, peelApp(a, ~from), b, peelApp(b, ~from), ~from)
+  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb)
+  | (Lam({name: _, body: ba}), b) => unifyTerm(ba, upshift(b, 1))
+  | (a, Lam({name: _, body: bb})) => unifyTerm(upshift(a, 1), bb)
+  | (_, _) => cases(a, peelApp(a), b, peelApp(b))
   }
-and unifyArray = (a: array<(t, t)>, ~from: int) => {
+and unifyArray = (a: array<(t, t)>) => {
   if Array.length(a) == 0 {
     Some(emptySubst)
   } else {
     let (x, y) = a[0]->Option.getUnsafe
-    switch unifyTerm(x, y, ~from) {
+    switch unifyTerm(x, y) {
     | None => None
     | Some(s1) =>
       switch a
       ->Array.sliceToEnd(~start=1)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
-      ->unifyArray(~from) {
+      ->unifyArray {
       | None => None
       | Some(s2) => Some(combineSubst(s1, s2))
       }
     }
   }
 }
-and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~from: int) => {
+and cases = (at: t, a: peelAppT, bt: t, b: peelAppT) => {
   switch (a.func, b.func) {
   // rigid-rigid
   | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
     if a.args->Array.length == b.args->Array.length && equivalent(a.func, b.func) {
-      unifyArray(Belt.Array.zip(a.args, b.args), ~from)
+      unifyArray(Belt.Array.zip(a.args, b.args))
     } else {
       None
     }
   // rigid-flex
-  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => {
-      if (
-        !Belt.Set.has(schematicsIn(at), schematic) &&
-        Belt.Set.subset(freeVarsIn(at), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
-      ) {
-        let term: t = raise(TODO("TODO"))
-        Some(singletonSubst(schematic, term))
-      } else {
-        None
-      }
+  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => if (
+      !Belt.Set.has(schematicsIn(at), schematic) &&
+      Belt.Set.subset(freeVarsIn(at), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
+    ) {
+      let term: t = raise(TODO("TODO"))
+      Some(singletonSubst(schematic, term))
+    } else {
+      None
     }
-  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(bt, b, at, a, ~from)
+  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(bt, b, at, a)
   // flex-flex
   | (Schematic(_), Schematic(_)) => raise(TODO("TODO"))
   | (_, _) => None
   }
 }
 let unify = (a: t, b: t) => {
-  switch unifyTerm(a, b, ~from=0) {
+  switch unifyTerm(a, b) {
   | None => []
   | Some(s) => [s]
   }
