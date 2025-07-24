@@ -377,54 +377,42 @@ let tokenize = (str0: string): (token, string) => {
     }
   }
 }
-let rec lex = (str: string): array<token> => {
-  let result = ref([])
-  let break = ref(false)
-  let strref = ref(str)
-  while !break.contents {
-    let (token, rest) = tokenize(strref.contents)
-    switch token {
-    | EOF => break := true
-    | _ =>
-      result := Array.concat(result.contents, [token])
-      strref := rest
-    }
-  }
-  result.contents
-}
 type rec simple =
   | ListS({xs: array<simple>})
   | AtomS({name: string})
   | VarS({idx: int})
   | LambdaS({name: string, body: simple})
 // TODO: parseSimple should call tokenize; parseSimple should take a string and return rest of the string
-let rec parseSimple = (tokens: array<token>): (simple, array<token>) => {
-  switch tokens[0]->Option.getUnsafe {
+let rec parseSimple = (str: string): (simple, string) => {
+  let (t0, rest) = tokenize(str)
+  switch t0 {
   | LParen => {
-      let abstract = switch tokens[1]->Option.getUnsafe {
+      let (t1, rest1) = tokenize(rest)
+      let abstract = switch t1 {
       | AtomT(_) =>
-        switch tokens[2]->Option.getUnsafe {
+        let (t2, rest2) = tokenize(rest1)
+        switch t2 {
         | DotT => true
         | _ => false
         }
       | _ => false
       }
       if abstract {
-        let name = switch tokens[1]->Option.getUnsafe {
+        let (t2, rest2) = tokenize(rest1)
+        let name = switch t1 {
         | AtomT(n) => n
         | _ => raise(Unreachable("bug"))
         }
-        let rest = Array.sliceToEnd(tokens, ~start=3)
-        let (result, rest2) = parseSimple(Array.concat([LParen], rest))
-        (LambdaS({name, body: result}), rest2)
+        let (result, rest3) = parseSimple("("->String.concat(rest2))
+        (LambdaS({name, body: result}), rest3)
       } else {
-        switch tokens[1]->Option.getUnsafe {
-        | RParen => (ListS({xs: []}), Array.sliceToEnd(tokens, ~start=2))
+        switch t1 {
+        | RParen => (ListS({xs: []}), rest1)
         | _ => {
-            let (head, rest) = parseSimple(Array.sliceToEnd(tokens, ~start=1))
-            let (tail, rest2) = parseSimple(Array.concat([LParen], rest))
+            let (head, rest2) = parseSimple(rest1)
+            let (tail, rest3) = parseSimple("("->String.concat(rest2))
             switch tail {
-            | ListS({xs}) => (ListS({xs: [head, ...xs]}), rest2)
+            | ListS({xs}) => (ListS({xs: [head, ...xs]}), rest3)
             | _ => raise(Unreachable("bug"))
             }
           }
@@ -432,8 +420,8 @@ let rec parseSimple = (tokens: array<token>): (simple, array<token>) => {
       }
     }
   | RParen => raise(ParseError("unexpected right parenthesis"))
-  | VarT(idx) => (VarS({idx: idx}), Array.sliceToEnd(tokens, ~start=1))
-  | AtomT(name) => (AtomS({name: name}), Array.sliceToEnd(tokens, ~start=1))
+  | VarT(idx) => (VarS({idx: idx}), rest)
+  | AtomT(name) => (AtomS({name: name}), rest)
   | DotT => raise(ParseError("unexpected dot"))
   | EOF => raise(ParseError("unexpected end of file"))
   }
@@ -465,10 +453,10 @@ let parseMeta = (str: string) => {
   }
 }
 let parse = (str: string, ~scope: array<string>, ~gen=?) => {
-  let tokens = lex(str)
-  let (simple, rest) = parseSimple(tokens)
-  if rest->Array.length > 0 && rest[0]->Option.getUnsafe != EOF {
-    raise(ParseError("unexpected tokens after parsing"))
+  try {
+    let (simple, rest) = parseSimple(str)
+    Ok((parseAll(simple, ~scope, ~gen?), rest))
+  } catch {
+  | ParseError(msg) => Error(msg)
   }
-  Ok((parseAll(simple, ~scope, ~gen?), ""))
 }
