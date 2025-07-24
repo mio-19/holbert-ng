@@ -333,8 +333,65 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
 let symbolRegexpString = "^([^\\s()]+)"
 let varRegexpString = "^\\\\([0-9]+)$"
 let schematicRegexpString = "^\\?([0-9]+)$"
-type lexeme = LParen | RParen | VarT(int) | SymbolT(string) | SchematicT(int)
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
+exception ParseError(string)
+type rec token = LParen | RParen | VarT(int) | AtomT(string) | DotT | EOF
+let trim = (str: string): string => {
+  str->String.trim
+}
+let rec tokenize = (str0: string): (token, string) => {
+  let str = str0->trim
+  if str->String.length == 0 {
+    (EOF, "")
+  } else {
+    let rest = () => str->String.sliceToEnd(~start=1)
+    switch str->String.charAt(0) {
+    | "(" => (LParen, rest())
+    | ")" => (RParen, rest())
+    | "." => (DotT, rest())
+    | "\\" => {
+        let re = RegExp.fromStringWithFlags(varRegexpString, ~flags="y")
+        switch re->RegExp.exec(rest()) {
+        | None => raise(ParseError("invalid variable"))
+        | Some(res) =>
+          switch RegExp.Result.matches(res) {
+          | [n] => (
+              VarT(n->Int.fromString->Option.getUnsafe),
+              String.sliceToEnd(rest(), ~start=RegExp.lastIndex(re)),
+            )
+          | _ => raise(ParseError("invalid variable"))
+          }
+        }
+      }
+    | _ => {
+        let re = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
+        switch re->RegExp.exec(str) {
+        | None => raise(ParseError("invalid symbol"))
+        | Some(res) =>
+          switch RegExp.Result.matches(res) {
+          | [n] => (AtomT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(re)))
+          | _ => raise(ParseError("invalid symbol"))
+          }
+        }
+      }
+    }
+  }
+}
+let rec lex = (str: string): array<token> => {
+  let result = ref([])
+  let break = ref(false)
+  let strref = ref(str)
+  while !break.contents {
+    let (token, rest) = tokenize(strref.contents)
+    switch token {
+    | EOF => break := true
+    | _ =>
+      result := Array.concat(result.contents, [token])
+      strref := rest
+    }
+  }
+  result.contents
+}
 let prettyPrintMeta = (str: string) => {
   String.concat(str, ".")
 }
