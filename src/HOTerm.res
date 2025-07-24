@@ -132,19 +132,19 @@ type peelAppT = {
   func: t,
   args: array<t>,
 }
-let rec peelApp = (term: t): peelAppT => {
-  switch term {
-  | App({func, arg}) =>
-    let {func: peeledFunc, args: peeledArgs} = peelApp(func)
-    {func: peeledFunc, args: [arg, ...peeledArgs]}
-  | _ => {func: term, args: []}
-  }
-}
 let rec reduce = (term: t, ~from: int) => {
   switch term {
   | App({func: Lam({body}), arg}) =>
     reduce(substitute(body, singletonSubst(from, arg)), ~from=from + 1)
   | term => term
+  }
+}
+let rec peelApp = (term: t, ~from: int): peelAppT => {
+  switch reduce(term, ~from) {
+  | App({func, arg}) =>
+    let {func: peeledFunc, args: peeledArgs} = peelApp(func, ~from)
+    {func: peeledFunc, args: [arg, ...peeledArgs]}
+  | _ => {func: term, args: []}
   }
 }
 let rec unifyTerm = (a: t, b: t, ~from: int) =>
@@ -155,7 +155,7 @@ let rec unifyTerm = (a: t, b: t, ~from: int) =>
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, ~from=from + 1)
   | (Lam({name: _, body: ba}), b) => unifyTerm(ba, upshift(b, 1, ~from), ~from=from + 1)
   | (a, Lam({name: _, body: bb})) => unifyTerm(upshift(a, 1, ~from), bb, ~from=from + 1)
-  | (_, _) => cases(a, peelApp(a), b, peelApp(b), ~from)
+  | (_, _) => cases(a, peelApp(a, ~from), b, peelApp(b, ~from), ~from)
   }
 and unifyArray = (a: array<(t, t)>, ~from: int) => {
   if Array.length(a) == 0 {
