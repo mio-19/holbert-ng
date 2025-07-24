@@ -34,7 +34,17 @@ let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
 let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   switch it {
   | Var({idx}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(idx)
-  | Lam({name: _, body}) => freeVarsIn(body)
+  | Lam({name: _, body}) =>
+    freeVarsIn(body)
+    ->Belt.Set.toArray
+    ->Array.filterMap(v =>
+      if v >= 1 {
+        Some(v - 1)
+      } else {
+        None
+      }
+    )
+    ->Belt.Set.fromArray(~id=module(IntCmp))
   | App({func, arg}) => Belt.Set.union(freeVarsIn(func), freeVarsIn(arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
@@ -198,14 +208,17 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT) => {
       None
     }
   // rigid-flex
-  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => if (
+  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) =>
+    if (
       !Belt.Set.has(schematicsIn(at), schematic) &&
       Belt.Set.subset(freeVarsIn(at), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
     ) {
-      let allowed: array<int> = a.args->Array.flatMap(v => switch(v){
-        | Var({idx}) => [idx]
-        | _ => []
-      })
+      let allowed: array<int> = a.args->Array.filterMap(v =>
+        switch v {
+        | Var({idx}) => Some(idx)
+        | _ => None
+        }
+      )
       let term: t = raise(TODO("TODO"))
       Some(singletonSubst(schematic, term))
     } else {
