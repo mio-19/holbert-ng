@@ -126,22 +126,14 @@ let rec peelApp = (term: t): peelAppT => {
   | _ => {func: term, args: []}
   }
 }
-let app = (func: t, arg: t) => {
-  switch func {
-  | Lam({name, body}) => raise(TODO("TODO: app with lambda"))
-  | _ => raise(TODO("impossible"))
+let reduce = (term: t, ~from: int) => {
+  switch term {
+  | App({func: Lam({body}), arg}) => substitute(body, singletonSubst(from, arg))
+  | term => term
   }
 }
-let betaApp = (a: peelAppT) => {
-  assert(Array.length(a.args) > 0)
-  assert(switch a.func {
-  | Lam(_) => true
-  | _ => false
-  })
-  {func: app(a.func, a.args[0]->Option.getUnsafe), args: Array.sliceToEnd(a.args, ~start=1)}
-}
 let rec unifyTerm = (a: t, b: t, ~from: int) =>
-  switch (a, b) {
+  switch (reduce(a, ~from), reduce(b, ~from)) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
   | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
   | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
