@@ -173,7 +173,9 @@ and cases = (a: peelAppT, b: peelAppT, ~from: int) => {
   // rigid-flex
   | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => raise(TODO("TODO"))
   | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(b, a, ~from)
-  | (_, _) => raise(TODO("TODO"))
+  // flex-flex
+  | (Schematic(_), Schematic(_)) => raise(TODO("TODO"))
+  | (_, _) => raise(Unreachable("unreachable case in unifyTerm"))
   }
 }
 let unify = (a: t, b: t) => {
