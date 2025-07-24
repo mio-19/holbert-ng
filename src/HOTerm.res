@@ -187,7 +187,12 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~from: int) => {
   // rigid-flex
   | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => {
       let term: t = upshift(at, b.args->Array.length, ~from)
-      Some(singletonSubst(schematic, lam(b.args->Array.length, app(term, b.args))))
+      let f: t = lam(b.args->Array.length, app(term, b.args))
+      if !Belt.Set.has(schematicsIn(f), schematic) {
+        Some(singletonSubst(schematic, f))
+      } else {
+        None
+      }
     }
   | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(bt, b, at, a, ~from)
   // flex-flex
