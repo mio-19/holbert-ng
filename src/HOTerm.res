@@ -188,7 +188,10 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~from: int) => {
   | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => {
       let term: t = upshift(at, b.args->Array.length, ~from)
       let f: t = lam(b.args->Array.length, app(term, b.args))
-      if !Belt.Set.has(schematicsIn(f), schematic) {
+      if (
+        !Belt.Set.has(schematicsIn(f), schematic) &&
+        Belt.Set.subset(freeVarsIn(f), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
+      ) {
         Some(singletonSubst(schematic, f))
       } else {
         None
