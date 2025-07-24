@@ -437,6 +437,18 @@ let rec parseSimple = (tokens: array<token>): (simple, array<token>) => {
   | EOF => raise(ParseError("unexpected end of file"))
   }
 }
+let rec parseAll = (simple: simple, ~scope: array<string>, ~gen=?): t => {
+  switch simple {
+  | ListS({xs}) => raise(TODO(""))
+  | AtomS({name}) => Symbol({name: name})
+  | VarS({idx}) => Var({idx: idx})
+  | LambdaS({name, body}) =>
+    Lam({
+      name,
+      body: parseAll(body, ~scope, ~gen?),
+    })
+  }
+}
 let prettyPrintMeta = (str: string) => {
   String.concat(str, ".")
 }
@@ -452,5 +464,10 @@ let parseMeta = (str: string) => {
   }
 }
 let parse = (str: string, ~scope: array<string>, ~gen=?) => {
-  raise(TODO("parse not implemented"))
+  let tokens = lex(str)
+  let (simple, rest) = parseSimple(tokens)
+  if rest->Array.length > 0 && rest[0]->Option.getUnsafe != EOF {
+    raise(ParseError("unexpected tokens after parsing"))
+  }
+  Ok((parseAll(simple, ~scope, ~gen?), ""))
 }
