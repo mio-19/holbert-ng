@@ -399,7 +399,27 @@ type rec simple =
   | LambdaS({name: string, body: simple})
 let rec parseSimple = (tokens: array<token>): (simple, array<token>) => {
   switch tokens[0]->Option.getUnsafe {
-  | LParen => raise(TODO(""))
+  | LParen => {
+      let abstract = switch tokens[1]->Option.getUnsafe {
+      | AtomT(_) =>
+        switch tokens[2]->Option.getUnsafe {
+        | DotT => true
+        | _ => false
+        }
+      | _ => false
+      }
+      if abstract {
+        let name = switch tokens[1]->Option.getUnsafe {
+        | AtomT(n) => n
+        | _ => raise(Unreachable("bug"))
+        }
+        let rest = Array.sliceToEnd(tokens, ~start=3)
+        let (result, rest2) = parseSimple(Array.concat([LParen], rest))
+        (LambdaS({name, body: result}), rest2)
+      } else {
+        raise(TODO(""))
+      }
+    }
   | RParen => raise(ParseError("unexpected right parenthesis"))
   | VarT(idx) => (VarS({idx: idx}), Array.sliceToEnd(tokens, ~start=1))
   | AtomT(name) => (AtomS({name: name}), Array.sliceToEnd(tokens, ~start=1))
