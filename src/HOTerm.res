@@ -38,49 +38,6 @@ let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   | App({func, arg}) => Belt.Set.union(freeVarsIn(func), freeVarsIn(arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
-let rec substitute = (term: t, subst: subst) =>
-  switch term {
-  | Schematic({schematic, _}) =>
-    switch Map.get(subst, schematic) {
-    | None => term
-    | Some(found) => found
-    }
-  | Lam({name, body}) =>
-    Lam({
-      name,
-      // TODO: upshift the body
-      body: substitute(body, subst),
-    })
-  | App({func, arg}) =>
-    App({
-      func: substitute(func, subst),
-      arg: substitute(arg, subst),
-    })
-  | _ => term
-  }
-
-let combineSubst = (s: subst, t: subst) => {
-  let nu = Map.make()
-  Map.entries(s)->Iterator.forEach(opt =>
-    switch opt {
-    | None => ()
-    | Some((key, term)) => nu->Map.set(key, term->substitute(t))
-    }
-  )
-  Map.entries(t)->Iterator.forEach(opt =>
-    switch opt {
-    | None => ()
-    | Some((key, term)) => nu->Map.set(key, term->substitute(s))
-    }
-  )
-  nu
-}
-let emptySubst: subst = Map.make()
-let singletonSubst: (int, t) => subst = (schematic, term) => {
-  let s = Map.make()
-  s->Map.set(schematic, term)
-  s
-}
 let rec upshift = (term: t, amount: int, ~from: int=0) =>
   switch term {
   | Symbol(_) => term
@@ -123,6 +80,48 @@ let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
     }
   )
   nu
+}
+let rec substitute = (term: t, subst: subst) =>
+  switch term {
+  | Schematic({schematic, _}) =>
+    switch Map.get(subst, schematic) {
+    | None => term
+    | Some(found) => found
+    }
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: substitute(body, upshiftSubst(subst, 1)),
+    })
+  | App({func, arg}) =>
+    App({
+      func: substitute(func, subst),
+      arg: substitute(arg, subst),
+    })
+  | _ => term
+  }
+
+let combineSubst = (s: subst, t: subst) => {
+  let nu = Map.make()
+  Map.entries(s)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, term)) => nu->Map.set(key, term->substitute(t))
+    }
+  )
+  Map.entries(t)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, term)) => nu->Map.set(key, term->substitute(s))
+    }
+  )
+  nu
+}
+let emptySubst: subst = Map.make()
+let singletonSubst: (int, t) => subst = (schematic, term) => {
+  let s = Map.make()
+  s->Map.set(schematic, term)
+  s
 }
 let rec lam = (amount: int, term: t): t =>
   if amount <= 0 {
@@ -245,8 +244,7 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   | Lam({name, body}) =>
     Lam({
       name,
-      // TODO: upshift the body
-      body: substDeBruijn(body, substs, ~from),
+      body: substDeBruijn(body, substs->Array.map(term => upshift(term, 1)), ~from),
     })
   | App({func, arg}) =>
     App({
