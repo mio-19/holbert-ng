@@ -145,18 +145,9 @@ let rec unifyTerm = (a: t, b: t, ~from: int) =>
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
   | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
   | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
-  | (Schematic({schematic, allowed}), t)
-    if !Belt.Set.has(schematicsIn(t), schematic) &&
-    Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
-    Some(singletonSubst(schematic, t))
-  | (t, Schematic({schematic, allowed}))
-    if !Belt.Set.has(schematicsIn(t), schematic) &&
-    Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
-    Some(singletonSubst(schematic, t))
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, ~from=from + 1)
   | (Lam({name: _, body: ba}), b) => unifyTerm(ba, upshift(b, 1, ~from), ~from=from + 1)
-  | (a, Lam({name: _, body: bb})) =>
-    unifyTerm(upshift(a, 1, ~from), bb, ~from=from + 1)
+  | (a, Lam({name: _, body: bb})) => unifyTerm(upshift(a, 1, ~from), bb, ~from=from + 1)
   | (_, _) => cases(peelApp(a), peelApp(b), ~from)
   }
 and unifyArray = (a: array<(t, t)>, ~from: int) => {
@@ -179,12 +170,16 @@ and unifyArray = (a: array<(t, t)>, ~from: int) => {
 }
 and cases = (a: peelAppT, b: peelAppT, ~from: int) => {
   switch (a.func, b.func) {
+  // rigid-rigid
   | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
     if a.args->Array.length == b.args->Array.length && equivalent(a.func, b.func) {
       unifyArray(Belt.Array.zip(a.args, b.args), ~from)
     } else {
       None
     }
+  // rigid-flex
+  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => raise(TODO("TODO"))
+  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(b, a, ~from)
   | (_, _) => raise(TODO("TODO"))
   }
 }
