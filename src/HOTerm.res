@@ -397,6 +397,7 @@ type rec simple =
   | AtomS({name: string})
   | VarS({idx: int})
   | LambdaS({name: string, body: simple})
+// TODO: parseSimple should call tokenize; parseSimple should take a string and return rest of the string
 let rec parseSimple = (tokens: array<token>): (simple, array<token>) => {
   switch tokens[0]->Option.getUnsafe {
   | LParen => {
