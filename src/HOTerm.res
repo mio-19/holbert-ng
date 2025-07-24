@@ -134,8 +134,11 @@ type peelAppT = {
 }
 let rec reduce = (term: t, ~from: int) => {
   switch term {
-  | App({func: Lam({body}), arg}) =>
-    reduce(substitute(body, singletonSubst(from, arg)), ~from=from + 1)
+  | App({func, arg}) =>
+    switch reduce(func, ~from) {
+    | Lam({body}) => reduce(substitute(body, singletonSubst(from, arg)), ~from=from + 1)
+    | _ => term
+    }
   | term => term
   }
 }
