@@ -80,12 +80,39 @@ let singletonSubst: (int, t) => subst = (schematic, term) => {
   s->Map.set(schematic, term)
   s
 }
-let app = (func: t, arg: t) => {
-  switch func {
-  | Lam({name, body}) => raise(TODO("TODO: app with lambda"))
-  | _ => raise(TODO("impossible"))
+let rec upshift = (term: t, amount: int, ~from: int=0) =>
+  switch term {
+  | Symbol(_) => term
+  | Var({idx}) =>
+    Var({
+      idx: if idx >= from {
+        idx + amount
+      } else {
+        idx
+      },
+    })
+  | Schematic({schematic, allowed}) =>
+    Schematic({
+      schematic,
+      allowed: Array.map(allowed, i =>
+        if i >= from {
+          i + amount
+        } else {
+          i
+        }
+      ),
+    })
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: upshift(body, amount, ~from),
+    })
+  | App({func, arg}) =>
+    App({
+      func: upshift(func, amount, ~from),
+      arg: upshift(arg, amount, ~from),
+    })
   }
-}
 // returns {func: t, args: array<t>}
 type peelAppT = {
   func: t,
@@ -99,6 +126,12 @@ let rec peelApp = (term: t): peelAppT => {
   | _ => {func: term, args: []}
   }
 }
+let app = (func: t, arg: t) => {
+  switch func {
+  | Lam({name, body}) => raise(TODO("TODO: app with lambda"))
+  | _ => raise(TODO("impossible"))
+  }
+}
 let betaApp = (a: peelAppT) => {
   assert(Array.length(a.args) > 0)
   assert(switch a.func {
@@ -107,7 +140,7 @@ let betaApp = (a: peelAppT) => {
   })
   {func: app(a.func, a.args[0]->Option.getUnsafe), args: Array.sliceToEnd(a.args, ~start=1)}
 }
-let rec unifyTerm = (a: t, b: t) =>
+let rec unifyTerm = (a: t, b: t, ~from: int) =>
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
   | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
@@ -120,35 +153,35 @@ let rec unifyTerm = (a: t, b: t) =>
     if !Belt.Set.has(schematicsIn(t), schematic) &&
     Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
     Some(singletonSubst(schematic, t))
-  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb)
-  | (App(_), App(_)) => unifyApp(peelApp(a), peelApp(b))
-  | (_, _) => None
+  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, ~from=from + 1)
+  | (Lam({name: _, body: ba}), b) => unifyTerm(ba, upshift(b, 1, ~from), ~from=from + 1)
+  | (a, Lam({name: _, body: bb})) =>
+    unifyTerm(upshift(a, 1, ~from), bb, ~from=from + 1)
+  | (_, _) => cases(peelApp(a), peelApp(b), ~from)
   }
-and unifyArray = (a: array<(t, t)>) => {
+and unifyArray = (a: array<(t, t)>, ~from: int) => {
   if Array.length(a) == 0 {
     Some(emptySubst)
   } else {
     let (x, y) = a[0]->Option.getUnsafe
-    switch unifyTerm(x, y) {
+    switch unifyTerm(x, y, ~from) {
     | None => None
     | Some(s1) =>
       switch a
       ->Array.sliceToEnd(~start=1)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
-      ->unifyArray {
+      ->unifyArray(~from) {
       | None => None
       | Some(s2) => Some(combineSubst(s1, s2))
       }
     }
   }
 }
-and unifyApp = (a: peelAppT, b: peelAppT) => {
+and cases = (a: peelAppT, b: peelAppT, ~from: int) => {
   switch (a.func, b.func) {
-  | (Lam(_), _) => unifyApp(betaApp(a), b)
-  | (_, Lam(_)) => unifyApp(a, betaApp(b))
   | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
     if a.args->Array.length == b.args->Array.length && equivalent(a.func, b.func) {
-      unifyArray(Belt.Array.zip(a.args, b.args))
+      unifyArray(Belt.Array.zip(a.args, b.args), ~from)
     } else {
       None
     }
@@ -156,7 +189,7 @@ and unifyApp = (a: peelAppT, b: peelAppT) => {
   }
 }
 let unify = (a: t, b: t) => {
-  switch unifyTerm(a, b) {
+  switch unifyTerm(a, b, ~from=0) {
   | None => []
   | Some(s) => [s]
   }
@@ -192,39 +225,6 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     App({
       func: substDeBruijn(func, substs, ~from),
       arg: substDeBruijn(arg, substs, ~from),
-    })
-  }
-let rec upshift = (term: t, amount: int, ~from: int=0) =>
-  switch term {
-  | Symbol(_) => term
-  | Var({idx}) =>
-    Var({
-      idx: if idx >= from {
-        idx + amount
-      } else {
-        idx
-      },
-    })
-  | Schematic({schematic, allowed}) =>
-    Schematic({
-      schematic,
-      allowed: Array.map(allowed, i =>
-        if i >= from {
-          i + amount
-        } else {
-          i
-        }
-      ),
-    })
-  | Lam({name, body}) =>
-    Lam({
-      name,
-      body: upshift(body, amount, ~from),
-    })
-  | App({func, arg}) =>
-    App({
-      func: upshift(func, amount, ~from),
-      arg: upshift(arg, amount, ~from),
     })
   }
 let place = (x: int, ~scope: array<string>) => Schematic({
