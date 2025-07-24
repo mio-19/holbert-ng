@@ -202,6 +202,10 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT) => {
       !Belt.Set.has(schematicsIn(at), schematic) &&
       Belt.Set.subset(freeVarsIn(at), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
     ) {
+      let allowed: array<int> = a.args->Array.flatMap(v => switch(v){
+        | Var({idx}) => [idx]
+        | _ => []
+      })
       let term: t = raise(TODO("TODO"))
       Some(singletonSubst(schematic, term))
     } else {
