@@ -382,7 +382,6 @@ type rec simple =
   | AtomS({name: string})
   | VarS({idx: int})
   | LambdaS({name: string, body: simple})
-// TODO: parseSimple should call tokenize; parseSimple should take a string and return rest of the string
 let rec parseSimple = (str: string): (simple, string) => {
   let (t0, rest) = tokenize(str)
   switch t0 {
@@ -428,7 +427,16 @@ let rec parseSimple = (str: string): (simple, string) => {
 }
 let rec parseAll = (simple: simple, ~scope: array<string>, ~gen=?): t => {
   switch simple {
-  | ListS({xs}) => raise(TODO(""))
+  | ListS({xs}) => {
+      let ts = xs->Array.map(x => parseAll(x, ~scope, ~gen?))
+      if ts->Array.length == 0 {
+        raise(ParseError("empty list"))
+      } else {
+        ts
+        ->Array.sliceToEnd(~start=1)
+        ->Array.reduce(ts[0]->Option.getUnsafe, (acc, x) => App({func: acc, arg: x}))
+      }
+    }
   | AtomS({name}) => Symbol({name: name})
   | VarS({idx}) => Var({idx: idx})
   | LambdaS({name, body}) =>
