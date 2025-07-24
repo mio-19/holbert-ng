@@ -189,13 +189,12 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~from: int) => {
     }
   // rigid-flex
   | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => {
-      let term: t = upshift(at, b.args->Array.length, ~from)
-      let f: t = lam(b.args->Array.length, app(term, b.args))
       if (
-        !Belt.Set.has(schematicsIn(f), schematic) &&
-        Belt.Set.subset(freeVarsIn(f), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
+        !Belt.Set.has(schematicsIn(at), schematic) &&
+        Belt.Set.subset(freeVarsIn(at), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
       ) {
-        Some(singletonSubst(schematic, f))
+        let term: t = raise(TODO("TODO"))
+        Some(singletonSubst(schematic, term))
       } else {
         None
       }
@@ -203,7 +202,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~from: int) => {
   | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) => cases(bt, b, at, a, ~from)
   // flex-flex
   | (Schematic(_), Schematic(_)) => raise(TODO("TODO"))
-  | (_, _) => raise(Unreachable("unreachable case in unifyTerm"))
+  | (_, _) => None
   }
 }
 let unify = (a: t, b: t) => {
