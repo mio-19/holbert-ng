@@ -417,7 +417,17 @@ let rec parseSimple = (tokens: array<token>): (simple, array<token>) => {
         let (result, rest2) = parseSimple(Array.concat([LParen], rest))
         (LambdaS({name, body: result}), rest2)
       } else {
-        raise(TODO(""))
+        switch tokens[1]->Option.getUnsafe {
+        | RParen => (ListS({xs: []}), Array.sliceToEnd(tokens, ~start=2))
+        | _ => {
+            let (head, rest) = parseSimple(Array.sliceToEnd(tokens, ~start=1))
+            let (tail, rest2) = parseSimple(Array.concat([LParen], rest))
+            switch tail {
+            | ListS({xs}) => (ListS({xs: [head, ...xs]}), rest2)
+            | _ => raise(Unreachable("bug"))
+            }
+          }
+        }
       }
     }
   | RParen => raise(ParseError("unexpected right parenthesis"))
