@@ -1,22 +1,25 @@
 open Signatures
-open Test
+open Zora
 
-let assertEqual = (a, b, ~message=?) => assertion((a, b) => a === b, a, b, ~message?)
+let stringifyExn = (t: 'a) => JSON.stringifyAny(t, ~space=2)->Option.getExn
 
 module MakeTerm = (Term: TERM) => {
-  let termEquivalent = (t1: Term.t, t2: Term.t, ~message=?) => {
-    assertion(Term.equivalent, t1, t2, ~message?)
+  let termEquivalent = (t: Zora.t, t1: Term.t, t2: Term.t, ~msg=?) => {
+    t->ok(
+      Term.equivalent(t1, t2),
+      ~msg=msg->Option.getOr(`${stringifyExn(t1)} equivalent to ${stringifyExn(t2)}`),
+    )
   }
-  let testParse = (input: string, t2: Term.t, ~message=?) => {
+  let testParse = (t: Zora.t, input: string, t2: Term.t, ~msg=?) => {
     let res = Term.parse(input, ~scope=[], ~gen=Term.makeGen())
-    // i'm sure this could be handled better, but it works
     switch res {
     | Ok(res) => {
-        assertEqual(res->snd, "", ~message=input ++ " input consumed")
-        let message = message->Option.getOr(input ++ " equals expectation")
-        termEquivalent(res->fst, t2, ~message)
+        t->equal(res->snd, "", ~msg=input ++ " input consumed")
+        // NOTE: we're checking for equality here, not equivalency
+        // error messages are better this way
+        t->equal(res->fst, t2, ~msg?)
       }
-    | Error(msg) => fail(~message="parse failed: " ++ msg, ())
+    | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
 }

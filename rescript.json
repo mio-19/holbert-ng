@@ -10,7 +10,7 @@
   },
   "suffix": ".mjs",
   "bs-dependencies": ["@rescript/core", "@rescript/react"],
-  "bs-dev-dependencies": ["rescript-test"],
+  "bs-dev-dependencies": ["@dusty-phillips/rescript-zora"],
   "bsc-flags": ["-open RescriptCore"],
   "jsx": { "version": 4 }
 }
