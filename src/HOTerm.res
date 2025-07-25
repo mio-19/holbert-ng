@@ -237,7 +237,7 @@ let rec reduce = (term: t) => {
   | App({func, arg}) =>
     switch reduce(func) {
     | Lam({body}) => reduce(downshift(substitute(body, singletonSubst(0, upshift(arg, 1))), 1))
-    | _ => term
+    | func => App({func, arg})
     }
   | term => term
   }
