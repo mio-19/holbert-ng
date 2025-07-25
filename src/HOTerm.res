@@ -24,6 +24,12 @@ let rec equivalent = (a: t, b: t) => {
   | (_, _) => false
   }
 }
+type gen = ref<int>
+let seen = (g: gen, s: int) => {
+  if s >= g.contents {
+    g := s + 1
+  }
+}
 let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   switch it {
   | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
@@ -219,13 +225,13 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
         | _ => None
         }
       )
-      if map->Array.find(v => v->Option.isNone)->Option.isSome {
+      if gen->Option.isNone || map->Array.find(v => v->Option.isNone)->Option.isSome {
         None
       } else {
         let map1 = map->Array.map(v => v->Option.getUnsafe)
         let allowed: array<int> = Array.fromInitializer(~length=a.args->Array.length, i => i)
         let hs: array<t> = Array.fromInitializer(~length=b.args->Array.length, _ => Schematic({
-          schematic: raise(TODO("TODO")),
+          schematic: Option.getUnsafe(gen).contents,
           allowed,
         }))
         switch unifyArray(Belt.Array.zip(raise(TODO("TODO")), hs), ~gen?) {
@@ -288,12 +294,6 @@ let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
 })
-type gen = ref<int>
-let seen = (g: gen, s: int) => {
-  if s >= g.contents {
-    g := s + 1
-  }
-}
 let fresh = (g: gen, ~replacing as _=?) => {
   let v = g.contents
   g := g.contents + 1
