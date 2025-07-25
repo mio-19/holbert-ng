@@ -386,7 +386,18 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
     }
   | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => cases(bt, b, at, a)
   // flex-flex
-  | (Schematic(_), Schematic(_)) => raise(TODO("TODO"))
+  | (Schematic(_), Schematic(_)) =>
+    if equivalent(a.func, b.func) {
+      if a.args->Array.length != b.args->Array.length {
+        raise(TODO("TODO"))
+      } else {
+        // flex-flex same
+        raise(TODO("TODO"))
+      }
+    } else {
+      // flex-flex different
+      raise(TODO("TODO"))
+    }
   | (_, _) => None
   }
 }
