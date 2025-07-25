@@ -87,6 +87,40 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
       arg: upshift(arg, amount, ~from),
     })
   }
+let rec downshift = (term: t, amount: int, ~from: int=1) => {
+  switch term {
+  | Symbol(_) => term
+  | Var({idx}) =>
+    Var({
+      idx: if idx >= from {
+        idx - amount
+      } else {
+        idx
+      },
+    })
+  | Schematic({schematic, allowed}) =>
+    Schematic({
+      schematic,
+      allowed: Array.map(allowed, i =>
+        if i >= from {
+          i - amount
+        } else {
+          i
+        }
+      ),
+    })
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: downshift(body, amount, ~from=from + 1),
+    })
+  | App({func, arg}) =>
+    App({
+      func: downshift(func, amount, ~from),
+      arg: downshift(arg, amount, ~from),
+    })
+  }
+}
 let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
   let nu = Map.make()
   Map.entries(subst)->Iterator.forEach(opt =>
@@ -202,7 +236,7 @@ let rec reduce = (term: t) => {
   switch term {
   | App({func, arg}) =>
     switch reduce(func) {
-    | Lam({body}) => reduce(substitute(body, singletonSubst(0, arg)))
+    | Lam({body}) => reduce(downshift(substitute(body, singletonSubst(0, upshift(arg, 1))), 1))
     | _ => term
     }
   | term => term
