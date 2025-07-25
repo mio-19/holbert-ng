@@ -393,6 +393,7 @@ type rec simple =
   | ListS({xs: array<simple>})
   | AtomS({name: string})
   | VarS({idx: int})
+  | SchematicS({schematic: int})
   | LambdaS({name: string, body: simple})
 let rec parseSimple = (str: string): (simple, string) => {
   let (t0, rest) = tokenize(str)
@@ -432,6 +433,7 @@ let rec parseSimple = (str: string): (simple, string) => {
     }
   | RParen => raise(ParseError("unexpected right parenthesis"))
   | VarT(idx) => (VarS({idx: idx}), rest)
+  | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
   | AtomT(name) => (AtomS({name: name}), rest)
   | DotT => raise(ParseError("unexpected dot"))
   | EOF => raise(ParseError("unexpected end of file"))
@@ -480,6 +482,13 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
       Symbol({name: name})
     }
   | VarS({idx}) => Var({idx: idx})
+  | SchematicS({schematic}) =>
+    Schematic({
+      schematic,
+      allowed: env
+      ->Map.values
+      ->Core__Iterator.toArray,
+    })
   | LambdaS({name, body}) =>
     Lam({
       name,
