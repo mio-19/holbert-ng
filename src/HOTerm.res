@@ -331,14 +331,14 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(")")
   }
 let symbolRegexpString = "^([^\\s()]+)"
-let varRegexpString = "^\\\\([0-9]+)$"
-let schematicRegexpString = "^\\?([0-9]+)$"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)
-type token = LParen | RParen | VarT(int) | AtomT(string) | DotT | EOF
+type token = LParen | RParen | VarT(int) | SchematicT(int) | AtomT(string) | DotT | EOF
 let trim = (str: string): string => {
   str->String.trim
 }
+let varRegexpString = "^\\\\([0-9]+)$"
+let schematicRegexpString = "^\\?([0-9]+)$"
 let tokenize = (str0: string): (token, string) => {
   let str = str0->trim
   if str->String.length == 0 {
@@ -351,13 +351,25 @@ let tokenize = (str0: string): (token, string) => {
     | "." => (DotT, rest())
     | "\\" => {
         let re = RegExp.fromStringWithFlags(varRegexpString, ~flags="y")
-        switch re->RegExp.exec(rest()) {
-        | None => raise(ParseError("invalid variable"))
+        switch re->RegExp.exec(str) {
+        | None =>
+          let re1 = RegExp.fromStringWithFlags(schematicRegexpString, ~flags="y")
+          switch re1->RegExp.exec(str) {
+          | None => raise(ParseError("invalid variable or schematic"))
+          | Some(res) =>
+            switch RegExp.Result.matches(res) {
+            | [n] => (
+                SchematicT(n->Int.fromString->Option.getUnsafe),
+                String.sliceToEnd(str, ~start=RegExp.lastIndex(re1)),
+              )
+            | _ => raise(ParseError("invalid schematic"))
+            }
+          }
         | Some(res) =>
           switch RegExp.Result.matches(res) {
           | [n] => (
               VarT(n->Int.fromString->Option.getUnsafe),
-              String.sliceToEnd(rest(), ~start=RegExp.lastIndex(re)),
+              String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
             )
           | _ => raise(ParseError("invalid variable"))
           }
