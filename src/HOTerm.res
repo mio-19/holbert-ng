@@ -250,7 +250,8 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
       arg: substDeBruijn(arg, substs, ~from),
     })
   }
-let rec lam = (amount: int, term: t): t =>
+let rec lam = (amount: int, term: t): t => {
+  assert(amount >= 0)
   if amount <= 0 {
     term
   } else {
@@ -259,6 +260,7 @@ let rec lam = (amount: int, term: t): t =>
       body: lam(amount - 1, term),
     })
   }
+}
 let rec app = (term: t, args: array<t>): t =>
   if args->Array.length == 0 {
     term
