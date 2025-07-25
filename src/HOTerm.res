@@ -356,11 +356,12 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
       ) {
         None
       } else {
+        let i = a.args->Array.length
         let substV: substVar = Map.make()
         Array.reverse(map)
         map->Array.forEachWithIndex((v, i) =>
           switch v {
-          | Some(idx) => substV->Map.set(idx, i)
+          | Some(idx) => substV->Map.set(idx + i, i)
           | None => raise(Unreachable("bug"))
           }
         )
@@ -369,9 +370,12 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
           schematic: fresh(Option.getUnsafe(gen)),
           allowed,
         }))
-        switch unifyArray(Belt.Array.zip(b.args->Array.map(x => substVar(x, substV)), hs), ~gen?) {
+        switch unifyArray(
+          Belt.Array.zip(b.args->Array.map(x => substVar(upshift(x, i), substV)), hs),
+          ~gen?,
+        ) {
         | Some(s) => {
-            let term: t = substitute(lam(a.args->Array.length, app(b.func, hs)), s)
+            let term: t = substitute(lam(i, app(b.func, hs)), s)
             Some(combineSubst(s, singletonSubst(schematic, term)))
           }
         | None => None
