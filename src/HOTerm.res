@@ -334,6 +334,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
   // flex-rigid
   | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) =>
     if (
+      // TODO: is this check strong enough to prevent cycles? do we need to check more
       !Belt.Set.has(schematicsIn(bt), schematic) &&
       Belt.Set.subset(freeVarsIn(bt), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
     ) {
