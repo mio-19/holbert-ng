@@ -268,15 +268,22 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
       if gen->Option.isNone || map->Array.find(v => v->Option.isNone)->Option.isSome {
         None
       } else {
-        let map1 = map->Array.map(v => v->Option.getUnsafe)
+        let substV: substVar = Map.make()
+        Array.reverse(map)
+        map->Array.forEachWithIndex((v, i) =>
+          switch v {
+          | Some(idx) => substV->Map.set(idx, i)
+          | None => raise(Unreachable("bug"))
+          }
+        )
         let allowed: array<int> = Array.fromInitializer(~length=a.args->Array.length, i => i)
         let hs: array<t> = Array.fromInitializer(~length=b.args->Array.length, _ => Schematic({
           schematic: Option.getUnsafe(gen).contents,
           allowed,
         }))
-        switch unifyArray(Belt.Array.zip(raise(TODO("TODO")), hs), ~gen?) {
+        switch unifyArray(Belt.Array.zip(b.args->Array.map(x => substVar(x, substV)), hs), ~gen?) {
         | Some(s) => {
-            let term: t = raise(TODO("TODO"))
+            let term: t = substitute(lam(a.args->Array.length, app(b.func, hs)), s)
             Some(singletonSubst(schematic, term))
           }
         | None => None
