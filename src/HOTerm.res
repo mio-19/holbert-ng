@@ -217,6 +217,39 @@ let singletonSubst: (int, t) => subst = (schematic, term) => {
   s->Map.set(schematic, term)
   s
 }
+let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
+  switch term {
+  | Symbol(_) => term
+  | Var({idx: var}) =>
+    if var < from {
+      term
+    } else if var - from < Array.length(substs) && var - from >= 0 {
+      Option.getUnsafe(substs[var - from])
+    } else {
+      Var({idx: var - Array.length(substs)})
+    }
+  | Schematic({schematic, allowed}) =>
+    Schematic({
+      schematic,
+      allowed: Array.filterMap(allowed, i =>
+        if i < from + Array.length(substs) {
+          None
+        } else {
+          Some(i - (from + Array.length(substs)))
+        }
+      ),
+    })
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: substDeBruijn(body, substs->Array.map(term => upshift(term, 1)), ~from=from + 1),
+    })
+  | App({func, arg}) =>
+    App({
+      func: substDeBruijn(func, substs, ~from),
+      arg: substDeBruijn(arg, substs, ~from),
+    })
+  }
 let rec lam = (amount: int, term: t): t =>
   if amount <= 0 {
     term
@@ -240,7 +273,7 @@ let rec reduce = (term: t) => {
   switch term {
   | App({func, arg}) =>
     switch reduce(func) {
-    | Lam({body}) => reduce(downshift(substitute(body, singletonSubst(0, upshift(arg, 1))), 1))
+    | Lam({body}) => reduce(downshift(substDeBruijn(body, [upshift(arg, 1)], ~from=0), 1))
     | func => App({func, arg})
     }
   | term => term
@@ -342,39 +375,6 @@ let unify = (a: t, b: t, ~gen=?) => {
   | Some(s) => [s]
   }
 }
-let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
-  switch term {
-  | Symbol(_) => term
-  | Var({idx: var}) =>
-    if var < from {
-      term
-    } else if var - from < Array.length(substs) && var - from >= 0 {
-      Option.getUnsafe(substs[var - from])
-    } else {
-      Var({idx: var - Array.length(substs)})
-    }
-  | Schematic({schematic, allowed}) =>
-    Schematic({
-      schematic,
-      allowed: Array.filterMap(allowed, i =>
-        if i < from + Array.length(substs) {
-          None
-        } else {
-          Some(i - (from + Array.length(substs)))
-        }
-      ),
-    })
-  | Lam({name, body}) =>
-    Lam({
-      name,
-      body: substDeBruijn(body, substs->Array.map(term => upshift(term, 1)), ~from),
-    })
-  | App({func, arg}) =>
-    App({
-      func: substDeBruijn(func, substs, ~from),
-      arg: substDeBruijn(arg, substs, ~from),
-    })
-  }
 let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
