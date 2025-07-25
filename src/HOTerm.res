@@ -352,7 +352,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
       if (
         gen->Option.isNone ||
         map->Array.find(v => v->Option.isNone)->Option.isSome ||
-        set->Belt.Set.size < allowed->Array.length
+        set->Belt.Set.size < map->Array.length
       ) {
         None
       } else {
