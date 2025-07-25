@@ -425,6 +425,17 @@ let rec parseSimple = (str: string): (simple, string) => {
   | EOF => raise(ParseError("unexpected end of file"))
   }
 }
+type env = Map.t<string, int>
+let incrEnv = (env: env): env => {
+  let nu = Map.make()
+  Map.entries(env)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, value)) => nu->Map.set(key, value + 1)
+    }
+  )
+  nu
+}
 let rec parseAll = (simple: simple, ~scope: array<string>, ~gen=?): t => {
   switch simple {
   | ListS({xs}) => {
