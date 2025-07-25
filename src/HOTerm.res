@@ -372,7 +372,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
         switch unifyArray(Belt.Array.zip(b.args->Array.map(x => substVar(x, substV)), hs), ~gen?) {
         | Some(s) => {
             let term: t = substitute(lam(a.args->Array.length, app(b.func, hs)), s)
-            Some(singletonSubst(schematic, term))
+            Some(combineSubst(s, singletonSubst(schematic, term)))
           }
         | None => None
         }
