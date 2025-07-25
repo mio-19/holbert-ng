@@ -100,7 +100,7 @@ and unifyArray = (a: array<(t, t)>) => {
     }
   }
 }
-let unify = (a: t, b: t) => {
+let unify = (a: t, b: t, ~gen=?) => {
   switch unifyTerm(a, b) {
   | None => []
   | Some(s) => [s]
