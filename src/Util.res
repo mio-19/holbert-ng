@@ -13,3 +13,4 @@ let arrayWithIndex = (arr: array<React.element>) => {
 }
 exception TODO(string)
 exception Unreachable(string)
+exception Err(string)

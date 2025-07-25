@@ -93,7 +93,11 @@ let rec downshift = (term: t, amount: int, ~from: int=1) => {
   | Var({idx}) =>
     Var({
       idx: if idx >= from {
-        idx - amount
+        if idx - amount >= 0 {
+          idx - amount
+        } else {
+          raise(Err("downshifted variable index out of bounds"))
+        }
       } else {
         idx
       },
