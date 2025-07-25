@@ -73,7 +73,7 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
   | Lam({name, body}) =>
     Lam({
       name,
-      body: upshift(body, amount, ~from),
+      body: upshift(body, amount, ~from=from + 1),
     })
   | App({func, arg}) =>
     App({
