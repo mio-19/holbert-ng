@@ -12,7 +12,8 @@
     "res:clean": "rescript clean",
     "res:dev": "rescript -w",
     "res:format": "rescript format -all",
-    "test": "onchange --initial '{tests,src}/*.mjs' -- pta 'tests/*.mjs'"
+    "test": "pta 'tests/*.mjs'",
+    "test-watch": "onchange --initial '{tests,src}/*.mjs' -- pta 'tests/*.mjs'"
   },
   "dependencies": {
     "@rescript/react": "^0.13.1",

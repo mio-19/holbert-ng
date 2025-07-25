@@ -1,11 +1,6 @@
 name: Node.js CI
 
-on:
-  push:
-    // TODO(josh): delete second branch before PR acceptance
-    branches: ["main", "push-oquznqsqnkqv"]
-  pull_request:
-    branches: ["main"]
+on: [push, pull_request]
 
 jobs:
   build:

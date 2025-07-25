@@ -19,7 +19,7 @@ zoraBlock("parse schematic", t => {
     t->Util.testParse("?1(\\1)", Schematic({schematic: 1, allowed: [1]}))
   )
   t->block("multiple allowed", t =>
-    t->Util.testParse("?1(\\1 \\23 \\4)", Schematic({schematic: 1, allowed: [1, 2, 4]}))
+    t->Util.testParse("?1(\\1 \\23 \\4)", Schematic({schematic: 1, allowed: [1, 23, 4]}))
   )
 })
 
