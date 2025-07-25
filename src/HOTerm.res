@@ -97,6 +97,46 @@ let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
   )
   nu
 }
+type substVar = Map.t<int, int>
+let incrSubstVar = (subst: substVar) => {
+  let nu = Map.make()
+  Map.entries(subst)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, value)) => nu->Map.set(key + 1, value + 1)
+    }
+  )
+  nu
+}
+let rec substVar = (term: t, subst: substVar) =>
+  switch term {
+  | Symbol(_) => term
+  | Var({idx}) =>
+    switch Map.get(subst, idx) {
+    | None => term
+    | Some(newIdx) => Var({idx: newIdx})
+    }
+  | Schematic({schematic, allowed}) =>
+    Schematic({
+      schematic,
+      allowed: Array.map(allowed, i =>
+        switch Map.get(subst, i) {
+        | None => i
+        | Some(newIdx) => newIdx
+        }
+      ),
+    })
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: substVar(body, incrSubstVar(subst)),
+    })
+  | App({func, arg}) =>
+    App({
+      func: substVar(func, subst),
+      arg: substVar(arg, subst),
+    })
+  }
 let rec substitute = (term: t, subst: subst) =>
   switch term {
   | Schematic({schematic, _}) =>
