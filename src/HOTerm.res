@@ -427,7 +427,7 @@ let rec parseSimple = (str: string): (simple, string) => {
 }
 type env = Map.t<string, int>
 let incrEnv = (env: env): env => {
-  let nu = Map.make()
+  let nu: env = Map.make()
   Map.entries(env)->Iterator.forEach(opt =>
     switch opt {
     | None => ()
@@ -436,10 +436,22 @@ let incrEnv = (env: env): env => {
   )
   nu
 }
-let rec parseAll = (simple: simple, ~scope: array<string>, ~gen=?): t => {
+let envFromScope = (scope: array<string>): env => {
+  let nu: env = Map.make()
+  scope->Array.forEachWithIndex((name, idx) => {
+    nu->Map.set(name, idx)
+  })
+  nu
+}
+let envPushLambda = (env: env, name: string): env => {
+  let nu = incrEnv(env)
+  nu->Map.set(name, 0)
+  nu
+}
+let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
   switch simple {
   | ListS({xs}) => {
-      let ts = xs->Array.map(x => parseAll(x, ~scope, ~gen?))
+      let ts = xs->Array.map(x => parseAll(x, ~env, ~gen?))
       if ts->Array.length == 0 {
         raise(ParseError("empty list"))
       } else {
@@ -448,12 +460,18 @@ let rec parseAll = (simple: simple, ~scope: array<string>, ~gen=?): t => {
         ->Array.reduce(ts[0]->Option.getUnsafe, (acc, x) => App({func: acc, arg: x}))
       }
     }
-  | AtomS({name}) => Symbol({name: name})
+  | AtomS({name}) =>
+    if env->Map.has(name) {
+      let idx = env->Map.get(name)->Option.getUnsafe
+      Var({idx: idx})
+    } else {
+      Symbol({name: name})
+    }
   | VarS({idx}) => Var({idx: idx})
   | LambdaS({name, body}) =>
     Lam({
       name,
-      body: parseAll(body, ~scope, ~gen?),
+      body: parseAll(body, ~env=envPushLambda(env, name), ~gen?),
     })
   }
 }
@@ -474,7 +492,7 @@ let parseMeta = (str: string) => {
 let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   try {
     let (simple, rest) = parseSimple(str)
-    Ok((parseAll(simple, ~scope, ~gen?), rest))
+    Ok((parseAll(simple, ~env=envFromScope(scope), ~gen?), rest))
   } catch {
   | ParseError(msg) => Error(msg)
   }
