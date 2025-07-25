@@ -431,13 +431,10 @@ let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)
 type token = LParen | RParen | VarT(int) | SchematicT(int) | AtomT(string) | DotT | EOF
-let trim = (str: string): string => {
-  str->String.trim
-}
 let varRegexpString = "^\\\\([0-9]+)$"
 let schematicRegexpString = "^\\?([0-9]+)$"
 let tokenize = (str0: string): (token, string) => {
-  let str = str0->trim
+  let str = str0->String.trimStart
   if str->String.length == 0 {
     (EOF, "")
   } else {
