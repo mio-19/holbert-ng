@@ -405,7 +405,16 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
           }
         )
         if a_s->Array.some(Option.isNone) || b_s->Array.some(Option.isNone) {
-          None
+          let as1 = a_s->Array.map(Option.getUnsafe)
+          let bs1 = b_s->Array.map(Option.getUnsafe)
+          let common = Belt.Array.zip(as1, bs1)->Array.filterMap(((a, b)) =>
+            if a == b {
+              Some(a)
+            } else {
+              None
+            }
+          )
+          raise(TODO("TODO"))
         } else {
           raise(TODO("TODO"))
         }
