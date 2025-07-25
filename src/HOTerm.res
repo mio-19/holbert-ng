@@ -351,7 +351,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
       let set = Belt.Set.fromArray(map->Array.keepSome, ~id=module(IntCmp))
       if (
         gen->Option.isNone ||
-        map->Array.find(v => v->Option.isNone)->Option.isSome ||
+        map->Array.some(Option.isNone) ||
         set->Belt.Set.size < map->Array.length
       ) {
         None
@@ -389,10 +389,26 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
   | (Schematic(_), Schematic(_)) =>
     if equivalent(a.func, b.func) {
       if a.args->Array.length != b.args->Array.length {
-        raise(TODO("TODO"))
+        None
       } else {
         // flex-flex same
-        raise(TODO("TODO"))
+        let a_s: array<option<int>> = a.args->Array.map(v =>
+          switch v {
+          | Var({idx}) => Some(idx)
+          | _ => None
+          }
+        )
+        let b_s: array<option<int>> = a.args->Array.map(v =>
+          switch v {
+          | Var({idx}) => Some(idx)
+          | _ => None
+          }
+        )
+        if a_s->Array.some(Option.isNone) || b_s->Array.some(Option.isNone) {
+          None
+        } else {
+          raise(TODO("TODO"))
+        }
       }
     } else {
       // flex-flex different
