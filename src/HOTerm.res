@@ -112,7 +112,11 @@ let rec downshift = (term: t, amount: int, ~from: int=1) => {
       schematic,
       allowed: Array.map(allowed, i =>
         if i >= from {
-          i - amount
+          if i - amount >= 0 {
+            i - amount
+          } else {
+            raise(Err("downshifted variable index out of bounds"))
+          }
         } else {
           i
         }
