@@ -483,12 +483,17 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
     }
   | VarS({idx}) => Var({idx: idx})
   | SchematicS({schematic}) =>
-    Schematic({
-      schematic,
-      allowed: env
-      ->Map.values
-      ->Core__Iterator.toArray,
-    })
+    switch gen {
+    | Some(g) => {
+        seen(g, schematic)
+        let allowed =
+          env
+          ->Map.values
+          ->Core__Iterator.toArray
+        Schematic({schematic, allowed})
+      }
+    | None => raise(ParseError("Schematics not allowed here"))
+    }
   | LambdaS({name, body}) =>
     Lam({
       name,
