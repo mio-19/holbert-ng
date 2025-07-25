@@ -30,6 +30,11 @@ let seen = (g: gen, s: int) => {
     g := s + 1
   }
 }
+let fresh = (g: gen, ~replacing as _=?) => {
+  let v = g.contents
+  g := g.contents + 1
+  v
+}
 let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   switch it {
   | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
@@ -351,7 +356,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
         )
         let allowed: array<int> = Array.fromInitializer(~length=a.args->Array.length, i => i)
         let hs: array<t> = Array.fromInitializer(~length=b.args->Array.length, _ => Schematic({
-          schematic: Option.getUnsafe(gen).contents,
+          schematic: fresh(Option.getUnsafe(gen)),
           allowed,
         }))
         switch unifyArray(Belt.Array.zip(b.args->Array.map(x => substVar(x, substV)), hs), ~gen?) {
@@ -381,11 +386,6 @@ let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
 })
-let fresh = (g: gen, ~replacing as _=?) => {
-  let v = g.contents
-  g := g.contents + 1
-  v
-}
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
   | Some(n) if Array.indexOf(scope, n) == idx && false => n
