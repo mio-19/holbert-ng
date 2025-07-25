@@ -343,7 +343,12 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
         | _ => None
         }
       )
-      if gen->Option.isNone || map->Array.find(v => v->Option.isNone)->Option.isSome {
+      let set = Belt.Set.fromArray(map->Array.keepSome, ~id=module(IntCmp))
+      if (
+        gen->Option.isNone ||
+        map->Array.find(v => v->Option.isNone)->Option.isSome ||
+        set->Belt.Set.size < allowed->Array.length
+      ) {
         None
       } else {
         let substV: substVar = Map.make()
