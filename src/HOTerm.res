@@ -601,7 +601,7 @@ let rec parseSimple = (str: string): (simple, string) => {
         switch t1 {
         | RParen => (ListS({xs: []}), rest1)
         | _ => {
-            let (head, rest2) = parseSimple(rest1)
+            let (head, rest2) = parseSimple(rest)
             let (tail, rest3) = parseSimple("("->String.concat(rest2))
             switch tail {
             | ListS({xs}) => (ListS({xs: [head, ...xs]}), rest3)
