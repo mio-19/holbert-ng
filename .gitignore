@@ -27,3 +27,4 @@ dist-ssr
 .bsb.lock
 **/*.res.mjs
 src/*.mjs
+tests/*.mjs
