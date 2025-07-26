@@ -386,12 +386,13 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
     }
   | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => cases(bt, b, at, a)
   // flex-flex
-  | (Schematic(_), Schematic(_)) =>
+  | (Schematic({schematic: sa}), Schematic({schematic: sb})) =>
     if equivalent(a.func, b.func) {
       if a.args->Array.length != b.args->Array.length {
         None
       } else {
         // flex-flex same
+        let len = a.args->Array.length
         let a_s: array<option<int>> = a.args->Array.map(v =>
           switch v {
           | Var({idx}) => Some(idx)
@@ -404,20 +405,20 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
           | _ => None
           }
         )
-        if a_s->Array.some(Option.isNone) || b_s->Array.some(Option.isNone) {
-          let as1 = a_s->Array.map(Option.getUnsafe)
-          let bs1 = b_s->Array.map(Option.getUnsafe)
-          let common = Belt.Array.zip(as1, bs1)->Array.filterMap(((a, b)) =>
-            if a == b {
-              Some(a)
-            } else {
-              None
+        let allowed =
+          Belt.Array.zip(a_s, b_s)
+          ->Array.mapWithIndex((pair, idx) =>
+            switch pair {
+            | (Some(a), Some(b)) if a == b => Some(len - idx - 1)
+            | (_, _) => None
             }
           )
-          raise(TODO("TODO"))
-        } else {
-          raise(TODO("TODO"))
-        }
+          ->Array.keepSome
+        let h = Schematic({
+          schematic: fresh(Option.getUnsafe(gen)),
+          allowed,
+        })
+        Some(singletonSubst(sa, lam(len, h)))
       }
     } else {
       // flex-flex different
