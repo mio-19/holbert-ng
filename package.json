@@ -11,7 +11,9 @@
     "res:build": "rescript",
     "res:clean": "rescript clean",
     "res:dev": "rescript -w",
-    "res:format": "rescript format -all"
+    "res:format": "rescript format -all",
+    "test": "pta 'tests/*.mjs'",
+    "test-watch": "onchange --initial '{tests,src}/*.mjs' -- pta 'tests/*.mjs'"
   },
   "dependencies": {
     "@rescript/react": "^0.13.1",
@@ -20,6 +22,7 @@
     "rescript": "^11.1.4"
   },
   "devDependencies": {
+    "@dusty-phillips/rescript-zora": "^5.0.1",
     "@eslint/js": "^9.25.0",
     "@rescript/core": "^1.6.1",
     "@rescript/std": "^11.1.4",
@@ -30,6 +33,8 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "onchange": "^7.1.0",
+    "pta": "^1.3.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5"
