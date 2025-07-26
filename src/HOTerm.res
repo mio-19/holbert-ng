@@ -399,7 +399,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
           | _ => None
           }
         )
-        let b_s: array<option<int>> = a.args->Array.map(v =>
+        let b_s: array<option<int>> = b.args->Array.map(v =>
           switch v {
           | Var({idx}) => Some(idx)
           | _ => None
@@ -422,7 +422,52 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
       }
     } else {
       // flex-flex different
-      raise(TODO("TODO"))
+      let lista = a.args->Array.filterMap(v =>
+        switch v {
+        | Var({idx}) => Some(idx)
+        | _ => None
+        }
+      )
+      let seta = Belt.Set.fromArray(lista, ~id=module(IntCmp))
+      let common = b.args->Array.filterMap(v =>
+        switch v {
+        | Var({idx}) =>
+          if Belt.Set.has(seta, idx) {
+            Some(idx)
+          } else {
+            None
+          }
+        | _ => None
+        }
+      )
+      let varmap = Map.make()
+      common->Array.forEachWithIndex((v, idx) => varmap->Map.set(v, idx))
+      let amap = Map.make()
+      let a_len = a.args->Array.length
+      a.args->Array.forEachWithIndex((v, idx) =>
+        switch v {
+        | Var({idx: i}) => amap->Map.set(i, a_len - idx - 1)
+        | _ => ()
+        }
+      )
+      let bmap = Map.make()
+      let b_len = b.args->Array.length
+      b.args->Array.forEachWithIndex((v, idx) =>
+        switch v {
+        | Var({idx: i}) => bmap->Map.set(i, b_len - idx - 1)
+        | _ => ()
+        }
+      )
+      let h = lam(
+        common->Array.length,
+        Schematic({
+          schematic: fresh(Option.getUnsafe(gen)),
+          allowed: Array.fromInitializer(~length=common->Array.length, i => i),
+        }),
+      )
+      let a_args = common->Array.map(id => Var({idx: amap->Map.get(id)->Option.getExn}))
+      let b_args = common->Array.map(id => Var({idx: bmap->Map.get(id)->Option.getExn}))
+      Some(combineSubst(singletonSubst(sa, app(h, a_args)), singletonSubst(sb, app(h, b_args))))
     }
   | (_, _) => None
   }
