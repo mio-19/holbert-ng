@@ -15,9 +15,15 @@ zoraBlock("parse var", t => {
 
 zoraBlock("parse application", t => {
   t->block("multiple", t => {
+    t->Util.testParse("(a b)", App({func: Symbol({name: "a"}), arg: Symbol({name: "b"})}))
+  })
+  t->block("multiple more", t => {
     t->Util.testParse(
-      "(a b)",
-      App({func: Symbol({name: "a"}), arg: Symbol({name: "b"})}),
+      "(a b c)",
+      App({
+        func: App({func: Symbol({name: "a"}), arg: Symbol({name: "b"})}),
+        arg: Symbol({name: "c"}),
+      }),
     )
   })
 })
