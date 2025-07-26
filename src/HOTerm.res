@@ -274,7 +274,7 @@ let rec app = (term: t, args: array<t>): t =>
   if args->Array.length == 0 {
     term
   } else {
-    app(App({func: term, arg: args[0]->Option.getExn}), args->Array.sliceToEnd(~start=1))
+    app(App({func: term, arg: args[0]->Option.getExn}), args->Array.sliceToEnd(~start=0))
   }
 type peelAppT = {
   func: t,
@@ -317,7 +317,7 @@ and unifyArray = (a: array<(t, t)>, ~gen=?) => {
     | None => None
     | Some(s1) =>
       switch a
-      ->Array.sliceToEnd(~start=1)
+      ->Array.sliceToEnd(~start=0)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
       ->unifyArray {
       | None => None
@@ -604,7 +604,7 @@ let rec parseSimple = (str: string): (simple, string) => {
             let (head, rest2) = parseSimple(rest1)
             let (tail, rest3) = parseSimple("("->String.concat(rest2))
             switch tail {
-            | ListS({xs}) => (ListS({xs: [head, ...xs]}), rest3)
+            | ListS({xs}) => (ListS({xs: Array.concat([head], xs)}), rest3)
             | _ => raise(Unreachable("bug"))
             }
           }
@@ -650,7 +650,7 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
         raise(ParseError("empty list"))
       } else {
         ts
-        ->Array.sliceToEnd(~start=1)
+        ->Array.sliceToEnd(~start=0)
         ->Array.reduce(ts[0]->Option.getExn, (acc, x) => App({func: acc, arg: x}))
       }
     }
