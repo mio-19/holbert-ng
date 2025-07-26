@@ -233,7 +233,7 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     if var < from {
       term
     } else if var - from < Array.length(substs) && var - from >= 0 {
-      Option.getUnsafe(substs[var - from])
+      Option.getExn(substs[var - from])
     } else {
       Var({idx: var - Array.length(substs)})
     }
@@ -274,7 +274,7 @@ let rec app = (term: t, args: array<t>): t =>
   if args->Array.length == 0 {
     term
   } else {
-    app(App({func: term, arg: args[0]->Option.getUnsafe}), args->Array.sliceToEnd(~start=1))
+    app(App({func: term, arg: args[0]->Option.getExn}), args->Array.sliceToEnd(~start=1))
   }
 type peelAppT = {
   func: t,
@@ -312,7 +312,7 @@ and unifyArray = (a: array<(t, t)>, ~gen=?) => {
   if Array.length(a) == 0 {
     Some(emptySubst)
   } else {
-    let (x, y) = a[0]->Option.getUnsafe
+    let (x, y) = a[0]->Option.getExn
     switch unifyTerm(x, y, ~gen?) {
     | None => None
     | Some(s1) =>
@@ -367,7 +367,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
         )
         let allowed: array<int> = Array.fromInitializer(~length=a.args->Array.length, i => i)
         let hs: array<t> = Array.fromInitializer(~length=b.args->Array.length, _ => Schematic({
-          schematic: fresh(Option.getUnsafe(gen)),
+          schematic: fresh(Option.getExn(gen)),
           allowed,
         }))
         switch unifyArray(
@@ -415,7 +415,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
           )
           ->Array.keepSome
         let h = Schematic({
-          schematic: fresh(Option.getUnsafe(gen)),
+          schematic: fresh(Option.getExn(gen)),
           allowed,
         })
         Some(singletonSubst(sa, lam(len, h)))
@@ -461,7 +461,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
       let h = lam(
         common->Array.length,
         Schematic({
-          schematic: fresh(Option.getUnsafe(gen)),
+          schematic: fresh(Option.getExn(gen)),
           allowed: Array.fromInitializer(~length=common->Array.length, i => i),
         }),
       )
@@ -539,7 +539,7 @@ let tokenize = (str0: string): (token, string) => {
           | Some(res) =>
             switch RegExp.Result.matches(res) {
             | [n] => (
-                SchematicT(n->Int.fromString->Option.getUnsafe),
+                SchematicT(n->Int.fromString->Option.getExn),
                 String.sliceToEnd(str, ~start=RegExp.lastIndex(re1)),
               )
             | _ => raise(ParseError("invalid schematic"))
@@ -548,7 +548,7 @@ let tokenize = (str0: string): (token, string) => {
         | Some(res) =>
           switch RegExp.Result.matches(res) {
           | [n] => (
-              VarT(n->Int.fromString->Option.getUnsafe),
+              VarT(n->Int.fromString->Option.getExn),
               String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
             )
           | _ => raise(ParseError("invalid variable"))
@@ -651,12 +651,12 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
       } else {
         ts
         ->Array.sliceToEnd(~start=1)
-        ->Array.reduce(ts[0]->Option.getUnsafe, (acc, x) => App({func: acc, arg: x}))
+        ->Array.reduce(ts[0]->Option.getExn, (acc, x) => App({func: acc, arg: x}))
       }
     }
   | AtomS({name}) =>
     if env->Map.has(name) {
-      let idx = env->Map.get(name)->Option.getUnsafe
+      let idx = env->Map.get(name)->Option.getExn
       Var({idx: idx})
     } else {
       Symbol({name: name})
