@@ -683,11 +683,11 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
       Symbol({name: name})
     }
   | VarS({idx}) => Var({idx: idx})
-  | SchematicS({schematic}) =>
+  | SchematicS({schematic, allowed}) =>
     switch gen {
     | Some(g) => {
         seen(g, schematic)
-        let allowed =
+        let allowed1 =
           env
           ->Map.values
           ->Core__Iterator.toArray
