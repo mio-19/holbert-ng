@@ -517,8 +517,8 @@ let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)
 type token = LParen | RParen | VarT(int) | SchematicT(int) | AtomT(string) | DotT | EOF
-let varRegexpString = "^\\\\([0-9]+)$"
-let schematicRegexpString = "^\\?([0-9]+)$"
+let varRegexpString = "^\\\\([0-9]+)"
+let schematicRegexpString = "^\\?([0-9]+)"
 let tokenize = (str0: string): (token, string) => {
   let str = str0->String.trimStart
   if str->String.length == 0 {
@@ -532,19 +532,7 @@ let tokenize = (str0: string): (token, string) => {
     | "\\" => {
         let re = RegExp.fromStringWithFlags(varRegexpString, ~flags="y")
         switch re->RegExp.exec(str) {
-        | None =>
-          let re1 = RegExp.fromStringWithFlags(schematicRegexpString, ~flags="y")
-          switch re1->RegExp.exec(str) {
-          | None => raise(ParseError("invalid variable or schematic"))
-          | Some(res) =>
-            switch RegExp.Result.matches(res) {
-            | [n] => (
-                SchematicT(n->Int.fromString->Option.getExn),
-                String.sliceToEnd(str, ~start=RegExp.lastIndex(re1)),
-              )
-            | _ => raise(ParseError("invalid schematic"))
-            }
-          }
+        | None => raise(ParseError("invalid variable"))
         | Some(res) =>
           switch RegExp.Result.matches(res) {
           | [n] => (
@@ -552,6 +540,20 @@ let tokenize = (str0: string): (token, string) => {
               String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
             )
           | _ => raise(ParseError("invalid variable"))
+          }
+        }
+      }
+    | "?" => {
+        let re = RegExp.fromStringWithFlags(schematicRegexpString, ~flags="y")
+        switch re->RegExp.exec(str) {
+        | None => raise(ParseError("invalid schematic"))
+        | Some(res) =>
+          switch RegExp.Result.matches(res) {
+          | [n] => (
+              SchematicT(n->Int.fromString->Option.getExn),
+              String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
+            )
+          | _ => raise(ParseError("invalid schematic"))
           }
         }
       }
@@ -573,7 +575,7 @@ type rec simple =
   | ListS({xs: array<simple>})
   | AtomS({name: string})
   | VarS({idx: int})
-  | SchematicS({schematic: int})
+  | SchematicS({schematic: int, allowed: array<int>})
   | LambdaS({name: string, body: simple})
 let rec parseSimple = (str: string): (simple, string) => {
   let (t0, rest) = tokenize(str)
@@ -613,7 +615,26 @@ let rec parseSimple = (str: string): (simple, string) => {
     }
   | RParen => raise(ParseError("unexpected right parenthesis"))
   | VarT(idx) => (VarS({idx: idx}), rest)
-  | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
+  | SchematicT(schematic) => {
+      let (list, rest1) = parseSimple(rest)
+      switch list {
+      | ListS({xs}) => {
+          let vars = xs->Array.map(x =>
+            switch x {
+            | VarS({idx}) => Some(idx)
+            | _ => None
+            }
+          )
+          if vars->Array.every(Option.isSome) {
+            let allowed = vars->Array.map(v => Option.getExn(v))
+            (SchematicS({schematic, allowed}), rest1)
+          } else {
+            raise(ParseError("expected a list of variables after schematic token"))
+          }
+        }
+      | _ => raise(ParseError("expected a list after schematic token"))
+      }
+    }
   | AtomT(name) => (AtomS({name: name}), rest)
   | DotT => raise(ParseError("unexpected dot"))
   | EOF => raise(ParseError("unexpected end of file"))
