@@ -67,7 +67,6 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid", t => {
     let v0 = "\\0"
     let s0 = "?0(\\0)"
-    // TODO: needs to make gen work; gen needs to have seen exisiting sementics; should use parse instead of writing parsed terms directly to get a good gen
-    //t->Util.testUnify(v0, s0)
+    t->Util.testUnify(v0, s0)
   })
 })
