@@ -49,24 +49,24 @@ zoraBlock("parse application", t => {
 
 zoraBlock("unify test", t => {
   t->block("symbols", t => {
-    let x = Symbol({name: "x"})
-    let y = Symbol({name: "y"})
+    let x = "x"
+    let y = "y"
     t->Util.testUnify(x, x)
     t->Util.testUnify(y, y)
     t->Util.testNotUnify(y, x)
     t->Util.testNotUnify(x, y)
   })
   t->block("applications", t => {
-    let ab = App({func: Symbol({name: "a"}), arg: Symbol({name: "b"})})
-    let cd = App({func: Symbol({name: "c"}), arg: Symbol({name: "d"})})
+    let ab = "(a b)"
+    let cd = "(c d)"
     t->Util.testUnify(ab, ab)
     t->Util.testUnify(cd, cd)
     t->Util.testNotUnify(ab, cd)
     t->Util.testNotUnify(cd, ab)
   })
   t->block("flex-rigid", t => {
-    let v0 = Var({idx: 0})
-    let s0 = Schematic({schematic: 0, allowed: [0]})
+    let v0 = "\\0"
+    let s0 = "?0(\\0)"
     // TODO: needs to make gen work; gen needs to have seen exisiting sementics; should use parse instead of writing parsed terms directly to get a good gen
     //t->Util.testUnify(v0, s0)
   })

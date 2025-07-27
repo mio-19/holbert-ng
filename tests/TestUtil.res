@@ -22,7 +22,10 @@ module MakeTerm = (Term: TERM) => {
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
-  let testUnify = (t: Zora.t, a: Term.t, b: Term.t, ~subst=?, ~msg=?) => {
+  let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
+    let gen = Term.makeGen()
+    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
     let res = Term.unify(a, b)
     if res->Array.length == 0 {
       t->fail(~msg="unification failed: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
@@ -40,7 +43,10 @@ module MakeTerm = (Term: TERM) => {
       }
     }
   }
-  let testNotUnify = (t: Zora.t, a: Term.t, b: Term.t, ~msg=?) => {
+  let testNotUnify = (t: Zora.t, at: string, bt: string, ~msg=?) => {
+    let gen = Term.makeGen()
+    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
     let res = Term.unify(a, b)
     if res->Array.length != 0 {
       t->fail(~msg="unification succeeded: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
