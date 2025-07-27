@@ -22,4 +22,20 @@ module MakeTerm = (Term: TERM) => {
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
+  let testUnify = (t: Zora.t, a: Term.t, b: Term.t, ~msg=?) => {
+    let res = Term.unify(a, b)
+    if res->Array.length == 0 {
+      t->fail(~msg="unification failed: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
+    } else {
+      t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
+    }
+  }
+  let testNotUnify = (t: Zora.t, a: Term.t, b: Term.t, ~msg=?) => {
+    let res = Term.unify(a, b)
+    if res->Array.length != 0 {
+      t->fail(~msg="unification succeeded: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
+    } else {
+      t->ok(true, ~msg=msg->Option.getOr("unification failed"))
+    }
+  }
 }

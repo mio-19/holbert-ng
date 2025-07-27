@@ -27,3 +27,14 @@ zoraBlock("parse application", t => {
     )
   })
 })
+
+zoraBlock("unify test", t => {
+  t->block("symbols", t => {
+    let x = Symbol({name: "x"})
+    let y = Symbol({name: "y"})
+    t->Util.testUnify(x, x)
+    t->Util.testUnify(y, y)
+    t->Util.testNotUnify(y, x)
+    t->Util.testNotUnify(x, y)
+  })
+})
