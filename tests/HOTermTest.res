@@ -45,4 +45,9 @@ zoraBlock("unify test", t => {
     t->Util.testNotUnify(ab, cd)
     t->Util.testNotUnify(cd, ab)
   })
+  t->block("flex-rigid", t => {
+    let v0 = Var({idx: 0})
+    let s0 = Schematic({schematic: 0, allowed: [0]})
+    t->Util.testUnify(v0, s0)
+  })
 })
