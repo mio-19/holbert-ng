@@ -10,3 +10,6 @@ include Signatures.TERM
   and type meta = string
   and type schematic = int
   and type subst = Map.t<int, t>
+
+// exposed for testing purposes
+let singletonSubst: (int, t) => subst

@@ -67,6 +67,6 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid", t => {
     let v0 = "\\0"
     let s0 = "?0(\\0)"
-    t->Util.testUnify(v0, s0)
+    t->Util.testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
   })
 })
