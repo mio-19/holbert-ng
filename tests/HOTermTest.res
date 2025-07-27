@@ -37,4 +37,12 @@ zoraBlock("unify test", t => {
     t->Util.testNotUnify(y, x)
     t->Util.testNotUnify(x, y)
   })
+  t->block("applications", t => {
+    let ab = App({func: Symbol({name: "a"}), arg: Symbol({name: "b"})})
+    let cd = App({func: Symbol({name: "c"}), arg: Symbol({name: "d"})})
+    t->Util.testUnify(ab, ab)
+    t->Util.testUnify(cd, cd)
+    t->Util.testNotUnify(ab, cd)
+    t->Util.testNotUnify(cd, ab)
+  })
 })
