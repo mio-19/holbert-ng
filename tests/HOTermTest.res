@@ -36,6 +36,15 @@ zoraBlock("parse application", t => {
       }),
     )
   })
+  t->block("multiple var", t => {
+    t->Util.testParse(
+      "(a \\1 ?1())",
+      App({
+        func: App({func: Symbol({name: "a"}), arg: Var({idx: 1})}),
+        arg: Schematic({schematic: 1, allowed: []}),
+      }),
+    )
+  })
 })
 
 zoraBlock("unify test", t => {
