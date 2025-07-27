@@ -298,40 +298,42 @@ let rec peelApp = (term: t): peelAppT => {
   | _ => {func: term, args: []}
   }
 }
-let rec unifyTerm = (a: t, b: t, ~gen=?) =>
+let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
   switch (reduce(a), reduce(b)) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
   | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
   | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
-  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb)
-  | (Lam({name: _, body: ba}), b) => unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}))
-  | (a, Lam({name: _, body: bb})) => unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb)
-  | (_, _) => cases(a, peelApp(a), b, peelApp(b), ~gen?)
+  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, ~gen)
+  | (Lam({name: _, body: ba}), b) =>
+    unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), ~gen)
+  | (a, Lam({name: _, body: bb})) =>
+    unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, ~gen)
+  | (_, _) => cases(a, peelApp(a), b, peelApp(b), ~gen)
   }
-and unifyArray = (a: array<(t, t)>, ~gen=?) => {
+and unifyArray = (a: array<(t, t)>, ~gen: option<gen>) => {
   if Array.length(a) == 0 {
     Some(emptySubst)
   } else {
     let (x, y) = a[0]->Option.getExn
-    switch unifyTerm(x, y, ~gen?) {
+    switch unifyTerm(x, y, ~gen) {
     | None => None
     | Some(s1) =>
       switch a
       ->Array.sliceToEnd(~start=1)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
-      ->unifyArray {
+      ->unifyArray(~gen) {
       | None => None
       | Some(s2) => Some(combineSubst(s1, s2))
       }
     }
   }
 }
-and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
+and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen: option<gen>) => {
   switch (a.func, b.func) {
   // rigid-rigid
   | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
     if a.args->Array.length == b.args->Array.length && equivalent(a.func, b.func) {
-      unifyArray(Belt.Array.zip(a.args, b.args), ~gen?)
+      unifyArray(Belt.Array.zip(a.args, b.args), ~gen)
     } else {
       None
     }
@@ -372,7 +374,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
         }))
         switch unifyArray(
           Belt.Array.zip(b.args->Array.map(x => substVar(upshift(x, i), substV)), hs),
-          ~gen?,
+          ~gen,
         ) {
         | Some(s) => {
             let term: t = substitute(lam(i, app(b.func, hs)), s)
@@ -384,7 +386,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
     } else {
       None
     }
-  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => cases(bt, b, at, a)
+  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => cases(bt, b, at, a, ~gen)
   // flex-flex
   | (Schematic({schematic: sa}), Schematic({schematic: sb})) =>
     if equivalent(a.func, b.func) {
@@ -473,7 +475,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen=?) => {
   }
 }
 let unify = (a: t, b: t, ~gen=?) => {
-  switch unifyTerm(a, b, ~gen?) {
+  switch unifyTerm(a, b, ~gen) {
   | None => []
   | Some(s) => [s]
   }

@@ -26,7 +26,7 @@ module MakeTerm = (Term: TERM) => {
     let gen = Term.makeGen()
     let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
     let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
-    let res = Term.unify(a, b)
+    let res = Term.unify(a, b, ~gen)
     if res->Array.length == 0 {
       t->fail(~msg="unification failed: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
     } else {
