@@ -97,8 +97,7 @@ zoraBlock("unify test", t => {
   })
   t->block("flex-rigid var", t => {
     let v0 = "(\\0 \\1)"
-    let s0 = "(?0(\\0 \\1) \\1)"
-    // TODO
-    //t->Util.testUnify(v0, s0)
+    let s0 = "(?0 \\1)"
+    t->Util.testUnify(v0, s0)
   })
 })
