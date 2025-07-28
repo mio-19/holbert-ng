@@ -125,6 +125,32 @@ let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
   )
   nu
 }
+let rec mapbind = (term: t, f: int => int, ~from: int=0): t =>
+  switch term {
+  | Symbol(_) => term
+  | Var({idx}) =>
+    Var({
+      idx: if idx >= from {
+        f(idx - from) + from
+      } else {
+        idx
+      },
+    })
+  | Schematic({schematic}) =>
+    Schematic({
+      schematic: schematic,
+    })
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: mapbind(body, f, ~from=from + 1),
+    })
+  | App({func, arg}) =>
+    App({
+      func: mapbind(func, f, ~from),
+      arg: mapbind(arg, f, ~from),
+    })
+  }
 type substVar = Map.t<int, int>
 let incrSubstVar = (subst: substVar) => {
   let nu = Map.make()
