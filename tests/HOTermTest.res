@@ -99,5 +99,7 @@ zoraBlock("unify test", t => {
     let v0 = "(\\0 \\1)"
     let s0 = "(?0 \\1)"
     t->Util.testUnify(v0, s0)
+    // TODO: fix this
+    //t->Util.testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
   })
 })
