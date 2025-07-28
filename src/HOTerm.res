@@ -564,6 +564,7 @@ let tokenize = (str0: string): (token, string) => {
         switch reName->RegExp.exec(str) {
         | Some(res) =>
           switch RegExp.Result.matches(res) {
+          // -1: leave the dot in the string for the next DotT token
           | [n] => (AtomT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(reName) - 1))
           | _ => raise(ParseError("invalid symbol"))
           }
