@@ -276,7 +276,7 @@ let rec app = (term: t, args: array<t>): t =>
   } else {
     app(App({func: term, arg: args[0]->Option.getExn}), args->Array.sliceToEnd(~start=1))
   }
-type peelAppT = {
+type stripped = {
   func: t,
   args: array<t>,
 }
@@ -290,10 +290,10 @@ let rec reduce = (term: t) => {
   | term => term
   }
 }
-let rec peelApp = (term: t): peelAppT => {
+let rec strip = (term: t): stripped => {
   switch reduce(term) {
   | App({func, arg}) =>
-    let {func: peeledFunc, args: peeledArgs} = peelApp(func)
+    let {func: peeledFunc, args: peeledArgs} = strip(func)
     {func: peeledFunc, args: [arg, ...peeledArgs]}
   | _ => {func: term, args: []}
   }
@@ -308,7 +308,7 @@ let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
     unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), ~gen)
   | (a, Lam({name: _, body: bb})) =>
     unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, ~gen)
-  | (_, _) => cases(a, peelApp(a), b, peelApp(b), ~gen)
+  | (_, _) => cases(a, strip(a), b, strip(b), ~gen)
   }
 and unifyArray = (a: array<(t, t)>, ~gen: option<gen>) => {
   if Array.length(a) == 0 {
@@ -328,7 +328,7 @@ and unifyArray = (a: array<(t, t)>, ~gen: option<gen>) => {
     }
   }
 }
-and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen: option<gen>) => {
+and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
   switch (a.func, b.func) {
   // rigid-rigid
   | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
