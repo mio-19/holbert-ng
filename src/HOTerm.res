@@ -58,80 +58,17 @@ let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   | App({func, arg}) => Belt.Set.union(freeVarsIn(func), freeVarsIn(arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
-let rec upshift = (term: t, amount: int, ~from: int=0) =>
-  switch term {
-  | Symbol(_) => term
-  | Var({idx}) =>
-    Var({
-      idx: if idx >= from {
-        idx + amount
-      } else {
-        idx
-      },
-    })
-  | Schematic({schematic}) =>
-    Schematic({
-      schematic: schematic,
-    })
-  | Lam({name, body}) =>
-    Lam({
-      name,
-      body: upshift(body, amount, ~from=from + 1),
-    })
-  | App({func, arg}) =>
-    App({
-      func: upshift(func, amount, ~from),
-      arg: upshift(arg, amount, ~from),
-    })
-  }
-let rec downshift = (term: t, amount: int, ~from: int=1) => {
-  switch term {
-  | Symbol(_) => term
-  | Var({idx}) =>
-    Var({
-      idx: if idx >= from {
-        if idx - amount >= 0 {
-          idx - amount
-        } else {
-          raise(Err("downshifted variable index out of bounds"))
-        }
-      } else {
-        idx
-      },
-    })
-  | Schematic({schematic}) =>
-    Schematic({
-      schematic: schematic,
-    })
-  | Lam({name, body}) =>
-    Lam({
-      name,
-      body: downshift(body, amount, ~from=from + 1),
-    })
-  | App({func, arg}) =>
-    App({
-      func: downshift(func, amount, ~from),
-      arg: downshift(arg, amount, ~from),
-    })
-  }
-}
-let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
-  let nu = Map.make()
-  Map.entries(subst)->Iterator.forEach(opt =>
-    switch opt {
-    | None => ()
-    | Some((key, term)) => nu->Map.set(key, upshift(term, amount, ~from))
-    }
-  )
-  nu
-}
 let rec mapbind = (term: t, f: int => int, ~from: int=0): t =>
   switch term {
   | Symbol(_) => term
   | Var({idx}) =>
     Var({
       idx: if idx >= from {
-        f(idx - from) + from
+        let new = f(idx - from) + from
+        if new < 0 {
+          raise(Err("mapbind: negative index"))
+        }
+        new
       } else {
         idx
       },
@@ -151,6 +88,23 @@ let rec mapbind = (term: t, f: int => int, ~from: int=0): t =>
       arg: mapbind(arg, f, ~from),
     })
   }
+let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
+let downshift = (term: t, amount: int, ~from: int=1) => {
+  if amount > from {
+    raise(Err("downshift amount must be less than from"))
+  }
+  mapbind(term, idx => idx - amount, ~from)
+}
+let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
+  let nu = Map.make()
+  Map.entries(subst)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, term)) => nu->Map.set(key, upshift(term, amount, ~from))
+    }
+  )
+  nu
+}
 type substVar = Map.t<int, int>
 let incrSubstVar = (subst: substVar) => {
   let nu = Map.make()
