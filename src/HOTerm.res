@@ -372,6 +372,7 @@ and cases = (at: t, a: peelAppT, bt: t, b: peelAppT, ~gen: option<gen>) => {
           schematic: fresh(Option.getExn(gen)),
           allowed,
         }))
+        // TODO: define a proj
         switch unifyArray(
           Belt.Array.zip(b.args->Array.map(x => substVar(upshift(x, i), substV)), hs),
           ~gen,
