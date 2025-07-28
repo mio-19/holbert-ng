@@ -266,7 +266,7 @@ let rec strip = (term: t): stripped => {
   | _ => {func: term, args: []}
   }
 }
-exception ProjFail(string)
+exception UnifyFail(string)
 let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=emptySubst): subst =>
   switch reduce(term) {
   | Lam({name: _, body}) =>
@@ -279,7 +279,7 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
         if allowed->Array.some(v => v == idx) {
           Array.reduce(a.args, subst, (acc, a) => proj(allowed, a, ~gen, ~subst=acc))
         } else {
-          raise(ProjFail("variable not in allowed set"))
+          raise(UnifyFail("variable not in allowed set"))
         }
       | Schematic({schematic}) => {
           let len = a.args->Array.length
@@ -295,7 +295,7 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
             ->Array.map(idx => len - idx - 1)
             ->Array.map(idx => Var({idx: idx}))
           if gen->Option.isNone {
-            raise(ProjFail("no gen provided"))
+            raise(UnifyFail("no gen provided"))
           }
           let h = fresh(Option.getExn(gen))
           combineSubst(
@@ -314,15 +314,15 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
             ),
           )
         }
-      | _ => raise(ProjFail("not a symbol, var or schematic"))
+      | _ => raise(UnifyFail("not a symbol, var or schematic"))
       }
     }
   }
 let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
   switch (reduce(a), reduce(b)) {
-  | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
-  | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
-  | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
+  | (Symbol({name: na}), Symbol({name: nb})) if na == nb => emptySubst
+  | (Var({idx: ia}), Var({idx: ib})) if ia == ib => emptySubst
+  | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => emptySubst
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, ~gen)
   | (Lam({name: _, body: ba}), b) =>
     unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), ~gen)
@@ -332,20 +332,16 @@ let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
   }
 and unifyArray = (a: array<(t, t)>, ~gen: option<gen>) => {
   if Array.length(a) == 0 {
-    Some(emptySubst)
+    emptySubst
   } else {
     let (x, y) = a[0]->Option.getExn
-    switch unifyTerm(x, y, ~gen) {
-    | None => None
-    | Some(s1) =>
-      switch a
+    let s1 = unifyTerm(x, y, ~gen)
+    let s2 =
+      a
       ->Array.sliceToEnd(~start=1)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
-      ->unifyArray(~gen) {
-      | None => None
-      | Some(s2) => Some(combineSubst(s1, s2))
-      }
-    }
+      ->unifyArray(~gen)
+    combineSubst(s1, s2)
   }
 }
 and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
@@ -355,7 +351,7 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
     if a.args->Array.length == b.args->Array.length && equivalent(a.func, b.func) {
       unifyArray(Belt.Array.zip(a.args, b.args), ~gen)
     } else {
-      None
+      raise(UnifyFail("rigid-rigid mismatch"))
     }
   // flex-rigid
   | (Schematic({schematic}), Symbol(_) | Var(_)) =>
@@ -375,7 +371,7 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
         map->Array.some(Option.isNone) ||
         set->Belt.Set.size < map->Array.length
       ) {
-        None
+        raise(UnifyFail("flex-rigid mismatch"))
       } else {
         let i = a.args->Array.length
         let substV: substVar = Map.make()
@@ -400,26 +396,22 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
           )
         )
         // TODO: define a proj
-        switch unifyArray(
+        let s = unifyArray(
           Belt.Array.zip(b.args->Array.map(x => substVar(upshift(x, i), substV)), hs),
           ~gen,
-        ) {
-        | Some(s) => {
-            let term: t = substitute(lam(i, app(b.func, hs)), s)
-            Some(combineSubst(s, singletonSubst(schematic, term)))
-          }
-        | None => None
-        }
+        )
+        let term: t = substitute(lam(i, app(b.func, hs)), s)
+        combineSubst(s, singletonSubst(schematic, term))
       }
     } else {
-      None
+      raise(UnifyFail("flex-rigid schematic already in use"))
     }
   | (Symbol(_) | Var(_), Schematic({schematic})) => cases(bt, b, at, a, ~gen)
   // flex-flex
   | (Schematic({schematic: sa}), Schematic({schematic: sb})) =>
     if equivalent(a.func, b.func) {
       if a.args->Array.length != b.args->Array.length {
-        None
+        raise(UnifyFail("flex-flex mismatch: different number of args"))
       } else {
         // flex-flex same
         let len = a.args->Array.length
@@ -451,7 +443,7 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
           }),
           allowed,
         )
-        Some(singletonSubst(sa, lam(len, h)))
+        singletonSubst(sa, lam(len, h))
       }
     } else {
       // flex-flex different
@@ -502,15 +494,16 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
       )
       let a_args = common->Array.map(id => Var({idx: amap->Map.get(id)->Option.getExn}))
       let b_args = common->Array.map(id => Var({idx: bmap->Map.get(id)->Option.getExn}))
-      Some(combineSubst(singletonSubst(sa, app(h, a_args)), singletonSubst(sb, app(h, b_args))))
+      combineSubst(singletonSubst(sa, app(h, a_args)), singletonSubst(sb, app(h, b_args)))
     }
-  | (_, _) => None
+  | (_, _) => raise(UnifyFail("not a schematic, symbol or var"))
   }
 }
 let unify = (a: t, b: t, ~gen=?) => {
-  switch unifyTerm(a, b, ~gen) {
-  | None => []
-  | Some(s) => [s]
+  try {
+    [unifyTerm(a, b, ~gen)]
+  } catch {
+  | UnifyFail(_) => []
   }
 }
 let place = (x: int, ~scope: array<string>) => Schematic({
