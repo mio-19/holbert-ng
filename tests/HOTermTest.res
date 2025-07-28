@@ -47,6 +47,12 @@ zoraBlock("parse application", t => {
   })
 })
 
+zoraBlock("parse lambda", t => {
+  t->block("simple", t => {
+    t->Util.testParse("(x . x)", Lam({name: "x", body:  Var({idx: 0})}))
+  })
+})
+
 zoraBlock("unify test", t => {
   t->block("symbols", t => {
     let x = "x"
