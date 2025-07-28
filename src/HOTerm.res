@@ -560,13 +560,22 @@ let tokenize = (str0: string): (token, string) => {
         }
       }
     | _ => {
-        let re = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
-        switch re->RegExp.exec(str) {
-        | None => raise(ParseError("invalid symbol"))
+        let reName = RegExp.fromStringWithFlags(nameRES, ~flags="y")
+        switch reName->RegExp.exec(str) {
         | Some(res) =>
           switch RegExp.Result.matches(res) {
-          | [n] => (AtomT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(re)))
+          | [n] => (AtomT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(reName) - 1))
           | _ => raise(ParseError("invalid symbol"))
+          }
+        | None =>
+          let re = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
+          switch re->RegExp.exec(str) {
+          | None => raise(ParseError("invalid symbol"))
+          | Some(res) =>
+            switch RegExp.Result.matches(res) {
+            | [n] => (AtomT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(re)))
+            | _ => raise(ParseError("invalid symbol"))
+            }
           }
         }
       }
