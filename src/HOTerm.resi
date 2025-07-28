@@ -1,7 +1,7 @@
 type rec t =
   | Symbol({name: string})
   | Var({idx: int})
-  | Schematic({schematic: int, allowed: array<int>})
+  | Schematic({schematic: int})
   | Lam({name: string, body: t})
   | App({func: t, arg: t})
 

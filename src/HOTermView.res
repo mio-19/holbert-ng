@@ -39,16 +39,9 @@ let rec make = ({term, scope}) =>
   switch term {
   | Var({idx}) => viewVar({idx, scope})
   | Symbol({name: s}) => <span className="term-const"> {React.string(s)} </span>
-  | Schematic({schematic: s, allowed: vs}) =>
+  | Schematic({schematic: s}) =>
     <span className="term-schematic">
       {React.string("?")}
       {React.int(s)}
-      <span className="term-schematic-telescope">
-        {vs
-        ->Array.mapWithIndex((v, i) => React.createElement(viewVar, withKey({idx: v, scope}, i)))
-        ->intersperse
-        ->parenthesise
-        ->React.array}
-      </span>
     </span>
   }

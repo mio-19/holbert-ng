@@ -14,13 +14,7 @@ zoraBlock("parse var", t => {
 })
 
 zoraBlock("parse schematic", t => {
-  t->block("empty allowed", t => t->Util.testParse("?1()", Schematic({schematic: 1, allowed: []})))
-  t->block("one allowed", t =>
-    t->Util.testParse("?1(\\1)", Schematic({schematic: 1, allowed: [1]}))
-  )
-  t->block("multiple allowed", t =>
-    t->Util.testParse("?1(\\1 \\23 \\4)", Schematic({schematic: 1, allowed: [1, 23, 4]}))
-  )
+  t->block("empty allowed", t => t->Util.testParse("?1", Schematic({schematic: 1})))
 })
 
 zoraBlock("parse application", t => {
@@ -38,10 +32,10 @@ zoraBlock("parse application", t => {
   })
   t->block("multiple var", t => {
     t->Util.testParse(
-      "(a \\1 ?1())",
+      "(a \\1 ?1)",
       App({
         func: App({func: Symbol({name: "a"}), arg: Var({idx: 1})}),
-        arg: Schematic({schematic: 1, allowed: []}),
+        arg: Schematic({schematic: 1}),
       }),
     )
   })
@@ -93,17 +87,13 @@ zoraBlock("unify test", t => {
   })
   t->block("flex-rigid", t => {
     let v0 = "\\0"
-    let s0 = "?0(\\0)"
-    let s0_ = "?0()"
+    let s0 = "?0"
     t->Util.testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
-    t->Util.testNotUnify(v0, s0_)
   })
   t->block("flex-rigid in lambda", t => {
     let v0 = "(x. x)"
-    let s0 = "(y. ?0(\\0))"
-    let s0_ = "(y. ?0())"
+    let s0 = "(y. ?0)"
     t->Util.testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
-    t->Util.testNotUnify(v0, s0_)
   })
   t->block("flex-rigid var", t => {
     let v0 = "(\\0 \\1)"

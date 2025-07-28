@@ -7,7 +7,7 @@ module IntCmp = Belt.Id.MakeComparable({
 type rec t =
   | Symbol({name: string})
   | Var({idx: int})
-  | Schematic({schematic: int, allowed: array<int>})
+  | Schematic({schematic: int})
   | Lam({name: string, body: t})
   | App({func: t, arg: t})
 type meta = string
@@ -17,8 +17,7 @@ let rec equivalent = (a: t, b: t) => {
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) => na == nb
   | (Var({idx: ia}), Var({idx: ib})) => ia == ib
-  | (Schematic({schematic: sa, allowed: aa}), Schematic({schematic: sb, allowed: ab})) =>
-    sa == sb && Array.equal(aa, ab, (a, b) => a == b)
+  | (Schematic({schematic: sa}), Schematic({schematic: sb})) => sa == sb
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => equivalent(ba, bb)
   | (App({func: fa, arg: aa}), App({func: fb, arg: ab})) => equivalent(fa, fb) && equivalent(aa, ab)
   | (_, _) => false
@@ -70,16 +69,9 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
         idx
       },
     })
-  | Schematic({schematic, allowed}) =>
+  | Schematic({schematic}) =>
     Schematic({
-      schematic,
-      allowed: Array.map(allowed, i =>
-        if i >= from {
-          i + amount
-        } else {
-          i
-        }
-      ),
+      schematic: schematic,
     })
   | Lam({name, body}) =>
     Lam({
@@ -107,20 +99,9 @@ let rec downshift = (term: t, amount: int, ~from: int=1) => {
         idx
       },
     })
-  | Schematic({schematic, allowed}) =>
+  | Schematic({schematic}) =>
     Schematic({
-      schematic,
-      allowed: Array.map(allowed, i =>
-        if i >= from {
-          if i - amount >= 0 {
-            i - amount
-          } else {
-            raise(Err("downshifted variable index out of bounds"))
-          }
-        } else {
-          i
-        }
-      ),
+      schematic: schematic,
     })
   | Lam({name, body}) =>
     Lam({
@@ -163,15 +144,9 @@ let rec substVar = (term: t, subst: substVar) =>
     | None => term
     | Some(newIdx) => Var({idx: newIdx})
     }
-  | Schematic({schematic, allowed}) =>
+  | Schematic({schematic}) =>
     Schematic({
-      schematic,
-      allowed: Array.map(allowed, i =>
-        switch Map.get(subst, i) {
-        | None => i
-        | Some(newIdx) => newIdx
-        }
-      ),
+      schematic: schematic,
     })
   | Lam({name, body}) =>
     Lam({
@@ -237,16 +212,9 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     } else {
       Var({idx: var - Array.length(substs)})
     }
-  | Schematic({schematic, allowed}) =>
+  | Schematic({schematic}) =>
     Schematic({
-      schematic,
-      allowed: Array.filterMap(allowed, i =>
-        if i < from + Array.length(substs) {
-          None
-        } else {
-          Some(i - (from + Array.length(substs)))
-        }
-      ),
+      schematic: schematic,
     })
   | Lam({name, body}) =>
     Lam({
@@ -313,7 +281,7 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
         } else {
           raise(ProjFail("variable not in allowed set"))
         }
-      | Schematic({schematic, allowed: a_allowed}) => {
+      | Schematic({schematic}) => {
           let len = a.args->Array.length
           let hargs =
             a.args
@@ -325,6 +293,7 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
             )
             ->Array.keepSome
             ->Array.map(idx => len - idx - 1)
+            ->Array.map(idx => Var({idx: idx}))
           if gen->Option.isNone {
             raise(ProjFail("no gen provided"))
           }
@@ -335,10 +304,12 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
               schematic,
               lam(
                 len,
-                Schematic({
-                  schematic: h,
-                  allowed: hargs,
-                }),
+                app(
+                  Schematic({
+                    schematic: h,
+                  }),
+                  hargs,
+                ),
               ),
             ),
           )
@@ -387,11 +358,10 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
       None
     }
   // flex-rigid
-  | (Schematic({schematic, allowed}), Symbol(_) | Var(_)) =>
+  | (Schematic({schematic}), Symbol(_) | Var(_)) =>
     if (
       // TODO: is this check strong enough to prevent cycles? do we need to check more
-      !Belt.Set.has(schematicsIn(bt), schematic) &&
-      Belt.Set.subset(freeVarsIn(bt), Belt.Set.fromArray(allowed, ~id=module(IntCmp)))
+      !Belt.Set.has(schematicsIn(bt), schematic)
     ) {
       let map: array<option<int>> = a.args->Array.map(v =>
         switch v {
@@ -416,11 +386,19 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
           | None => raise(Unreachable("bug"))
           }
         )
-        let allowed: array<int> = Array.fromInitializer(~length=a.args->Array.length, i => i)
-        let hs: array<t> = Array.fromInitializer(~length=b.args->Array.length, _ => Schematic({
-          schematic: fresh(Option.getExn(gen)),
-          allowed,
+        let allowed = Array.fromInitializer(~length=a.args->Array.length, i =>
+          i
+        )->Array.map(idx => Var({
+          idx: idx,
         }))
+        let hs: array<t> = Array.fromInitializer(~length=b.args->Array.length, _ =>
+          app(
+            Schematic({
+              schematic: fresh(Option.getExn(gen)),
+            }),
+            allowed,
+          )
+        )
         // TODO: define a proj
         switch unifyArray(
           Belt.Array.zip(b.args->Array.map(x => substVar(upshift(x, i), substV)), hs),
@@ -436,7 +414,7 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
     } else {
       None
     }
-  | (Symbol(_) | Var(_), Schematic({schematic, allowed})) => cases(bt, b, at, a, ~gen)
+  | (Symbol(_) | Var(_), Schematic({schematic})) => cases(bt, b, at, a, ~gen)
   // flex-flex
   | (Schematic({schematic: sa}), Schematic({schematic: sb})) =>
     if equivalent(a.func, b.func) {
@@ -466,10 +444,13 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
             }
           )
           ->Array.keepSome
-        let h = Schematic({
-          schematic: fresh(Option.getExn(gen)),
+          ->Array.map(idx => Var({idx: idx}))
+        let h = app(
+          Schematic({
+            schematic: fresh(Option.getExn(gen)),
+          }),
           allowed,
-        })
+        )
         Some(singletonSubst(sa, lam(len, h)))
       }
     } else {
@@ -512,10 +493,12 @@ and cases = (at: t, a: stripped, bt: t, b: stripped, ~gen: option<gen>) => {
       )
       let h = lam(
         common->Array.length,
-        Schematic({
-          schematic: fresh(Option.getExn(gen)),
-          allowed: Array.fromInitializer(~length=common->Array.length, i => i),
-        }),
+        app(
+          Schematic({
+            schematic: fresh(Option.getExn(gen)),
+          }),
+          Array.fromInitializer(~length=common->Array.length, i => Var({idx: i})),
+        ),
       )
       let a_args = common->Array.map(id => Var({idx: amap->Map.get(id)->Option.getExn}))
       let b_args = common->Array.map(id => Var({idx: bmap->Map.get(id)->Option.getExn}))
@@ -532,7 +515,6 @@ let unify = (a: t, b: t, ~gen=?) => {
 }
 let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
-  allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
 })
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
@@ -546,12 +528,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
   switch it {
   | Symbol({name}) => name
   | Var({idx}) => prettyPrintVar(idx, scope)
-  | Schematic({schematic, allowed}) =>
-    "?"
-    ->String.concat(String.make(schematic))
-    ->String.concat("(")
-    ->String.concat(Array.join(allowed->Array.map(idx => prettyPrintVar(idx, scope)), " "))
-    ->String.concat(")")
+  | Schematic({schematic}) => "?"->String.concat(String.make(schematic))
   | Lam({name, body}) =>
     "(lambda "
     ->String.concat(name)
@@ -637,7 +614,7 @@ type rec simple =
   | ListS({xs: array<simple>})
   | AtomS({name: string})
   | VarS({idx: int})
-  | SchematicS({schematic: int, allowed: array<int>})
+  | SchematicS({schematic: int})
   | LambdaS({name: string, body: simple})
 let rec parseSimple = (str: string): (simple, string) => {
   let (t0, rest) = tokenize(str)
@@ -677,26 +654,7 @@ let rec parseSimple = (str: string): (simple, string) => {
     }
   | RParen => raise(ParseError("unexpected right parenthesis"))
   | VarT(idx) => (VarS({idx: idx}), rest)
-  | SchematicT(schematic) => {
-      let (list, rest1) = parseSimple(rest)
-      switch list {
-      | ListS({xs}) => {
-          let vars = xs->Array.map(x =>
-            switch x {
-            | VarS({idx}) => Some(idx)
-            | _ => None
-            }
-          )
-          if vars->Array.every(Option.isSome) {
-            let allowed = vars->Array.map(v => Option.getExn(v))
-            (SchematicS({schematic, allowed}), rest1)
-          } else {
-            raise(ParseError("expected a list of variables after schematic token"))
-          }
-        }
-      | _ => raise(ParseError("expected a list after schematic token"))
-      }
-    }
+  | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
   | AtomT(name) => (AtomS({name: name}), rest)
   | DotT => raise(ParseError("unexpected dot"))
   | EOF => raise(ParseError("unexpected end of file"))
@@ -745,15 +703,11 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
       Symbol({name: name})
     }
   | VarS({idx}) => Var({idx: idx})
-  | SchematicS({schematic, allowed}) =>
+  | SchematicS({schematic}) =>
     switch gen {
     | Some(g) => {
         seen(g, schematic)
-        let allowed1 =
-          env
-          ->Map.values
-          ->Core__Iterator.toArray
-        Schematic({schematic, allowed})
+        Schematic({schematic: schematic})
       }
     | None => raise(ParseError("Schematics not allowed here"))
     }
