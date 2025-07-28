@@ -298,6 +298,55 @@ let rec strip = (term: t): stripped => {
   | _ => {func: term, args: []}
   }
 }
+exception ProjFail(string)
+let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=emptySubst): subst =>
+  switch reduce(term) {
+  | Lam({name: _, body}) =>
+    proj(Array.concat([0], allowed->Array.map(x => x + 1)), body, ~gen, ~subst)
+  | term => {
+      let a = strip(term)
+      switch a.func {
+      | Symbol(_) => Array.reduce(a.args, subst, (acc, a) => proj(allowed, a, ~gen, ~subst=acc))
+      | Var({idx}) =>
+        if allowed->Array.some(v => v == idx) {
+          Array.reduce(a.args, subst, (acc, a) => proj(allowed, a, ~gen, ~subst=acc))
+        } else {
+          raise(ProjFail("variable not in allowed set"))
+        }
+      | Schematic({schematic, allowed: a_allowed}) => {
+          let len = a.args->Array.length
+          let hargs =
+            a.args
+            ->Array.mapWithIndex((b, idx) =>
+              switch b {
+              | Var({idx: x}) if allowed->Array.some(v => v == x) => Some(idx)
+              | _ => None
+              }
+            )
+            ->Array.keepSome
+            ->Array.map(idx => len - idx - 1)
+          if gen->Option.isNone {
+            raise(ProjFail("no gen provided"))
+          }
+          let h = fresh(Option.getExn(gen))
+          combineSubst(
+            subst,
+            singletonSubst(
+              schematic,
+              lam(
+                len,
+                Schematic({
+                  schematic: h,
+                  allowed: hargs,
+                }),
+              ),
+            ),
+          )
+        }
+      | _ => raise(ProjFail("not a symbol, var or schematic"))
+      }
+    }
+  }
 let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
   switch (reduce(a), reduce(b)) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => Some(emptySubst)
