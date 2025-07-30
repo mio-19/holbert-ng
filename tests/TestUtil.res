@@ -10,8 +10,8 @@ module MakeTerm = (Term: TERM) => {
       ~msg=msg->Option.getOr(`${stringifyExn(t1)} equivalent to ${stringifyExn(t2)}`),
     )
   }
-  let testParse = (t: Zora.t, input: string, t2: Term.t, ~msg=?) => {
-    let res = Term.parse(input, ~scope=[], ~gen=Term.makeGen())
+  let testParse = (t: Zora.t, input: string, t2: Term.t, ~scope=[], ~msg=?) => {
+    let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok(res) => {
         t->equal(res->snd, "", ~msg=input ++ " input consumed")
@@ -20,6 +20,19 @@ module MakeTerm = (Term: TERM) => {
         t->equal(res->fst, t2, ~msg?)
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
+    }
+  }
+  let testParseFail = (t: Zora.t, input: string, ~scope=[], ~msg=?) => {
+    let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
+    switch res {
+    | Ok((p, remaining)) =>
+      t->fail(
+        ~msg=`parse intended to fail, but succeeded: ${Term.prettyPrint(
+            p,
+            ~scope,
+          )}\nremaining: ${remaining}`,
+      )
+    | Error(_) => t->ok(true)
     }
   }
 }
