@@ -353,7 +353,7 @@ let flexflex = (
       | _ => None
       }
     })->Array.keepSome
-    subst->substAdd(sa, lams(len, app1(Schematic({schematic: h}), xs)))
+    subst->substAdd(sa, lams(len, app(Schematic({schematic: h}), xs)))
   } else {
     let y_vars = Belt.Set.fromArray(
       ys->Array.filterMap(y =>
