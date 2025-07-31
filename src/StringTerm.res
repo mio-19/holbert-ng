@@ -9,16 +9,24 @@ type rec piece =
 type t = array<piece>
 type meta = string
 type schematic = int
-type subst = Map.t<int, t>
+type subst = Map.t<schematic, t>
 
-// TODO: fix
-let substitute: (t, subst) => t = (_, _) => [String("")]
+let substitute = (term: t, subst: subst) =>
+  Array.flatMap(term, piece => {
+    switch piece {
+    | Schematic({schematic, _}) =>
+      switch Map.get(subst, schematic) {
+      | None => term
+      | Some(found) => found
+      }
+    | _ => term
+    }
+  })
 // TODO: fix
 let unify: (t, t) => array<subst> = (s, t) => []
 // law: unify(a,b) == [{}] iff equivalent(a,b)
 let equivalent: (t, t) => bool = (s, t) => s == t
 let substDeBruijn = (string: t, substs: array<t>, ~from: int=0) => {
-  // surely not the most efficient...
   Array.flatMap(string, piece =>
     switch piece {
     | String(_) => [piece]
@@ -46,14 +54,39 @@ let substDeBruijn = (string: t, substs: array<t>, ~from: int=0) => {
   )
 }
 
-// TODO: fix
-let upshift: (t, int, ~from: int=?) => t = (_, _, ~from=?) => [String("")]
+let upshift = (term: t, amount: int, ~from: int=0) =>
+  Array.map(term, piece => {
+    switch piece {
+    | String(_) => piece
+    | Var({idx}) =>
+      Var({
+        idx: if idx >= from {
+          idx + amount
+        } else {
+          idx
+        },
+      })
+    | Schematic({schematic, allowed}) =>
+      Schematic({
+        schematic,
+        allowed: Array.map(allowed, i =>
+          if i >= from {
+            i + amount
+          } else {
+            i
+          }
+        ),
+      })
+    }
+  })
+
 let place = (x: int, ~scope: array<string>) => [
   Schematic({
     schematic: x,
     allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
   }),
 ]
+
 type gen = ref<int>
 let seen = (g: gen, s: int) => {
   if s >= g.contents {
@@ -68,20 +101,38 @@ let fresh = (g: gen, ~replacing as _=?) => {
 let makeGen = () => {
   ref(0)
 }
-let execRe = (re, str) => {
-  re
-  ->RegExp.exec(str)
-  ->Option.map(result => {
-    open RegExp.Result
-    (matches(result), fullMatch(result)->String.length)
-  })
+
+let parseMeta = (str: string) => {
+  let re = %re("/^([^\s.\[\]()]+)\./y")
+  switch re->RegExp.exec(str->String.trim) {
+  | None => Error("not a meta name")
+  | Some(res) =>
+    switch RegExp.Result.matches(res) {
+    | [n] => Ok(n, String.sliceToEnd(str->String.trim, ~start=RegExp.lastIndex(re)))
+    | _ => Error("impossible happened")
+    }
+  }
 }
-// TODO: fix
-let parseMeta: string => result<(meta, string), string> = _ => Error("unimplemented")
-// TODO: fix
-let prettyPrint: (t, ~scope: array<meta>) => string = (t, ~scope) => "unimplemented"
-// TODO: fix
-let prettyPrintMeta: meta => string = _ => "unimplemented"
+let prettyPrintVar = (idx: int, scope: array<string>) =>
+  switch scope[idx] {
+  | Some(n) if Array.indexOf(scope, n) == idx && false => n
+  | _ => "\\"->String.concat(String.make(idx))
+  }
+let prettyPrint = (term: t, ~scope: array<string>) =>
+  Array.map(term, piece => {
+    switch piece {
+    | String(str) => `"${str}"`
+    | Var({idx}) => prettyPrintVar(idx, scope)
+    | Schematic({schematic, allowed}) => {
+        let allowedStr =
+          allowed
+          ->Array.map(idx => prettyPrintVar(idx, scope))
+          ->Array.join(" ")
+        `?${Int.toString(schematic)}(${allowedStr})`
+      }
+    }
+  })->Array.join(".")
+let prettyPrintMeta = (str: string) => `${str}.`
 type token =
   | StringLit(string)
   | VarLit(int)
@@ -99,6 +150,15 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
   let error = (loc: pos, msg: string) => {
     let codeAroundLoc = String.slice(str, ~start=loc.idx, ~end=loc.idx + 5)
     Error(`${Int.toString(loc.line)}:${Int.toString(loc.col)} (${codeAroundLoc})...: ${msg}`)
+  }
+
+  let execRe = (re, str) => {
+    re
+    ->RegExp.exec(str)
+    ->Option.map(result => {
+      open RegExp.Result
+      (matches(result), fullMatch(result)->String.length)
+    })
   }
 
   let lex: unit => result<array<located<token>>, string> = () => {
@@ -203,7 +263,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
     }
     acc.contents
   }
-  let parseInner = (tokens: array<located<token>>) => {
+  let parseExp = (tokens: array<located<token>>) => {
     let tokenIdx = ref(0)
     let acc: ref<result<array<piece>, (errorMessage, remaining)>> = ref(Ok([]))
     let parens = []
@@ -247,7 +307,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
     }
   }
   switch lex() {
-  | Ok(tokens) => parseInner(tokens)
+  | Ok(tokens) => parseExp(tokens)
   | Error(msg) => Error(msg)
   }
 }
