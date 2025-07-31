@@ -173,11 +173,13 @@ let singletonSubst: (int, t) => subst = (schematic, term) => {
   s
 }
 let emptySubst1: subst1 = Belt.Map.Int.empty
-let subst1Add = (subst: subst1, schematic: int, term: t) => {
+let subst1Add = (subst: subst1, schematic: schematic, term: t) => {
   assert(schematic >= 0)
   assert(subst->Belt.Map.Int.has(schematic) == false)
   subst->Belt.Map.Int.set(schematic, term)
 }
+let subst1Has = (subst: subst1, schematic: schematic) => subst->Belt.Map.Int.has(schematic)
+let subst1Get = (subst: subst1, schematic: schematic) => subst->Belt.Map.Int.get(schematic)
 let rec subst1itute = (term: t, subst: subst1) =>
   switch term {
   | Schematic({schematic, _}) =>
@@ -276,6 +278,14 @@ let rec strip = (term: t): (t, array<t>) => {
     let (peeledFunc, peeledArgs) = strip(func)
     (peeledFunc, [arg, ...peeledArgs])
   | _ => (term, [])
+  }
+}
+let rec devar = (subst: subst1, term: t): t => {
+  let (func, args) = strip(term)
+  switch func {
+  | Schematic({schematic}) if subst1Has(subst, schematic) =>
+    devar(subst, app(subst1Get(subst, schematic)->Option.getExn, args))
+  | _ => term
   }
 }
 let rec stripReduce = (term: t): stripped => {
