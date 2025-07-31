@@ -91,6 +91,7 @@ let rec mapbind = (term: t, f: int => int, ~from: int=0): t =>
       func: mapbind(func, f, ~from),
       arg: mapbind(arg, f, ~from),
     })
+  | Unit => Unit
   }
 let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
 let downshift = (term: t, amount: int, ~from: int=1) => {
