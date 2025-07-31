@@ -4,6 +4,7 @@ type rec t =
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
   | App({func: t, arg: t})
+  // Unallowed is used internally in unify, where Nipkow 1993 uses Var(-infinity)
   | Unallowed
 
 include Signatures.TERM
