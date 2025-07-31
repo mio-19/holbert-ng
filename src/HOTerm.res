@@ -574,7 +574,7 @@ let rec parseSimple = (str: string): (simple, string) => {
             let (head, rest2) = parseSimple(rest)
             let (tail, rest3) = parseSimple("("->String.concat(rest2))
             switch tail {
-            | ListS({xs}) => (ListS({xs: [head, ...xs]}), rest3)
+            | ListS({xs}) => (ListS({xs: Array.concat([head], xs)}), rest3)
             | _ => raise(Unreachable("bug"))
             }
           }
