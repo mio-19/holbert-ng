@@ -178,4 +178,10 @@ zoraBlock("unify test", t => {
     // ?0 occurs in the rigid term on the right → should not unify
     t->Util.testNotUnify(a, b)
   })
+  t->block("no capture", t => {
+    let a = "(x. ?0)"
+    let b = "(x. x)"
+    // Should fail: it cannot capture the bound variable.
+    t->Util.testNotUnify(a, b)
+  })
 })
