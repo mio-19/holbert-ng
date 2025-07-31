@@ -9,8 +9,8 @@ include Signatures.TERM
   with type t := t
   and type meta = string
   and type schematic = int
-  and type subst = Map.t<int, t>
+  and type subst = Belt.Map.Int.t<t>
 
 let strip: t => (t, array<t>)
 // exposed for testing purposes
-let singletonSubst: (int, t) => subst
+let singletonSubst: (schematic, t) => subst
