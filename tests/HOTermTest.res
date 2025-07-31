@@ -158,6 +158,7 @@ zoraBlock("unify test", t => {
   t->block("?0 x y", t => {
     let x = "(x. y. ?0 x y)"
     let y = "(x. y. y x)"
+    // ?0 = (x. y. \0 \1)
     t->testUnify(
       x,
       y,
