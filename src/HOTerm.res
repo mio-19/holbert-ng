@@ -175,6 +175,7 @@ let rec reduceFull = (term: t, subst: subst): t => {
   | Schematic({schematic}) if subst->substHas(schematic) =>
     let found = subst->substGet(schematic)->Option.getExn
     reduceFull(found, subst)
+  | Lam({body: App({func, arg: Var({idx: 0})})}) => reduceFull(downshift(func, 1), subst)
   | App({func, arg}) =>
     switch reduceFull(func, subst) {
     | Lam({body}) => reduceFull(substDeBruijn(body, [arg]), subst)
@@ -300,7 +301,7 @@ let rec devar = (subst: subst, term: t): t => {
 }
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
-  | (Lam({name, body}), args) /*if args->Array.length == 0*/ => proj(subst, body, ~gen)
+  | (Lam({name, body}), args) /* if args->Array.length == 0 */ => proj(subst, body, ~gen)
   | (Unallowed, args) => raise(UnifyFail("unallowed"))
   | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
   | (Schematic({schematic}), args) => {
