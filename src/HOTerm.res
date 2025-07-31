@@ -287,7 +287,7 @@ let rec strip = (term: t): (t, array<t>) => {
   switch term {
   | App({func, arg}) =>
     let (peeledFunc, peeledArgs) = strip(func)
-    (peeledFunc, Array.concat([arg], peeledArgs))
+    (peeledFunc, Array.concat(peeledArgs, [arg]))
   | _ => (term, [])
   }
 }
