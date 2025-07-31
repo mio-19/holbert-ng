@@ -236,8 +236,8 @@ let var = (idx: int): t => {
   assert(idx >= 0)
   Var({idx: idx})
 }
-let idx1 = (is: array<int>, j: int): t => {
-  switch idx(is->Array.map(var), j) {
+let idx1 = (is: array<t>, j: int): t => {
+  switch idx(is, j) {
   | None => Unallowed
   | Some(idx) => Var({idx: idx})
   }
@@ -289,7 +289,7 @@ let rec app1 = (term: t, args: array<t>): t =>
     | _ => app1(App({func: term, arg: head}), rest)
     }
   }
-let lam = (is: array<int>, g: t, js: array<int>): t => {
+let lam = (is: array<t>, g: t, js: array<int>): t => {
   lamn(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
 }
 // only reduce the outermost application
@@ -393,7 +393,23 @@ let flexflex = (
     })->Array.keepSome
     subst->substAdd(sa, lamn(len, app1(Schematic({schematic: h}), xs)))
   } else {
-    raise(TODO("TODO"))
+    let y_vars = Belt.Set.fromArray(
+      ys->Array.filterMap(y =>
+        switch y {
+        | Var({idx}) => Some(idx)
+        | _ => None
+        }
+      ),
+      ~id=module(IntCmp),
+    )
+    let common = xs->Array.filterMap(x =>
+      switch x {
+      | Var({idx}) if y_vars->Belt.Set.has(idx) => Some(idx)
+      | _ => None
+      }
+    )
+    let h = Schematic({schematic: fresh(Option.getExn(gen))})
+    subst->substAdd(sa, lam(xs, h, common))->substAdd(sb, lam(ys, h, common))
   }
 }
 let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {

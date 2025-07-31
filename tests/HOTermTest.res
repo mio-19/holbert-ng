@@ -11,11 +11,8 @@ let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
     let res = HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen))
     switch subst {
     | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
-    | Some(subst) => t->equal(
-        res,
-        subst,
-        ~msg=msg->Option.getOr("unification succeeded with substitution"),
-      )
+    | Some(subst) =>
+      t->equal(res, subst, ~msg=msg->Option.getOr("unification succeeded with substitution"))
     }
   } catch {
   | HOTerm.UnifyFail(failed) =>
