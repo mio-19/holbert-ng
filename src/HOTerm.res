@@ -229,6 +229,7 @@ type stripped = {
   func: t,
   args: array<t>,
 }
+// only reduce the outermost application
 let rec reduce = (term: t) => {
   switch term {
   | App({func, arg}) =>
