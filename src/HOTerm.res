@@ -335,7 +335,7 @@ let flexflex = (
       let a = xs[k]->Option.getExn
       let b = ys[k]->Option.getExn
       switch (a, b) {
-      | (Symbol(_) | Var(_), Symbol(_) | Var(_)) if equivalent(a, b) =>
+      | (Var(_), Var(_)) if equivalent(a, b) =>
         Some(Var({idx: len - k - 1}))
       | _ => None
       }
