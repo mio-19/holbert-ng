@@ -348,17 +348,17 @@ let rec stripReduce = (term: t): stripped => {
   | _ => {func: term, args: []}
   }
 }
-let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=emptySubst): subst =>
+let rec proj1 = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=emptySubst): subst =>
   switch reduce(term) {
   | Lam({name: _, body}) =>
-    proj(Array.concat([0], allowed->Array.map(x => x + 1)), body, ~gen, ~subst)
+    proj1(Array.concat([0], allowed->Array.map(x => x + 1)), body, ~gen, ~subst)
   | term => {
       let a = stripReduce(term)
       switch a.func {
-      | Symbol(_) => Array.reduce(a.args, subst, (acc, a) => proj(allowed, a, ~gen, ~subst=acc))
+      | Symbol(_) => Array.reduce(a.args, subst, (acc, a) => proj1(allowed, a, ~gen, ~subst=acc))
       | Var({idx}) =>
         if allowed->Array.some(v => v == idx) {
-          Array.reduce(a.args, subst, (acc, a) => proj(allowed, a, ~gen, ~subst=acc))
+          Array.reduce(a.args, subst, (acc, a) => proj1(allowed, a, ~gen, ~subst=acc))
         } else {
           raise(UnifyFail("variable not in allowed set"))
         }
