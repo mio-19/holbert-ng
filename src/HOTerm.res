@@ -49,7 +49,7 @@ let rec schematicsIn = (subst: subst, it: t): Belt.Set.t<schematic, IntCmp.ident
   | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
   | Lam({body}) => schematicsIn(subst, body)
   | App({func, arg}) => Belt.Set.union(schematicsIn(subst, func), schematicsIn(subst, arg))
-  | _ => Belt.Set.make(~id=module(IntCmp))
+  | Unallowed | Symbol(_) | Var(_) => Belt.Set.make(~id=module(IntCmp))
   }
 let occ = (schematic: schematic, subst: subst, t: t): bool => {
   let set = schematicsIn(subst, t)
