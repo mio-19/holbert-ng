@@ -10,7 +10,7 @@ type rec t =
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
   | App({func: t, arg: t})
-  | Unit
+  | Unallowed
 type meta = string
 type schematic = int
 type subst = Belt.Map.Int.t<t>
@@ -107,7 +107,7 @@ let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =
       func: mapbind0(func, f, ~from),
       arg: mapbind0(arg, f, ~from),
     })
-  | Unit => Unit
+  | Unallowed => Unallowed
   }
 let mapbind = (term: t, f: int => int, ~from: int=0): t => mapbind0(term, idx => Ok(f(idx)), ~from)
 let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
@@ -150,7 +150,7 @@ let rec substVar = (term: t, subst: substVar) =>
       func: substVar(func, subst),
       arg: substVar(arg, subst),
     })
-  | Unit => Unit
+  | Unallowed => Unallowed
   }
 let emptySubst: subst = Belt.Map.Int.empty
 let substAdd = (subst: subst, schematic: schematic, term: t) => {
@@ -206,7 +206,7 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
       func: substDeBruijn(func, substs, ~from),
       arg: substDeBruijn(arg, substs, ~from),
     })
-  | Unit => Unit
+  | Unallowed => Unallowed
   }
 let rec lamn = (amount: int, term: t): t => {
   assert(amount >= 0)
@@ -238,13 +238,13 @@ let var = (idx: int): t => {
 }
 let idx1 = (is: array<int>, j: int): t => {
   switch idx(is->Array.map(var), j) {
-  | None => Unit
+  | None => Unallowed
   | Some(idx) => Var({idx: idx})
   }
 }
 let idx2 = (is: array<t>, j: int): result<int, int => t> => {
   switch idx(is, j) {
-  | None => Error(_ => Unit)
+  | None => Error(_ => Unallowed)
   | Some(idx) => Ok(idx)
   }
 }
@@ -321,7 +321,7 @@ let rec reduceFull = (term: t): t => {
     })
   | Symbol(_) | Var(_) | Schematic(_) => term
 
-  | Unit => Unit
+  | Unallowed => Unallowed
   }
 }
 let rec strip = (term: t): (t, array<t>) => {
@@ -346,6 +346,13 @@ let rec stripReduce = (term: t): stripped => {
     let {func: peeledFunc, args: peeledArgs} = stripReduce(func)
     {func: peeledFunc, args: [arg, ...peeledArgs]}
   | _ => {func: term, args: []}
+  }
+}
+let rec proj = (subst: subst, term: t): subst => {
+  switch(strip(devar(subst, term))){
+    | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body)
+    | (Symbol(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a))
+    | (Unallowed, args) => raise(UnifyFail("unallowed"))
   }
 }
 let rec proj1 = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=emptySubst): subst =>
@@ -520,7 +527,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(" ")
     ->String.concat(prettyPrint(arg, ~scope))
     ->String.concat(")")
-  | Unit => ""
+  | Unallowed => ""
   }
 let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
