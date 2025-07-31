@@ -294,7 +294,7 @@ let rec devar = (subst: subst, term: t): t => {
   let (func, args) = strip(term)
   switch func {
   | Schematic({schematic}) if substHas(subst, schematic) =>
-    devar(subst, app1(substGet(subst, schematic)->Option.getExn, args))
+    devar(subst, red(substGet(subst, schematic)->Option.getExn, args, []))
   | _ => term
   }
 }
