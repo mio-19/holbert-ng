@@ -11,5 +11,10 @@ include Signatures.TERM
   and type schematic = int
   and type subst = Map.t<int, t>
 
+type stripped = {
+  func: t,
+  args: array<t>,
+}
+let strip: t => stripped
 // exposed for testing purposes
 let singletonSubst: (int, t) => subst

@@ -44,4 +44,19 @@ let rec make = ({term, scope}) =>
       {React.string("?")}
       {React.int(s)}
     </span>
+  | App(_) =>
+  // TODO: strip call reduce. what if it is App({Lam, args }) and reduced to {func, empty}
+    switch HOTerm.strip(term) {
+    | {func, args} =>
+      <span className="term-app">
+        {React.createElement(make, {term: func, scope})}
+        <span className="term-app-telescope">
+          {args
+          ->Array.mapWithIndex((t, i) => React.createElement(make, withKey({term: t, scope}, i)))
+          ->intersperse
+          ->parenthesise
+          ->React.array}
+        </span>
+      </span>
+    }
   }
