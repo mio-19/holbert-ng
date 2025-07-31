@@ -73,7 +73,7 @@ let rec freeVarsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =>
     )
     ->Belt.Set.fromArray(~id=module(IntCmp))
   | App({func, arg}) => Belt.Set.union(freeVarsIn(subst, func), freeVarsIn(subst, arg))
-  | _ => Belt.Set.make(~id=module(IntCmp))
+  | Unallowed | Symbol(_) | Schematic(_) => Belt.Set.make(~id=module(IntCmp))
   }
 let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =>
   switch term {
