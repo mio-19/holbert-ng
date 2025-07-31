@@ -219,17 +219,23 @@ let rec lamn = (amount: int, term: t): t => {
     })
   }
 }
-let rec idx = (is: array<int>, j: int): option<t> => {
+let rec idx = (is: array<int>, j: int): option<int> => {
   if is->Array.length == 0 {
     None
   } else {
     let head = is[0]->Option.getExn
     let tail = is->Array.sliceToEnd(~start=1)
     if head == j {
-      Some(Var({idx: tail->Array.length}))
+      Some(tail->Array.length)
     } else {
       idx(tail, j)
     }
+  }
+}
+let idx1 = (is: array<int>, j: int): t => {
+  switch idx(is, j) {
+  | None => Unit
+  | Some(idx) => Var({idx: idx})
   }
 }
 let rec app = (term: t, args: array<t>): t => {
@@ -274,7 +280,7 @@ let rec app1 = (term: t, args: array<t>): t =>
     }
   }
 let lam = (is: array<int>, g: t, js: array<int>): t => {
-  lamn(is->Array.length, app(g, js->Array.map(j => idx(is, j)->Option.getOr(Unit))))
+  lamn(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
 }
 type stripped = {
   func: t,
