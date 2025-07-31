@@ -348,14 +348,41 @@ let rec stripReduce = (term: t): stripped => {
   | _ => {func: term, args: []}
   }
 }
-let rec proj = (subst: subst, term: t): subst => {
-  switch(strip(devar(subst, term))){
-    | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body)
-    | (Symbol(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a))
-    | (Unallowed, args) => raise(UnifyFail("unallowed"))
+let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
+  switch strip(devar(subst, term)) {
+  | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
+  | (Unallowed, args) => raise(UnifyFail("unallowed"))
+  | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
+  | (Schematic({schematic}), args) => {
+      assert(!substHas(subst, schematic))
+      if gen->Option.isNone {
+        raise(UnifyFail("no gen provided"))
+      }
+      let h = Schematic({schematic: fresh(Option.getExn(gen))})
+      subst->substAdd(
+        schematic,
+        lamn(
+          args->Array.length,
+          app(
+            h,
+            Belt.Array.init(args->Array.length, j => {
+              switch args[j]->Option.getExn {
+              | Var({idx}) => Some(Var({idx: args->Belt.Array.length - j - 1}))
+              | _ => None
+              }
+            })->Array.keepSome,
+          ),
+        ),
+      )
+    }
   }
 }
-let rec proj1 = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=emptySubst): subst =>
+let rec proj1 = (
+  allowed: array<int>,
+  term: t,
+  ~gen: option<gen>,
+  ~subst: subst=emptySubst,
+): subst =>
   switch reduce(term) {
   | Lam({name: _, body}) =>
     proj1(Array.concat([0], allowed->Array.map(x => x + 1)), body, ~gen, ~subst)
