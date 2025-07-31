@@ -3,7 +3,7 @@ open HOTerm
 
 module Util = TestUtil.MakeTerm(HOTerm)
 
-let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=true) => {
+let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=true) => {
   let gen = HOTerm.makeGen()
   let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
   let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
@@ -44,6 +44,10 @@ let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=tr
       failed,
     )
   }
+}
+let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=true) => {
+  testUnify0(t, at, bt, ~subst?, ~msg?, ~reduce)
+  testUnify0(t, bt, at, ~subst?, ~msg?, ~reduce)
 }
 zoraBlock("parse symbol", t => {
   t->block("single char", t => t->Util.testParse("x", Symbol({name: "x"})))
@@ -115,7 +119,6 @@ zoraBlock("unify test", t => {
     let x = "x"
     let y = "y"
     t->testUnify(x, x)
-    t->testUnify(y, y)
     t->Util.testNotUnify(y, x)
     t->Util.testNotUnify(x, y)
   })
@@ -131,7 +134,6 @@ zoraBlock("unify test", t => {
     let x = "?0"
     let y = "y"
     t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
-    t->testUnify(y, x, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
   t->block("flex-rigid2", t => {
     let x = "(x. ?0 x)"
@@ -147,12 +149,26 @@ zoraBlock("unify test", t => {
       ),
     )
     t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
-    t->testUnify(y, x, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
   t->block("?0 \\0", t => {
     let x = "(?0 \\0)"
     let y = "\\0"
     t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Lam({name: "", body: Var({idx: 0})})))
-    t->testUnify(y, x, ~subst=emptySubst->substAdd(0, Lam({name: "", body: Var({idx: 0})})))
+  })
+  t->block("?0 x y", t => {
+    let x = "(x. y. ?0 x y)"
+    let y = "(x. y. y x)"
+    t->testUnify(
+      x,
+      y,
+      ~reduce=false,
+      ~subst=emptySubst->substAdd(
+        0,
+        Lam({
+          name: "",
+          body: Lam({name: "", body: App({func: Var({idx: 0}), arg: Var({idx: 1})})}),
+        }),
+      ),
+    )
   })
 })
