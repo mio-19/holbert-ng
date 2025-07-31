@@ -172,4 +172,10 @@ zoraBlock("unify test", t => {
       ),
     )
   })
+  t->block("occurs-check (flex-rigid)", t => {
+    let a = "(x. ?0 x)"
+    let b = "(x. f (?0 x))"
+    // ?0 occurs in the rigid term on the right → should not unify
+    t->Util.testNotUnify(a, b)
+  })
 })
