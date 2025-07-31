@@ -96,16 +96,6 @@ let downshift = (term: t, amount: int, ~from: int=1) => {
   }
   mapbind(term, idx => idx - amount, ~from)
 }
-let rec upshiftSubst = (subst: subst, amount: int, ~from: int=0) => {
-  let nu = Map.make()
-  Map.entries(subst)->Iterator.forEach(opt =>
-    switch opt {
-    | None => ()
-    | Some((key, term)) => nu->Map.set(key, upshift(term, amount, ~from))
-    }
-  )
-  nu
-}
 type substVar = Map.t<int, int>
 let incrSubstVar = (subst: substVar) => {
   let nu = Map.make()
@@ -150,7 +140,7 @@ let rec substitute = (term: t, subst: subst) =>
   | Lam({name, body}) =>
     Lam({
       name,
-      body: substitute(body, upshiftSubst(subst, 1)),
+      body: substitute(body, subst),
     })
   | App({func, arg}) =>
     App({
@@ -182,6 +172,31 @@ let singletonSubst: (int, t) => subst = (schematic, term) => {
   s->Map.set(schematic, term)
   s
 }
+let emptySubst1: subst1 = Belt.Map.Int.empty
+let subst1Add = (subst: subst1, schematic: int, term: t) => {
+  assert(schematic >= 0)
+  assert(subst->Belt.Map.Int.has(schematic) == false)
+  subst->Belt.Map.Int.set(schematic, term)
+}
+let rec subst1itute = (term: t, subst: subst1) =>
+  switch term {
+  | Schematic({schematic, _}) =>
+    switch Belt.Map.Int.get(subst, schematic) {
+    | None => term
+    | Some(found) => found
+    }
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: subst1itute(body, subst),
+    })
+  | App({func, arg}) =>
+    App({
+      func: subst1itute(func, subst),
+      arg: subst1itute(arg, subst),
+    })
+  | _ => term
+  }
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
   | Symbol(_) => term
