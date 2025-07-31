@@ -14,3 +14,4 @@ include Signatures.TERM
 let strip: t => (t, array<t>)
 // exposed for testing purposes
 let singletonSubst: (schematic, t) => subst
+let unifyTerm: (t, t, subst, ~gen: option<gen>) => subst

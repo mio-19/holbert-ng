@@ -327,16 +327,6 @@ let flexflex = (
 let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {
   raise(TODO("TODO"))
 }
-let rigidrigid = (
-  a: t,
-  xs: array<t>,
-  b: t,
-  ys: array<t>,
-  subst: subst,
-  ~gen: option<gen>,
-): subst => {
-  raise(TODO("TODO"))
-}
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
   switch (devar(subst, a), devar(subst, b)) {
   | (Symbol({name: na}), Symbol({name: nb})) =>
@@ -367,6 +357,28 @@ let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
     | (_, _) => raise(UnifyFail("no rules match"))
     }
   }
+and unifyArray = (xs: array<t>, ys: array<t>, subst: subst, ~gen: option<gen>): subst => {
+  if xs->Array.length != ys->Array.length {
+    raise(UnifyFail("arrays have different lengths"))
+  }
+  Belt.Array.zip(xs, ys)->Belt.Array.reduce(subst, (acc, (x, y)) => unifyTerm(x, y, acc, ~gen))
+}
+and rigidrigid = (
+  a: t,
+  xs: array<t>,
+  b: t,
+  ys: array<t>,
+  subst: subst,
+  ~gen: option<gen>,
+): subst => {
+  if !equivalent(a, b) {
+    raise(UnifyFail("rigid terms do not match"))
+  }
+  if xs->Array.length != ys->Array.length {
+    raise(UnifyFail("rigid terms have different number of arguments"))
+  }
+  unifyArray(xs, ys, subst, ~gen)
+}
 let unify = (a: t, b: t, ~gen=?) => {
   try {
     [unifyTerm(a, b, emptySubst, ~gen)]
