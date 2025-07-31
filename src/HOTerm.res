@@ -213,15 +213,25 @@ let rec idx = (is: array<int>, j: int): option<t> => {
     }
   }
 }
-let rec app = (term: t, args: array<t>): t =>
+let rec app = (term: t, args: array<t>): t => {
+  if args->Array.length == 0 {
+    term
+  } else {
+    let head = args[0]->Option.getExn
+    let rest = args->Array.sliceToEnd(~start=1)
+    app(App({func: term, arg: head}), rest)
+  }
+}
+// app with beta reduction
+let rec app1 = (term: t, args: array<t>): t =>
   if args->Array.length == 0 {
     term
   } else {
     let head = args[0]->Option.getExn
     let rest = args->Array.sliceToEnd(~start=1)
     switch term {
-    | Lam({body}) => app(substDeBruijn(body, [head]), rest)
-    | _ => app(App({func: term, arg: head}), rest)
+    | Lam({body}) => app1(substDeBruijn(body, [head]), rest)
+    | _ => app1(App({func: term, arg: head}), rest)
     }
   }
 type stripped = {
@@ -266,7 +276,7 @@ let rec devar = (subst: subst, term: t): t => {
   let (func, args) = strip(term)
   switch func {
   | Schematic({schematic}) if substHas(subst, schematic) =>
-    devar(subst, app(substGet(subst, schematic)->Option.getExn, args))
+    devar(subst, app1(substGet(subst, schematic)->Option.getExn, args))
   | _ => term
   }
 }
@@ -314,7 +324,7 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
             schematic,
             lam(
               len,
-              app(
+              app1(
                 Schematic({
                   schematic: h,
                 }),
@@ -352,7 +362,7 @@ let flexflex = (
       | _ => None
       }
     })->Array.keepSome
-    subst->substAdd(sa, lam(len, app(Schematic({schematic: h}), xs)))
+    subst->substAdd(sa, lam(len, app1(Schematic({schematic: h}), xs)))
   } else {
     raise(TODO("TODO"))
   }
