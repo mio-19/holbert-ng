@@ -3,7 +3,7 @@ open HOTerm
 
 module Util = TestUtil.MakeTerm(HOTerm)
 
-let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=true) => {
+let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
   let gen = HOTerm.makeGen()
   let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
   let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
@@ -148,7 +148,7 @@ zoraBlock("unify test", t => {
         Lam({name: "", body: App({func: Symbol({name: "y"}), arg: Var({idx: 0})})}),
       ),
     )
-    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
+    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
   t->block("?0 \\0", t => {
     let x = "(?0 \\0)"
