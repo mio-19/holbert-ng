@@ -14,6 +14,8 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Belt.Map.Int.t<t>
+let substHas = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.has(schematic)
+let substGet = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.get(schematic)
 let mapMapValues = (m: subst, f: t => t): subst => {
   m->Belt.Map.Int.map(f)
 }
@@ -38,18 +40,24 @@ let fresh = (g: gen, ~replacing as _=?) => {
   g := g.contents + 1
   v
 }
-let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
+let rec schematicsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =>
   switch it {
+  | Schematic({schematic, _}) if subst->substHas(schematic) =>
+    let found = subst->substGet(schematic)->Option.getExn
+    schematicsIn(subst, found)
   | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
-  | Lam({body}) => schematicsIn(body)
-  | App({func, arg}) => Belt.Set.union(schematicsIn(func), schematicsIn(arg))
+  | Lam({body}) => schematicsIn(subst, body)
+  | App({func, arg}) => Belt.Set.union(schematicsIn(subst, func), schematicsIn(subst, arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
-let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
+let rec freeVarsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =>
   switch it {
+  | Schematic({schematic, _}) if subst->substHas(schematic) =>
+    let found = subst->substGet(schematic)->Option.getExn
+    freeVarsIn(subst, found)
   | Var({idx}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(idx)
   | Lam({name: _, body}) =>
-    freeVarsIn(body)
+    freeVarsIn(subst, body)
     ->Belt.Set.toArray
     ->Array.filterMap(v =>
       if v >= 1 {
@@ -59,7 +67,7 @@ let rec freeVarsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
       }
     )
     ->Belt.Set.fromArray(~id=module(IntCmp))
-  | App({func, arg}) => Belt.Set.union(freeVarsIn(func), freeVarsIn(arg))
+  | App({func, arg}) => Belt.Set.union(freeVarsIn(subst, func), freeVarsIn(subst, arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
 let rec mapbind = (term: t, f: int => int, ~from: int=0): t =>
@@ -145,8 +153,6 @@ let singletonSubst = (schematic: schematic, term: t): subst => {
   assert(schematic >= 0)
   emptySubst->substAdd(schematic, term)
 }
-let substHas = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.has(schematic)
-let substGet = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.get(schematic)
 let rec substitute = (term: t, subst: subst) =>
   switch term {
   | Schematic({schematic, _}) =>
