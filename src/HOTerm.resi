@@ -12,7 +12,9 @@ include Signatures.TERM
   and type schematic = int
   and type subst = Belt.Map.Int.t<t>
 
+let emptySubst: subst
 let strip: t => (t, array<t>)
 // exposed for testing purposes
+exception UnifyFail(string)
 let singletonSubst: (schematic, t) => subst
 let unifyTerm: (t, t, subst, ~gen: option<gen>) => subst

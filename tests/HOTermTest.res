@@ -3,6 +3,32 @@ open HOTerm
 
 module Util = TestUtil.MakeTerm(HOTerm)
 
+let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
+  let gen = HOTerm.makeGen()
+  let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
+  let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
+  try {
+    let res = HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen))
+    switch subst {
+    | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
+    | Some(subst) => t->equal(
+        res,
+        subst,
+        ~msg=msg->Option.getOr("unification succeeded with substitution"),
+      )
+    }
+  } catch {
+  | HOTerm.UnifyFail(failed) =>
+    t->fail(
+      ~msg="unification failed: " ++
+      TestUtil.stringifyExn(a) ++
+      " and " ++
+      TestUtil.stringifyExn(b) ++
+      " with error: " ++
+      failed,
+    )
+  }
+}
 zoraBlock("parse symbol", t => {
   t->block("single char", t => t->Util.testParse("x", Symbol({name: "x"})))
   t->block("multi char", t => t->Util.testParse("xyz", Symbol({name: "xyz"})))
@@ -72,34 +98,34 @@ zoraBlock("unify test", t => {
   t->block("symbols", t => {
     let x = "x"
     let y = "y"
-    t->Util.testUnify(x, x)
-    t->Util.testUnify(y, y)
+    t->testUnify(x, x)
+    t->testUnify(y, y)
     t->Util.testNotUnify(y, x)
     t->Util.testNotUnify(x, y)
   })
   t->block("applications", t => {
     let ab = "(a b)"
     let cd = "(c d)"
-    t->Util.testUnify(ab, ab)
-    t->Util.testUnify(cd, cd)
+    t->testUnify(ab, ab)
+    t->testUnify(cd, cd)
     t->Util.testNotUnify(ab, cd)
     t->Util.testNotUnify(cd, ab)
   })
   t->block("flex-rigid", t => {
     let v0 = "\\0"
     let s0 = "?0"
-    t->Util.testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
+    t->testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
   })
   t->block("flex-rigid in lambda", t => {
     let v0 = "(x. x)"
     let s0 = "(y. ?0)"
-    t->Util.testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
+    t->testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
   })
   t->block("flex-rigid var", t => {
     let v0 = "(\\0 \\1)"
     let s0 = "(?0 \\1)"
-    t->Util.testUnify(v0, s0)
+    t->testUnify(v0, s0)
     // TODO: fix this
-    //t->Util.testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
+    //t->testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
   })
 })
