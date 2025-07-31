@@ -466,7 +466,7 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
   let u = b->mapbind0(bind => idx2(xs, bind))
-  raise(TODO("TODO"))
+  proj(subst->substAdd(sa, lamn(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
   switch (devar(subst, a), devar(subst, b)) {
