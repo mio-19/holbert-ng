@@ -4,7 +4,7 @@ type rec t =
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
   | App({func: t, arg: t})
-  | Unit
+  | Unallowed
 
 include Signatures.TERM
   with type t := t
