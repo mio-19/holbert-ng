@@ -40,7 +40,7 @@ let fresh = (g: gen, ~replacing as _=?) => {
   g := g.contents + 1
   v
 }
-let rec schematicsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =>
+let rec schematicsIn = (subst: subst, it: t): Belt.Set.t<schematic, IntCmp.identity> =>
   switch it {
   | Schematic({schematic, _}) if subst->substHas(schematic) =>
     let found = subst->substGet(schematic)->Option.getExn
@@ -50,6 +50,10 @@ let rec schematicsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =
   | App({func, arg}) => Belt.Set.union(schematicsIn(subst, func), schematicsIn(subst, arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
+let occ = (schematic: schematic, subst: subst, t: t): bool => {
+  let set = schematicsIn(subst, t)
+  set->Belt.Set.has(schematic)
+}
 let rec freeVarsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =>
   switch it {
   | Schematic({schematic, _}) if subst->substHas(schematic) =>
@@ -70,21 +74,25 @@ let rec freeVarsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =>
   | App({func, arg}) => Belt.Set.union(freeVarsIn(subst, func), freeVarsIn(subst, arg))
   | _ => Belt.Set.make(~id=module(IntCmp))
   }
-let rec mapbind = (term: t, f: int => int, ~from: int=0): t =>
+let rec mapbind0 = (term: t, f: int => result<int, t>, ~from: int=0): t =>
   switch term {
   | Symbol(_) => term
   | Var({idx}) =>
-    Var({
-      idx: if idx >= from {
-        let new = f(idx - from) + from
+    if idx >= from {
+      switch f(idx - from) {
+      | Ok(newIdx) =>
+        let new = newIdx + from
         if new < 0 {
           raise(Err("mapbind: negative index"))
         }
-        new
-      } else {
-        idx
-      },
-    })
+        Var({
+          idx: new,
+        })
+      | Error(t) => t
+      }
+    } else {
+      term
+    }
   | Schematic({schematic}) =>
     Schematic({
       schematic: schematic,
@@ -92,15 +100,16 @@ let rec mapbind = (term: t, f: int => int, ~from: int=0): t =>
   | Lam({name, body}) =>
     Lam({
       name,
-      body: mapbind(body, f, ~from=from + 1),
+      body: mapbind0(body, f, ~from=from + 1),
     })
   | App({func, arg}) =>
     App({
-      func: mapbind(func, f, ~from),
-      arg: mapbind(arg, f, ~from),
+      func: mapbind0(func, f, ~from),
+      arg: mapbind0(arg, f, ~from),
     })
   | Unit => Unit
   }
+let mapbind = (term: t, f: int => int, ~from: int=0): t => mapbind0(term, idx => Ok(f(idx)), ~from)
 let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
 let downshift = (term: t, amount: int, ~from: int=1) => {
   if amount > from {
@@ -402,6 +411,9 @@ let flexflex = (
   }
 }
 let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {
+  if occ(sa, subst, b) {
+    raise(UnifyFail("flexible schematic occurs in rigid term"))
+  }
   raise(TODO("TODO"))
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
