@@ -240,6 +240,21 @@ let rec reduce = (term: t) => {
   | term => term
   }
 }
+let rec reduceFull = (term: t): t => {
+  switch term {
+  | App({func, arg}) =>
+    switch reduce(func) {
+    | Lam({body}) => reduce(substDeBruijn(body, [arg]))
+    | func => App({func, arg: reduceFull(arg)})
+    }
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: reduceFull(body),
+    })
+  | Symbol(_) | Var(_) | Schematic(_) => term
+  }
+}
 let rec strip = (term: t): (t, array<t>) => {
   switch term {
   | App({func, arg}) =>
