@@ -548,27 +548,18 @@ let rec parseSimple = (str: string): (simple, string) => {
   switch t0 {
   | LParen => {
       let (t1, rest1) = tokenize(rest)
-      let abstract = switch t1 {
-      | NameT(_) => true
-      | _ => false
-      }
-      if abstract {
-        let name = switch t1 {
-        | NameT(n) => n
-        | _ => raise(Unreachable("bug"))
+      switch t1 {
+      | NameT(name) => {
+          let (result, rest2) = parseSimple("("->String.concat(rest1))
+          (LambdaS({name, body: result}), rest2)
         }
-        let (result, rest2) = parseSimple("("->String.concat(rest1))
-        (LambdaS({name, body: result}), rest2)
-      } else {
-        switch t1 {
-        | RParen => (ListS({xs: []}), rest1)
-        | _ => {
-            let (head, rest2) = parseSimple(rest)
-            let (tail, rest3) = parseSimple("("->String.concat(rest2))
-            switch tail {
-            | ListS({xs}) => (ListS({xs: Array.concat([head], xs)}), rest3)
-            | _ => raise(Unreachable("bug"))
-            }
+      | RParen => (ListS({xs: []}), rest1)
+      | _ => {
+          let (head, rest2) = parseSimple(rest)
+          let (tail, rest3) = parseSimple("("->String.concat(rest2))
+          switch tail {
+          | ListS({xs}) => (ListS({xs: Array.concat([head], xs)}), rest3)
+          | _ => raise(Unreachable("bug"))
           }
         }
       }
