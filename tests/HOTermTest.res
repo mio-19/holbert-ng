@@ -114,4 +114,10 @@ zoraBlock("unify test", t => {
     t->testUnify(x, y)
     t->testUnify(y, x)
   })
+  t->block("flex-rigid2", t => {
+    let x = "(?0 a)"
+    let y = "(y ?1)"
+    t->testUnify(x, y)
+    t->testUnify(y, x)
+  })
 })
