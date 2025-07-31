@@ -474,7 +474,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
 let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)
-type token = LParen | RParen | VarT(int) | SchematicT(int) | AtomT(string) | DotT | EOF
+type token = LParen | RParen | VarT(int) | SchematicT(int) | AtomT(string) | NameT(string) | EOF
 let varRegexpString = "^\\\\([0-9]+)"
 let schematicRegexpString = "^\\?([0-9]+)"
 let tokenize = (str0: string): (token, string) => {
@@ -486,7 +486,6 @@ let tokenize = (str0: string): (token, string) => {
     switch str->String.charAt(0) {
     | "(" => (LParen, rest())
     | ")" => (RParen, rest())
-    | "." => (DotT, rest())
     | "\\" => {
         let re = RegExp.fromStringWithFlags(varRegexpString, ~flags="y")
         switch re->RegExp.exec(str) {
@@ -520,8 +519,7 @@ let tokenize = (str0: string): (token, string) => {
         switch reName->RegExp.exec(str) {
         | Some(res) =>
           switch RegExp.Result.matches(res) {
-          // -1: leave the dot in the string for the next DotT token
-          | [n] => (AtomT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(reName) - 1))
+          | [n] => (NameT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(reName)))
           | _ => raise(ParseError("invalid symbol"))
           }
         | None =>
@@ -551,22 +549,16 @@ let rec parseSimple = (str: string): (simple, string) => {
   | LParen => {
       let (t1, rest1) = tokenize(rest)
       let abstract = switch t1 {
-      | AtomT(_) =>
-        let (t2, rest2) = tokenize(rest1)
-        switch t2 {
-        | DotT => true
-        | _ => false
-        }
+      | NameT(_) => true
       | _ => false
       }
       if abstract {
-        let (t2, rest2) = tokenize(rest1)
         let name = switch t1 {
-        | AtomT(n) => n
+        | NameT(n) => n
         | _ => raise(Unreachable("bug"))
         }
-        let (result, rest3) = parseSimple("("->String.concat(rest2))
-        (LambdaS({name, body: result}), rest3)
+        let (result, rest2) = parseSimple("("->String.concat(rest1))
+        (LambdaS({name, body: result}), rest2)
       } else {
         switch t1 {
         | RParen => (ListS({xs: []}), rest1)
@@ -585,7 +577,7 @@ let rec parseSimple = (str: string): (simple, string) => {
   | VarT(idx) => (VarS({idx: idx}), rest)
   | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
   | AtomT(name) => (AtomS({name: name}), rest)
-  | DotT => raise(ParseError("unexpected dot"))
+  | NameT(_) => raise(ParseError("unexpected name token"))
   | EOF => raise(ParseError("unexpected end of file"))
   }
 }

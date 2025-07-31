@@ -89,14 +89,9 @@ zoraBlock("parse application", t => {
 
 zoraBlock("parse lambda", t => {
   t->block("simple", t => {
-    t->Util.testParse("(x . x)", Lam({name: "x", body: Var({idx: 0})}))
     t->Util.testParse("(x. x)", Lam({name: "x", body: Var({idx: 0})}))
   })
   t->block("with application", t => {
-    t->Util.testParse(
-      "(x . x x)",
-      Lam({name: "x", body: App({func: Var({idx: 0}), arg: Var({idx: 0})})}),
-    )
     t->Util.testParse(
       "(x. x x)",
       Lam({name: "x", body: App({func: Var({idx: 0}), arg: Var({idx: 0})})}),
@@ -104,7 +99,7 @@ zoraBlock("parse lambda", t => {
   })
   t->block("with application 2args", t => {
     t->Util.testParse(
-      "(x . y. x y)",
+      "(x. y. x y)",
       Lam({
         name: "x",
         body: Lam({name: "y", body: App({func: Var({idx: 1}), arg: Var({idx: 0})})}),
