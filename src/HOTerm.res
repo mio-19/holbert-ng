@@ -238,10 +238,18 @@ let rec reduce = (term: t) => {
   | term => term
   }
 }
-let rec strip = (term: t): stripped => {
+let rec strip = (term: t): (t, array<t>) => {
+  switch term {
+  | App({func, arg}) =>
+    let (peeledFunc, peeledArgs) = strip(func)
+    (peeledFunc, [arg, ...peeledArgs])
+  | _ => (term, [])
+  }
+}
+let rec stripReduce = (term: t): stripped => {
   switch reduce(term) {
   | App({func, arg}) =>
-    let {func: peeledFunc, args: peeledArgs} = strip(func)
+    let {func: peeledFunc, args: peeledArgs} = stripReduce(func)
     {func: peeledFunc, args: [arg, ...peeledArgs]}
   | _ => {func: term, args: []}
   }
@@ -252,7 +260,7 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
   | Lam({name: _, body}) =>
     proj(Array.concat([0], allowed->Array.map(x => x + 1)), body, ~gen, ~subst)
   | term => {
-      let a = strip(term)
+      let a = stripReduce(term)
       switch a.func {
       | Symbol(_) => Array.reduce(a.args, subst, (acc, a) => proj(allowed, a, ~gen, ~subst=acc))
       | Var({idx}) =>
@@ -308,7 +316,7 @@ let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
     unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), ~gen)
   | (a, Lam({name: _, body: bb})) =>
     unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, ~gen)
-  | (_, _) => cases(a, strip(a), b, strip(b), ~gen)
+  | (_, _) => cases(a, stripReduce(a), b, stripReduce(b), ~gen)
   }
 and unifyArray = (a: array<(t, t)>, ~gen: option<gen>) => {
   if Array.length(a) == 0 {

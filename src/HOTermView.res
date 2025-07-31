@@ -45,9 +45,8 @@ let rec make = ({term, scope}) =>
       {React.int(s)}
     </span>
   | App(_) =>
-  // TODO: strip call reduce. what if it is App({Lam, args }) and reduced to {func, empty}
     switch HOTerm.strip(term) {
-    | {func, args} =>
+    | (func, args) =>
       <span className="term-app">
         {React.createElement(make, {term: func, scope})}
         <span className="term-app-telescope">
