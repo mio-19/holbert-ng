@@ -185,4 +185,10 @@ zoraBlock("unify test", t => {
     // Should fail: it cannot capture the bound variable.
     t->Util.testNotUnify(a, b)
   })
+  t->block("divergent", t => {
+    let divergent = "((x. x x) (x. x x))"
+    let a = "((x. ?0 x) (x. x x))"
+    // should it not unify?
+    t->Util.testNotUnify(a, divergent)
+  })
 })
