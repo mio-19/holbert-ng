@@ -300,7 +300,7 @@ let rec devar = (subst: subst, term: t): t => {
 }
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
-  | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
+  | (Lam({name, body}), args) /*if args->Array.length == 0*/ => proj(subst, body, ~gen)
   | (Unallowed, args) => raise(UnifyFail("unallowed"))
   | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
   | (Schematic({schematic}), args) => {
