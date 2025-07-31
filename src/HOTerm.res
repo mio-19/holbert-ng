@@ -353,6 +353,29 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
       }
     }
   }
+let flexflex = (
+  sa: schematic,
+  xs: array<t>,
+  sb: schematic,
+  ys: array<t>,
+  subst: subst1,
+  ~gen: option<gen>,
+): subst1 => {
+  raise(TODO("TODO"))
+}
+let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst1, ~gen: option<gen>): subst1 => {
+  raise(TODO("TODO"))
+}
+let rigidrigid = (
+  a: t,
+  xs: array<t>,
+  b: t,
+  ys: array<t>,
+  subst: subst1,
+  ~gen: option<gen>,
+): subst1 => {
+  raise(TODO("TODO"))
+}
 let rec unifyTerm1 = (a: t, b: t, subst: subst1, ~gen: option<gen>): subst1 =>
   switch (devar(subst, a), devar(subst, b)) {
   | (Symbol({name: na}), Symbol({name: nb})) =>
@@ -375,7 +398,12 @@ let rec unifyTerm1 = (a: t, b: t, subst: subst1, ~gen: option<gen>): subst1 =>
     unifyTerm1(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, subst, ~gen)
   | (_, _) =>
     switch (strip(a), strip(b)) {
-    | (_, _) => raise(TODO("TODO"))
+    | ((Schematic({schematic: sa}), xs), (Schematic({schematic: sb}), ys)) =>
+      flexflex(sa, xs, sb, ys, subst, ~gen)
+    | ((Schematic({schematic: sa}), xs), _) => flexrigid(sa, xs, b, subst, ~gen)
+    | (_, (Schematic({schematic: sb}), ys)) => flexrigid(sb, ys, a, subst, ~gen)
+    | ((a, xs), (b, ys)) => rigidrigid(a, xs, b, ys, subst, ~gen)
+    | (_, _) => raise(UnifyFail("no rules match"))
     }
   }
 let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
