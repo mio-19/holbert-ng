@@ -13,6 +13,7 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
+type subst1 = Belt.Map.Int.t<t>
 let rec equivalent = (a: t, b: t) => {
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) => na == nb
