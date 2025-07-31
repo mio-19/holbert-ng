@@ -344,7 +344,7 @@ let flexflex = (
       raise(UnifyFail("no gen provided"))
     }
     let len = xs->Array.length
-    let h = fresh(Option.getExn(gen))
+    let h = Schematic({schematic: fresh(Option.getExn(gen))})
     let xs = Belt.Array.init(len, k => {
       let a = xs[k]->Option.getExn
       let b = ys[k]->Option.getExn
@@ -353,7 +353,7 @@ let flexflex = (
       | _ => None
       }
     })->Array.keepSome
-    subst->substAdd(sa, lams(len, app(Schematic({schematic: h}), xs)))
+    subst->substAdd(sa, lams(len, app(h, xs)))
   } else {
     let y_vars = Belt.Set.fromArray(
       ys->Array.filterMap(y =>
