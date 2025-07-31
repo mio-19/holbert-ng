@@ -3,12 +3,17 @@ open HOTerm
 
 module Util = TestUtil.MakeTerm(HOTerm)
 
-let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
+let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=true) => {
   let gen = HOTerm.makeGen()
   let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
   let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
   try {
-    let res = HOTerm.reduceSubst(HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen)))
+    let res0 = HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen))
+    let res = if reduce {
+      HOTerm.reduceSubst(res0)
+    } else {
+      res0
+    }
     switch subst {
     | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
     | Some(subst) =>
@@ -132,6 +137,15 @@ zoraBlock("unify test", t => {
     let x = "(x. ?0 x)"
     let y = "(x. y x)"
     // it is y only after eta reduction
+    t->testUnify(
+      x,
+      y,
+      ~reduce=false,
+      ~subst=emptySubst->substAdd(
+        0,
+        Lam({name: "", body: App({func: Symbol({name: "y"}), arg: Var({idx: 0})})}),
+      ),
+    )
     t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
     t->testUnify(y, x, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
