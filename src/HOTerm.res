@@ -568,7 +568,10 @@ let rec parseSimple = (str: string): (simple, string) => {
   | VarT(idx) => (VarS({idx: idx}), rest)
   | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
   | AtomT(name) => (AtomS({name: name}), rest)
-  | NameT(_) => raise(ParseError("unexpected name token"))
+  | NameT(name) => {
+      let (result, rest1) = parseSimple(rest)
+      (LambdaS({name, body: result}), rest1)
+    }
   | EOF => raise(ParseError("unexpected end of file"))
   }
 }

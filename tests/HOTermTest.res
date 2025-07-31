@@ -107,6 +107,12 @@ zoraBlock("parse lambda", t => {
     )
     t->Util.testParse("(x. y. x)", Lam({name: "x", body: Lam({name: "y", body: Var({idx: 1})})}))
   })
+  t->block("omit outer ()", t => {
+    t->Util.testParse(
+      "x. (x x)",
+      Lam({name: "x", body: App({func: Var({idx: 0}), arg: Var({idx: 0})})}),
+    )
+  })
 })
 
 zoraBlock("unify test", t => {
