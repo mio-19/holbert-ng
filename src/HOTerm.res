@@ -192,14 +192,14 @@ let rec reduceFull = (term: t, subst: subst): t => {
 let reduceSubst = (subst: subst): subst => {
   subst->Belt.Map.Int.map(x => reduceFull(x, subst))
 }
-let rec lamn = (amount: int, term: t): t => {
+let rec lams = (amount: int, term: t): t => {
   assert(amount >= 0)
   if amount <= 0 {
     term
   } else {
     Lam({
       name: "",
-      body: lamn(amount - 1, term),
+      body: lams(amount - 1, term),
     })
   }
 }
@@ -274,7 +274,7 @@ let rec app1 = (term: t, args: array<t>): t =>
     }
   }
 let lam = (is: array<t>, g: t, js: array<int>): t => {
-  lamn(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
+  lams(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
 }
 let rec strip = (term: t): (t, array<t>) => {
   switch term {
@@ -305,7 +305,7 @@ let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
       let h = Schematic({schematic: fresh(Option.getExn(gen))})
       subst->substAdd(
         schematic,
-        lamn(
+        lams(
           args->Array.length,
           app(
             h,
@@ -347,7 +347,7 @@ let flexflex = (
       | _ => None
       }
     })->Array.keepSome
-    subst->substAdd(sa, lamn(len, app1(Schematic({schematic: h}), xs)))
+    subst->substAdd(sa, lams(len, app1(Schematic({schematic: h}), xs)))
   } else {
     let y_vars = Belt.Set.fromArray(
       ys->Array.filterMap(y =>
@@ -373,7 +373,7 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
   let u = b->mapbind0(bind => idx2(xs, bind))
-  proj(subst->substAdd(sa, lamn(xs->Array.length, u)), u, ~gen)
+  proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
   switch (devar(subst, a), devar(subst, b)) {
