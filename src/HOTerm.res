@@ -10,6 +10,7 @@ type rec t =
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
   | App({func: t, arg: t})
+  | Unit
 type meta = string
 type schematic = int
 type subst = Belt.Map.Int.t<t>
@@ -189,14 +190,14 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
       arg: substDeBruijn(arg, substs, ~from),
     })
   }
-let rec lam = (amount: int, term: t): t => {
+let rec lamn = (amount: int, term: t): t => {
   assert(amount >= 0)
   if amount <= 0 {
     term
   } else {
     Lam({
       name: "",
-      body: lam(amount - 1, term),
+      body: lamn(amount - 1, term),
     })
   }
 }
@@ -254,6 +255,9 @@ let rec app1 = (term: t, args: array<t>): t =>
     | _ => app1(App({func: term, arg: head}), rest)
     }
   }
+let lam = (is: array<int>, g: t, js: array<int>): t => {
+  lamn(is->Array.length, app(g, js->Array.map(j => idx(is, j)->Option.getOr(Unit))))
+}
 type stripped = {
   func: t,
   args: array<t>,
@@ -341,7 +345,7 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
           let h = fresh(Option.getExn(gen))
           subst->substAdd(
             schematic,
-            lam(
+            lamn(
               len,
               app1(
                 Schematic({
@@ -381,7 +385,7 @@ let flexflex = (
       | _ => None
       }
     })->Array.keepSome
-    subst->substAdd(sa, lam(len, app1(Schematic({schematic: h}), xs)))
+    subst->substAdd(sa, lamn(len, app1(Schematic({schematic: h}), xs)))
   } else {
     raise(TODO("TODO"))
   }
