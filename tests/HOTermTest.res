@@ -135,4 +135,10 @@ zoraBlock("unify test", t => {
     t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
     t->testUnify(y, x, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
+  t->block("?0 \\0", t => {
+    let x = "(?0 \\0)"
+    let y = "\\0"
+    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Lam({name: "", body: Var({idx: 0})})))
+    t->testUnify(y, x, ~subst=emptySubst->substAdd(0, Lam({name: "", body: Var({idx: 0})})))
+  })
 })
