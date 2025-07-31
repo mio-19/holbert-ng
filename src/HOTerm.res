@@ -353,6 +353,12 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
       }
     }
   }
+let rec unifyTerm1 = (a: t, b: t, subst: subst1, ~gen: option<gen>): subst1 =>
+  switch (devar(subst, a), devar(subst, b)) {
+  | (Symbol({name: na}), Symbol({name: nb})) if na == nb => subst
+  | (Var({idx: ia}), Var({idx: ib})) if ia == ib => subst
+  | (Schematic({schematic: sa}), Schematic({schematic: sb})) if sa == sb => subst
+  }
 let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
   switch (reduce(a), reduce(b)) {
   | (Symbol({name: na}), Symbol({name: nb})) if na == nb => emptySubst
