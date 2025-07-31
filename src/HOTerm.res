@@ -222,6 +222,26 @@ let rec app = (term: t, args: array<t>): t => {
     app(App({func: term, arg: head}), rest)
   }
 }
+exception UnifyFail(string)
+let rec red = (term: t, is: array<t>, js: array<t>): t => {
+  switch term {
+  | Lam({name, body}) if is->Array.length > 0 => {
+      let head = is[0]->Option.getExn
+      let rest = is->Array.sliceToEnd(~start=1)
+      red(body, rest, Array.concat([head], js))
+    }
+  | _ =>
+    app(
+      term->mapbind(k =>
+        switch js[k + 1]->Option.getExn {
+        | Var({idx}) => idx
+        | _ => raise(UnifyFail("expected variable in red"))
+        }
+      ),
+      is,
+    )
+  }
+}
 // app with beta reduction
 let rec app1 = (term: t, args: array<t>): t =>
   if args->Array.length == 0 {
@@ -288,7 +308,6 @@ let rec stripReduce = (term: t): stripped => {
   | _ => {func: term, args: []}
   }
 }
-exception UnifyFail(string)
 let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=emptySubst): subst =>
   switch reduce(term) {
   | Lam({name: _, body}) =>
