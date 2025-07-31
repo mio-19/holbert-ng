@@ -355,9 +355,28 @@ let rec proj = (allowed: array<int>, term: t, ~gen: option<gen>, ~subst: subst=e
   }
 let rec unifyTerm1 = (a: t, b: t, subst: subst1, ~gen: option<gen>): subst1 =>
   switch (devar(subst, a), devar(subst, b)) {
-  | (Symbol({name: na}), Symbol({name: nb})) if na == nb => subst
-  | (Var({idx: ia}), Var({idx: ib})) if ia == ib => subst
+  | (Symbol({name: na}), Symbol({name: nb})) =>
+    if na == nb {
+      subst
+    } else {
+      raise(UnifyFail("symbols do not match"))
+    }
+  | (Var({idx: ia}), Var({idx: ib})) =>
+    if ia == ib {
+      subst
+    } else {
+      raise(UnifyFail("variables do not match"))
+    }
   | (Schematic({schematic: sa}), Schematic({schematic: sb})) if sa == sb => subst
+  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm1(ba, bb, subst, ~gen)
+  | (Lam({name: _, body: ba}), b) =>
+    unifyTerm1(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), subst, ~gen)
+  | (a, Lam({name: _, body: bb})) =>
+    unifyTerm1(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, subst, ~gen)
+  | (_, _) =>
+    switch (strip(a), strip(b)) {
+    | (_, _) => raise(TODO("TODO"))
+    }
   }
 let rec unifyTerm = (a: t, b: t, ~gen: option<gen>) =>
   switch (reduce(a), reduce(b)) {
