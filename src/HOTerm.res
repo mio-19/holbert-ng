@@ -238,6 +238,12 @@ let idx1 = (is: array<int>, j: int): t => {
   | Some(idx) => Var({idx: idx})
   }
 }
+let idx2 = (is: array<int>, j: int): result<int, int => t> => {
+  switch idx(is, j) {
+  | None => Error(_ => Unit)
+  | Some(idx) => Ok(idx)
+  }
+}
 let rec app = (term: t, args: array<t>): t => {
   if args->Array.length == 0 {
     term
