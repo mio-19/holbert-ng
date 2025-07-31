@@ -200,6 +200,19 @@ let rec lam = (amount: int, term: t): t => {
     })
   }
 }
+let rec idx = (is: array<int>, j: int): option<t> => {
+  if is->Array.length == 0 {
+    None
+  } else {
+    let head = is[0]->Option.getExn
+    let tail = is->Array.sliceToEnd(~start=1)
+    if head == j {
+      Some(Var({idx: tail->Array.length}))
+    } else {
+      idx(tail, j)
+    }
+  }
+}
 let rec app = (term: t, args: array<t>): t =>
   if args->Array.length == 0 {
     term
@@ -335,8 +348,7 @@ let flexflex = (
       let a = xs[k]->Option.getExn
       let b = ys[k]->Option.getExn
       switch (a, b) {
-      | (Var(_), Var(_)) if equivalent(a, b) =>
-        Some(Var({idx: len - k - 1}))
+      | (Var(_), Var(_)) if equivalent(a, b) => Some(Var({idx: len - k - 1}))
       | _ => None
       }
     })->Array.keepSome
