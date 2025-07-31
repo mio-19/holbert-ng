@@ -158,10 +158,6 @@ let substAdd = (subst: subst, schematic: schematic, term: t) => {
   assert(subst->Belt.Map.Int.has(schematic) == false)
   subst->Belt.Map.Int.set(schematic, term)
 }
-let singletonSubst = (schematic: schematic, term: t): subst => {
-  assert(schematic >= 0)
-  emptySubst->substAdd(schematic, term)
-}
 let rec substitute = (term: t, subst: subst) =>
   switch term {
   | Schematic({schematic, _}) =>
