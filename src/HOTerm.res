@@ -292,10 +292,6 @@ let rec app1 = (term: t, args: array<t>): t =>
 let lam = (is: array<int>, g: t, js: array<int>): t => {
   lamn(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
 }
-type stripped = {
-  func: t,
-  args: array<t>,
-}
 // only reduce the outermost application
 let rec reduce = (term: t) => {
   switch term {
@@ -338,14 +334,6 @@ let rec devar = (subst: subst, term: t): t => {
   | Schematic({schematic}) if substHas(subst, schematic) =>
     devar(subst, app1(substGet(subst, schematic)->Option.getExn, args))
   | _ => term
-  }
-}
-let rec stripReduce = (term: t): stripped => {
-  switch reduce(term) {
-  | App({func, arg}) =>
-    let {func: peeledFunc, args: peeledArgs} = stripReduce(func)
-    {func: peeledFunc, args: [arg, ...peeledArgs]}
-  | _ => {func: term, args: []}
   }
 }
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
