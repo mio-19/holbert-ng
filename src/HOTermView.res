@@ -58,4 +58,11 @@ let rec make = ({term, scope}) =>
         </span>
       </span>
     }
+  | Lam({name, body}) => {
+      let newScope = Array.concat([name], scope)
+      <span className="term-lambda">
+        {React.string(name)}
+        {React.createElement(make, {term: body, scope: newScope})}
+      </span>
+    }
   }
