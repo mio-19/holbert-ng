@@ -8,11 +8,25 @@ let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
   let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
   let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
   try {
-    let res = HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen))
+    let res = HOTerm.reduceSubst(HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen)))
     switch subst {
     | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
     | Some(subst) =>
-      t->equal(res, subst, ~msg=msg->Option.getOr("unification succeeded with substitution"))
+      subst->Belt.Map.Int.forEach((k, v) => {
+        let expected = subst->Belt.Map.Int.getExn(k)
+        if res->Belt.Map.Int.has(k) == false {
+          t->fail(
+            ~msg=msg->Option.getOr("substitution on " ++ TestUtil.stringifyExn(k) ++ " not found"),
+          )
+        } else {
+          let actual = res->Belt.Map.Int.getExn(k)
+          t->equal(
+            actual,
+            expected,
+            ~msg=msg->Option.getOr("substitution on " ++ TestUtil.stringifyExn(k)),
+          )
+        }
+      })
     }
   } catch {
   | HOTerm.UnifyFail(failed) =>
@@ -117,7 +131,15 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid2", t => {
     let x = "(?0 a)"
     let y = "(y ?1)"
-    t->testUnify(x, y)
-    t->testUnify(y, x)
+    t->testUnify(
+      x,
+      y,
+      ~subst=emptySubst->substAdd(1, Symbol({name: "a"}))->substAdd(0, Symbol({name: "y"})),
+    )
+    t->testUnify(
+      y,
+      x,
+      ~subst=emptySubst->substAdd(1, Symbol({name: "a"}))->substAdd(0, Symbol({name: "y"})),
+    )
   })
 })

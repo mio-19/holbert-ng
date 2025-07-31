@@ -169,6 +169,29 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     })
   | Unallowed => Unallowed
   }
+let rec reduceFull = (term: t, subst: subst): t => {
+  switch term {
+  | Schematic({schematic}) if subst->substHas(schematic) =>
+    let found = subst->substGet(schematic)->Option.getExn
+    reduceFull(found, subst)
+  | App({func, arg}) =>
+    switch reduceFull(func, subst) {
+    | Lam({body}) => reduceFull(substDeBruijn(body, [arg]), subst)
+    | func => App({func, arg: reduceFull(arg, subst)})
+    }
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      body: reduceFull(body, subst),
+    })
+  | Symbol(_) | Var(_) | Schematic(_) => term
+
+  | Unallowed => Unallowed
+  }
+}
+let reduceSubst = (subst: subst): subst => {
+  subst->Belt.Map.Int.map(x => reduceFull(x, subst))
+}
 let rec lamn = (amount: int, term: t): t => {
   assert(amount >= 0)
   if amount <= 0 {
