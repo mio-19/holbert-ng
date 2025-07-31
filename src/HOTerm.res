@@ -378,59 +378,6 @@ let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   | _ => raise(UnifyFail("not a symbol, var or schematic"))
   }
 }
-let rec proj1 = (
-  allowed: array<int>,
-  term: t,
-  ~gen: option<gen>,
-  ~subst: subst=emptySubst,
-): subst =>
-  switch reduce(term) {
-  | Lam({name: _, body}) =>
-    proj1(Array.concat([0], allowed->Array.map(x => x + 1)), body, ~gen, ~subst)
-  | term => {
-      let a = stripReduce(term)
-      switch a.func {
-      | Symbol(_) => Array.reduce(a.args, subst, (acc, a) => proj1(allowed, a, ~gen, ~subst=acc))
-      | Var({idx}) =>
-        if allowed->Array.some(v => v == idx) {
-          Array.reduce(a.args, subst, (acc, a) => proj1(allowed, a, ~gen, ~subst=acc))
-        } else {
-          raise(UnifyFail("variable not in allowed set"))
-        }
-      | Schematic({schematic}) => {
-          let len = a.args->Array.length
-          let hargs =
-            a.args
-            ->Array.mapWithIndex((b, idx) =>
-              switch b {
-              | Var({idx: x}) if allowed->Array.some(v => v == x) => Some(idx)
-              | _ => None
-              }
-            )
-            ->Array.keepSome
-            ->Array.map(idx => len - idx - 1)
-            ->Array.map(idx => Var({idx: idx}))
-          if gen->Option.isNone {
-            raise(UnifyFail("no gen provided"))
-          }
-          let h = fresh(Option.getExn(gen))
-          subst->substAdd(
-            schematic,
-            lamn(
-              len,
-              app1(
-                Schematic({
-                  schematic: h,
-                }),
-                hargs,
-              ),
-            ),
-          )
-        }
-      | _ => raise(UnifyFail("not a symbol, var or schematic"))
-      }
-    }
-  }
 let flexflex = (
   sa: schematic,
   xs: array<t>,
