@@ -240,7 +240,12 @@ let rec app = (term: t, args: array<t>): t =>
   if args->Array.length == 0 {
     term
   } else {
-    app(App({func: term, arg: args[0]->Option.getExn}), args->Array.sliceToEnd(~start=1))
+    let head = args[0]->Option.getExn
+    let rest = args->Array.sliceToEnd(~start=1)
+    switch term {
+    | Lam({body}) => app(substDeBruijn(body, [head]), rest)
+    | _ => app(App({func: term, arg: head}), rest)
+    }
   }
 type stripped = {
   func: t,
