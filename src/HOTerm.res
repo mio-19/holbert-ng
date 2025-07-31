@@ -219,26 +219,30 @@ let rec lamn = (amount: int, term: t): t => {
     })
   }
 }
-let rec idx = (is: array<int>, j: int): option<int> => {
+let rec idx = (is: array<t>, j: int): option<int> => {
   if is->Array.length == 0 {
     None
   } else {
     let head = is[0]->Option.getExn
     let tail = is->Array.sliceToEnd(~start=1)
-    if head == j {
+    if equivalent(head, Var({idx: j})) {
       Some(tail->Array.length)
     } else {
       idx(tail, j)
     }
   }
 }
+let var = (idx: int): t => {
+  assert(idx >= 0)
+  Var({idx: idx})
+}
 let idx1 = (is: array<int>, j: int): t => {
-  switch idx(is, j) {
+  switch idx(is->Array.map(var), j) {
   | None => Unit
   | Some(idx) => Var({idx: idx})
   }
 }
-let idx2 = (is: array<int>, j: int): result<int, int => t> => {
+let idx2 = (is: array<t>, j: int): result<int, int => t> => {
   switch idx(is, j) {
   | None => Error(_ => Unit)
   | Some(idx) => Ok(idx)
@@ -426,6 +430,7 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
   if occ(sa, subst, b) {
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
+  let u = b->mapbind0(bind => idx2(xs, bind))
   raise(TODO("TODO"))
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
