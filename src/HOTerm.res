@@ -134,7 +134,7 @@ let rec substitute = (term: t, subst: subst) =>
   | Lam({name, body}) =>
     Lam({
       name,
-      body: substitute(body, subst),
+      body: substitute(body, subst->Belt.Map.Int.map(x => upshift(x, 1))),
     })
   | App({func, arg}) =>
     App({
