@@ -292,17 +292,6 @@ let rec app1 = (term: t, args: array<t>): t =>
 let lam = (is: array<t>, g: t, js: array<int>): t => {
   lamn(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
 }
-// only reduce the outermost application
-let rec reduce = (term: t) => {
-  switch term {
-  | App({func, arg}) =>
-    switch reduce(func) {
-    | Lam({body}) => reduce(substDeBruijn(body, [arg]))
-    | func => App({func, arg})
-    }
-  | term => term
-  }
-}
 let rec strip = (term: t): (t, array<t>) => {
   switch term {
   | App({func, arg}) =>
