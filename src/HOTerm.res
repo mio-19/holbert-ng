@@ -375,6 +375,7 @@ let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
         ),
       )
     }
+  | _ => raise(UnifyFail("not a symbol, var or schematic"))
   }
 }
 let rec proj1 = (
