@@ -82,10 +82,6 @@ let parseMeta: string => result<(meta, string), string> = _ => Error("unimplemen
 let prettyPrint: (t, ~scope: array<meta>) => string = (t, ~scope) => "unimplemented"
 // TODO: fix
 let prettyPrintMeta: meta => string = _ => "unimplemented"
-let error = (line: int, col: int, msg: string) => {
-  Error(`${Int.toString(line)}:${Int.toString(col)}: ${msg}`)
-}
-
 type token =
   | StringLit(string)
   | VarLit(int)
@@ -100,10 +96,20 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
   ~scope: array<string>,
   ~gen=?,
 ) => {
+  let error = (loc: pos, msg: string) => {
+    let codeAroundLoc = String.slice(str, ~start=loc.idx, ~end=loc.idx + 5)
+    Error(`${Int.toString(loc.line)}:${Int.toString(loc.col)} (${codeAroundLoc})...: ${msg}`)
+  }
+
   let lex: unit => result<array<located<token>>, string> = () => {
     let pos = ref(0)
     let line = ref(1)
     let col = ref(1)
+    let loc = () => {
+      line: line.contents,
+      col: col.contents,
+      idx: pos.contents,
+    }
     let acc = ref(Ok([]))
     let advance = n => {
       pos := pos.contents + n
@@ -135,8 +141,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
     }
     let error = msg => {
       Console.log(acc.contents->Result.getExn)
-      let codeAroundLoc = String.slice(str, ~start=pos.contents, ~end=pos.contents + 5)
-      acc := error(line.contents, col.contents, `${codeAroundLoc}...: ${msg}`)
+      acc := error(loc(), msg)
     }
     let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
     let stringLit = () => {
@@ -208,10 +213,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       let {content: tok, loc} = tokens[tokenIdx.contents]->Option.getExn
       let error = msg => {
         acc :=
-          error(loc.line, loc.col, msg)->Result.mapError(msg => (
-            msg,
-            String.sliceToEnd(str, ~start=loc.idx),
-          ))
+          error(loc, msg)->Result.mapError(msg => (msg, String.sliceToEnd(str, ~start=loc.idx)))
       }
       switch tok {
       | StringLit(s) => add(String(s))
@@ -237,9 +239,10 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       if Array.length(parens) == 0 {
         Ok(t, "")
       } else {
-        let errorParen = Array.pop(parens)->Option.getExn
-        error(errorParen.line, errorParen.col, "expected closing paren")
+        let loc = Array.pop(parens)->Option.getExn
+        error(loc, "expected closing paren")
       }
+    // TODO: decide if this remaining is redundant
     | Error(msg, remaining) => Error(msg)
     }
   }
