@@ -14,6 +14,13 @@ type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
 type subst1 = Belt.Map.Int.t<t>
+let mapMapValues = (m: subst, f: t => t): subst => {
+  let nu = Map.make()
+  m->Map.forEachWithKey((v, k) => {
+    nu->Map.set(k, f(v))
+  })
+  nu
+}
 let rec equivalent = (a: t, b: t) => {
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) => na == nb

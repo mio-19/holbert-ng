@@ -6,7 +6,7 @@ let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s
 module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   type rec t = {vars: array<Term.meta>, premises: array<t>, conclusion: Judgment.t}
   let rec substitute = (rule: t, subst: Term.subst) => {
-    let subst' = subst->Util.mapMapValues(v => v->Term.upshift(Array.length(rule.vars)))
+    let subst' = subst->Term.mapMapValues(v => v->Term.upshift(Array.length(rule.vars)))
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),

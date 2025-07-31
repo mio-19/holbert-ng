@@ -11,6 +11,13 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
+let mapMapValues = (m: subst, f: t => t): subst => {
+  let nu = Map.make()
+  m->Map.forEachWithKey((v, k) => {
+    nu->Map.set(k, f(v))
+  })
+  nu
+}
 let equivalent = (a: t, b: t) => {
   a == b
 }
