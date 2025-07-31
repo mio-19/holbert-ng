@@ -131,15 +131,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid2", t => {
     let x = "(x. ?0 x)"
     let y = "(x. y x)"
-    t->testUnify(
-      x,
-      y,
-      ~subst=emptySubst->substAdd(0, Symbol({name: "y"})),
-    )
-    t->testUnify(
-      y,
-      x,
-      ~subst=emptySubst->substAdd(0, Symbol({name: "y"})),
-    )
+    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
+    t->testUnify(y, x, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
 })

@@ -243,9 +243,14 @@ let rec app = (term: t, args: array<t>): t => {
   }
 }
 exception UnifyFail(string)
+let isvar = (term: t): bool =>
+  switch term {
+  | Var(_) => true
+  | _ => false
+  }
 let rec red = (term: t, is: array<t>, js: array<t>): t => {
   switch term {
-  | Lam({name, body}) if is->Array.length > 0 => {
+  | Lam({name, body}) if is->Array.length > 0 && isvar(is[0]->Option.getExn) => {
       let head = is[0]->Option.getExn
       let rest = is->Array.sliceToEnd(~start=1)
       red(body, rest, Array.concat([head], js))
@@ -253,7 +258,7 @@ let rec red = (term: t, is: array<t>, js: array<t>): t => {
   | _ =>
     app(
       term->mapbind(k =>
-        switch js[k + 1]->Option.getExn {
+        switch js[k]->Option.getExn {
         | Var({idx}) => idx
         | _ => raise(UnifyFail("expected variable in red"))
         }
