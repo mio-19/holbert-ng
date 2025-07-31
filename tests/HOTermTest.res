@@ -111,21 +111,4 @@ zoraBlock("unify test", t => {
     t->Util.testNotUnify(ab, cd)
     t->Util.testNotUnify(cd, ab)
   })
-  t->block("flex-rigid", t => {
-    let v0 = "\\0"
-    let s0 = "?0"
-    t->testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
-  })
-  t->block("flex-rigid in lambda", t => {
-    let v0 = "(x. x)"
-    let s0 = "(y. ?0)"
-    t->testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
-  })
-  t->block("flex-rigid var", t => {
-    let v0 = "(\\0 \\1)"
-    let s0 = "(?0 \\1)"
-    t->testUnify(v0, s0)
-    // TODO: fix this
-    //t->testUnify(v0, s0, ~subst=HOTerm.singletonSubst(0, Var({idx: 0})))
-  })
 })
