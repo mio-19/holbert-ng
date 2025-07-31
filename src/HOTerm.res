@@ -234,7 +234,7 @@ let rec reduce = (term: t) => {
   switch term {
   | App({func, arg}) =>
     switch reduce(func) {
-    | Lam({body}) => reduce(downshift(substDeBruijn(body, [upshift(arg, 1)], ~from=0), 1))
+    | Lam({body}) => reduce(substDeBruijn(body, [arg]))
     | func => App({func, arg})
     }
   | term => term
