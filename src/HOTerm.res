@@ -132,6 +132,7 @@ let rec substVar = (term: t, subst: substVar) =>
       func: substVar(func, subst),
       arg: substVar(arg, subst),
     })
+  | Unit => Unit
   }
 let emptySubst: subst = Belt.Map.Int.empty
 let substAdd = (subst: subst, schematic: schematic, term: t) => {
@@ -189,6 +190,7 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
       func: substDeBruijn(func, substs, ~from),
       arg: substDeBruijn(arg, substs, ~from),
     })
+  | Unit => Unit
   }
 let rec lamn = (amount: int, term: t): t => {
   assert(amount >= 0)
@@ -286,6 +288,8 @@ let rec reduceFull = (term: t): t => {
       body: reduceFull(body),
     })
   | Symbol(_) | Var(_) | Schematic(_) => term
+
+  | Unit => Unit
   }
 }
 let rec strip = (term: t): (t, array<t>) => {
@@ -480,6 +484,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(" ")
     ->String.concat(prettyPrint(arg, ~scope))
     ->String.concat(")")
+  | Unit => ""
   }
 let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
