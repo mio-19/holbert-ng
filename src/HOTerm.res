@@ -322,7 +322,28 @@ let flexflex = (
   subst: subst,
   ~gen: option<gen>,
 ): subst => {
-  raise(TODO("TODO"))
+  if sa == sb {
+    if xs->Array.length != ys->Array.length {
+      raise(UnifyFail("flexible schematics have different number of arguments"))
+    }
+    if gen->Option.isNone {
+      raise(UnifyFail("no gen provided"))
+    }
+    let len = xs->Array.length
+    let h = fresh(Option.getExn(gen))
+    let xs = Belt.Array.init(len, k => {
+      let a = xs[k]->Option.getExn
+      let b = ys[k]->Option.getExn
+      switch (a, b) {
+      | (Symbol(_) | Var(_), Symbol(_) | Var(_)) if equivalent(a, b) =>
+        Some(Var({idx: len - k - 1}))
+      | _ => None
+      }
+    })->Array.keepSome
+    subst->substAdd(sa, lam(len, app(Schematic({schematic: h}), xs)))
+  } else {
+    raise(TODO("TODO"))
+  }
 }
 let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {
   raise(TODO("TODO"))
