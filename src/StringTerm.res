@@ -1,5 +1,10 @@
 open Util
 
+module IntCmp = Belt.Id.MakeComparable({
+  type t = int
+  let cmp = Pervasives.compare
+})
+
 type pos = {line: int, col: int, idx: int}
 type located<'a> = {content: 'a, loc: pos}
 type rec piece =
@@ -22,8 +27,115 @@ let substitute = (term: t, subst: subst) =>
     | _ => term
     }
   })
-// TODO: fix
-let unify: (t, t) => array<subst> = (s, t) => []
+let schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (term: t) =>
+  Array.map(term, piece => {
+    switch piece {
+    | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
+    | _ => Belt.Set.make(~id=module(IntCmp))
+    }
+  })->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s1, s2) => Belt.Set.union(s1, s2))
+let freeVarsIn = (term: t): Belt.Set.t<int, IntCmp.identity> =>
+  Array.map(term, piece => {
+    switch piece {
+    | Var({idx}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(idx)
+    | _ => Belt.Set.make(~id=module(IntCmp))
+    }
+  })->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s1, s2) => Belt.Set.union(s1, s2))
+
+let rec partitions = (n: int, xs: array<'a>): array<array<array<'a>>> => {
+  let len = Array.length(xs)
+  if n <= 0 || n > len || len == 0 {
+    []
+  } else if n == 1 {
+    [[xs]]
+  } else {
+    let x = xs[0]->Option.getExn
+    let xs = Array.sliceToEnd(xs, ~start=1)
+    let breakHere = partitions(n - 1, xs)->Array.map(partition => Array.concat([[x]], partition))
+    let breakLater =
+      partitions(n, xs)
+      ->Array.map(partition => {
+        let firstPart = partition[0]->Option.getExn
+        let restParts = Array.sliceToEnd(partition, ~start=1)
+        Array.concat([[x], firstPart], restParts)
+      })
+      ->Array.filter(partition => Array.length(partition) > 0)
+    Array.concat(breakHere, breakLater)
+  }
+}
+
+let combineSubst = (s: subst, t: subst) => {
+  let nu = Map.make()
+  Map.entries(s)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, term)) => nu->Map.set(key, term->substitute(t))
+    }
+  )
+  Map.entries(t)->Iterator.forEach(opt =>
+    switch opt {
+    | None => ()
+    | Some((key, term)) => nu->Map.set(key, term->substitute(s))
+    }
+  )
+  nu
+}
+let emptySubst: subst = Map.make()
+let singletonSubst: (int, t) => subst = (schematic, term) => {
+  let s = Map.make()
+  s->Map.set(schematic, term)
+  s
+}
+
+let uncons = (xs: array<'a>): ('a, array<'a>) => {
+  switch xs {
+  | [] => Error("expected nonempty array")->Result.getExn
+  | _ => (xs[0]->Option.getExn, Array.sliceToEnd(xs, ~start=1))
+  }
+}
+let match = (p1: piece, p2: piece) => {
+  switch (p1, p2) {
+  | (String(na), String(nb)) if na == nb => true
+  | (Var({idx: ia}), Var({idx: ib})) if ia == ib => true
+  | (_, _) => false
+  }
+}
+let rec unify = (s: array<piece>, t: array<piece>): array<subst> => {
+  switch (s, t) {
+  | ([], []) => [emptySubst]
+  | ([], _) => []
+  | (_, []) => []
+  | (_, _) => {
+      let (s1, ss) = uncons(s)
+      let (t1, ts) = uncons(t)
+      switch s1 {
+      | Schematic({schematic, allowed}) =>
+        Belt.Array.range(0, Array.length(ts))
+        ->Array.map(i => {
+          let subTerm = Array.slice(ts, ~start=0, ~end=i)
+          let freeVars = freeVarsIn(subTerm)
+          let allowedVars = Belt.Set.fromArray(allowed, ~id=module(IntCmp))
+          if Belt.Set.subset(freeVars, allowedVars) {
+            let s1 = singletonSubst(schematic, subTerm)
+            unify(
+              substitute(ss, s1),
+              Array.sliceToEnd(ts, ~start=i)->substitute(s1),
+            )->Array.map(s2 => combineSubst(s1, s2))
+          } else {
+            []
+          }
+        })
+        ->Array.flat
+      | _ =>
+        if match(s1, t1) {
+          unify(ss, ts)
+        } else {
+          []
+        }
+      }
+    }
+  }
+}
 // law: unify(a,b) == [{}] iff equivalent(a,b)
 let equivalent: (t, t) => bool = (s, t) => s == t
 let substDeBruijn = (string: t, substs: array<t>, ~from: int=0) => {
