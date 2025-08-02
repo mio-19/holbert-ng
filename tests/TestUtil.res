@@ -62,9 +62,8 @@ module MakeTerm = (Term: TERM) => {
     t->equal(
       Array.length(expect),
       Array.length(res),
-      ~msg=`solutions: ${substArrayPrettyPrint(
-          res,
-        )}\n  should have same length as expect: ${substArrayPrettyPrint(expect)}\n`,
+      ~msg=`solutions: ${substArrayPrettyPrint(res)}\n\
+      should have same length as expect: ${substArrayPrettyPrint(expect)}\n`,
     )
     let noMatches =
       res

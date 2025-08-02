@@ -21,10 +21,10 @@ let substitute = (term: t, subst: subst) =>
     switch piece {
     | Schematic({schematic, _}) =>
       switch Map.get(subst, schematic) {
-      | None => term
+      | None => [piece]
       | Some(found) => found
       }
-    | _ => term
+    | _ => [piece]
     }
   })
 let schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (term: t) =>
@@ -100,40 +100,53 @@ let match = (p1: piece, p2: piece) => {
   | (_, _) => false
   }
 }
-let rec unify = (s: array<piece>, t: array<piece>): array<subst> => {
-  switch (s, t) {
-  | ([], []) => [emptySubst]
-  | ([], _) => []
-  | (_, []) => []
-  | (_, _) => {
-      let (s1, ss) = uncons(s)
-      let (t1, ts) = uncons(t)
-      switch s1 {
-      | Schematic({schematic, allowed}) =>
-        Belt.Array.range(0, Array.length(ts))
-        ->Array.map(i => {
-          let subTerm = Array.slice(ts, ~start=0, ~end=i)
-          let freeVars = freeVarsIn(subTerm)
-          let allowedVars = Belt.Set.fromArray(allowed, ~id=module(IntCmp))
-          if Belt.Set.subset(freeVars, allowedVars) {
-            let s1 = singletonSubst(schematic, subTerm)
-            unify(
-              substitute(ss, s1),
-              Array.sliceToEnd(ts, ~start=i)->substitute(s1),
-            )->Array.map(s2 => combineSubst(s1, s2))
-          } else {
-            []
+let unify = (s: array<piece>, t: array<piece>): array<subst> => {
+  let rec inner = (s, t) => {
+    switch (s, t) {
+    | ([], []) => [emptySubst]
+    | ([], _) => []
+    | (_, _) => {
+        let (s1, ss) = uncons(s)
+        switch s1 {
+        | Schematic({schematic, allowed}) =>
+          Belt.Array.range(0, Array.length(t))
+          ->Array.map(i => {
+            let subTerm = Array.slice(t, ~start=0, ~end=i)
+            let freeVars = freeVarsIn(subTerm)
+            let allowedVars = Belt.Set.fromArray(allowed, ~id=module(IntCmp))
+            if Belt.Set.subset(freeVars, allowedVars) {
+              let s1 = singletonSubst(schematic, subTerm)
+              inner(
+                substitute(ss, s1),
+                Array.sliceToEnd(t, ~start=i)->substitute(s1),
+              )->Array.map(s2 => combineSubst(s1, s2))
+            } else {
+              []
+            }
+          })
+          ->Array.flat
+        | _ =>
+          switch t {
+          | [] => []
+          | _ => {
+              let (t1, ts) = uncons(t)
+              if match(s1, t1) {
+                inner(ss, ts)
+              } else {
+                []
+              }
+            }
           }
-        })
-        ->Array.flat
-      | _ =>
-        if match(s1, t1) {
-          unify(ss, ts)
-        } else {
-          []
         }
       }
     }
+  }
+  if schematicsIn(s)->Belt.Set.isEmpty {
+    inner(t, s)
+  } else if schematicsIn(t)->Belt.Set.isEmpty {
+    inner(s, t)
+  } else {
+    []
   }
 }
 // law: unify(a,b) == [{}] iff equivalent(a,b)
@@ -312,7 +325,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       Option.map(nAdvance, advance)->ignore
     }
     let error = msg => {
-      Console.log(acc.contents->Result.getExn)
       acc := error(loc(), msg)
     }
     let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))

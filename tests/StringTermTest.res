@@ -45,3 +45,48 @@ zoraBlock("parse", t => {
     t->Util.testParseFail(`("x".)."y"`)
   })
 })
+
+let parse = (input: string) =>
+  StringTerm.parse(input, ~scope=[], ~gen=StringTerm.makeGen())->Result.getExn->fst
+
+zoraBlock("unify", t => {
+  let a = parse(`"a"`)
+  let b = parse(`"b"`)
+  let x = parse(`\\?1()`)
+  t->Util.testUnify(a, a, [Map.make()])
+  t->Util.testUnify(x, a, [Map.fromArray([(1, a)])])
+  t->Util.testUnify(a, x, [Map.fromArray([(1, a)])])
+  // no solutions because we naively require schematics
+  // on at most one side for now
+  t->Util.testUnify(x, x, [])
+
+  let xy = parse(`\\?1().\\?2()`)
+  let ab = parse(`"a"."b"`)
+  t->Util.testUnify(x, ab, [Map.fromArray([(1, ab)])])
+  t->Util.testUnify(
+    xy,
+    ab,
+    [
+      Map.fromArray([(1, []), (2, ab)]),
+      Map.fromArray([(1, a), (2, b)]),
+      Map.fromArray([(1, ab), (2, [])]),
+    ],
+  )
+
+  t->Util.testUnify(parse(`\\?1()."b".\\?2()`), ab, [Map.fromArray([(1, a), (2, [])])])
+  t->Util.testUnify(
+    parse(`\\?1().\\?2()."b"`),
+    ab,
+    [Map.fromArray([(1, []), (2, a)]), Map.fromArray([(1, a), (2, [])])],
+  )
+  t->Util.testUnify(
+    parse(`"a".\\?1().\\?2()`),
+    ab,
+    [Map.fromArray([(1, []), (2, b)]), Map.fromArray([(1, b), (2, [])])],
+  )
+
+  let xax = parse(`\\?1()."a".\\?1()`)
+  t->Util.testUnify(xax, parse(`"a"`), [Map.fromArray([(1, [])])])
+  t->Util.testUnify(xax, parse(`"a"."a"."a"`), [Map.fromArray([(1, a)])])
+  t->Util.testUnify(xax, parse(`"a"."b"."a"."a"."b"`), [Map.fromArray([(1, parse(`"a"."b"`))])])
+})
