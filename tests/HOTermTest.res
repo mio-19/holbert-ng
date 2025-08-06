@@ -113,6 +113,7 @@ zoraBlock("parse lambda", t => {
       Lam({name: "x", body: App({func: Var({idx: 0}), arg: Var({idx: 0})})}),
     )
   })
+  // TODO: test if remaining strings are returned correctly
 })
 
 zoraBlock("unify test", t => {
@@ -188,7 +189,7 @@ zoraBlock("unify test", t => {
   t->block("divergent", t => {
     let divergent = "((x. x x) (x. x x))"
     let a = "((x. ?0 x) (x. x x))"
-    // should it not unify?
+    // TODO: should it not unify or not?
     t->Util.testNotUnify(a, divergent)
   })
 })
