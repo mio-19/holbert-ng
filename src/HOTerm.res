@@ -75,6 +75,10 @@ let rec freeVarsIn = (subst: subst, it: t): Belt.Set.t<int, IntCmp.identity> =>
   | App({func, arg}) => Belt.Set.union(freeVarsIn(subst, func), freeVarsIn(subst, arg))
   | Unallowed | Symbol(_) | Schematic(_) => Belt.Set.make(~id=module(IntCmp))
   }
+let freeVarsContains = (term: t, subst: subst, idx: int): bool => {
+  let set = freeVarsIn(subst, term)
+  set->Belt.Set.has(idx)
+}
 let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =>
   switch term {
   | Symbol(_) => term
@@ -175,7 +179,8 @@ let rec reduceFull = (term: t, subst: subst): t => {
   | Schematic({schematic}) if subst->substHas(schematic) =>
     let found = subst->substGet(schematic)->Option.getExn
     reduceFull(found, subst)
-  | Lam({body: App({func, arg: Var({idx: 0})})}) => reduceFull(downshift(func, 1), subst)
+  | Lam({body: App({func, arg: Var({idx: 0})})}) if !(func->freeVarsContains(subst, 0)) =>
+    reduceFull(downshift(func, 1), subst)
   | App({func, arg}) =>
     switch reduceFull(func, subst) {
     | Lam({body}) => reduceFull(substDeBruijn(body, [arg]), subst)
@@ -301,7 +306,7 @@ let rec devar = (subst: subst, term: t): t => {
 }
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
-    // TODO: figure out if the condition of args being empty is necessary and what does this condition implies
+  // TODO: figure out if the condition of args being empty is necessary and what does this condition implies
   | (Lam({name, body}), args) /* if args->Array.length == 0 */ => proj(subst, body, ~gen)
   | (Unallowed, args) => raise(UnifyFail("unallowed"))
   | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
