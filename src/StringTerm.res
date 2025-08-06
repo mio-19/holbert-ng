@@ -238,14 +238,13 @@ let prettyPrint = (term: t, ~scope: array<string>) =>
     }
   })->Array.join(".")
 let prettyPrintMeta = (str: string) => `${str}.`
+
 type token =
   | StringLit(string)
   | VarLit(int)
   | SchemaLit({id: int, allowed: array<int>})
   | LParen
   | RParen
-  | OpenString
-  | CloseString
 type remaining = string
 type errorMessage = string
 type ident = string
@@ -272,13 +271,14 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     let pos = ref(0)
     let line = ref(1)
     let col = ref(1)
+    let nParens = ref(0)
+    let isFirstToken = ref(true)
     let loc = () => {
       line: line.contents,
       col: col.contents,
       idx: pos.contents,
     }
     let acc = ref(Ok([]))
-    let seenCloseBrace = ref(false)
     let advance = n => {
       pos := pos.contents + n
       col := col.contents + n
@@ -358,23 +358,36 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       | None => error("unexpected token")
       }
     }
+    let isSpace = str => {
+      str == " " || str == "\t" || str == "\r"
+    }
     while (
-      pos.contents < String.length(str) && Result.isOk(acc.contents) && !seenCloseBrace.contents
+      pos.contents < String.length(str) &&
+      Result.isOk(acc.contents) &&
+      (isFirstToken.contents || nParens.contents > 0)
     ) {
-      switch String.get(str, pos.contents)->Option.getExn {
-      | "{" => add(OpenString, ~nAdvance=1)
-      | "}" => {
-          add(CloseString, ~nAdvance=1)
-          seenCloseBrace := true
-        }
-      | " " | "\t" | "\r" => advance1()
+      let c = String.get(str, pos.contents)->Option.getExn
+      switch c {
       | "\n" => newline()
       | "\"" => stringLit()
-      | "(" => add(LParen, ~nAdvance=1)
-      | ")" => add(RParen, ~nAdvance=1)
+      | "(" => {
+          nParens := nParens.contents + 1
+          add(LParen, ~nAdvance=1)
+        }
+      | ")" => {
+          nParens := nParens.contents + 1
+          add(RParen, ~nAdvance=1)
+        }
       | "\\" => varLit()
       | "?" => schemaLit()
+      | c if isSpace(c) => advance1()
       | _ => varScope()
+      }
+      if !isSpace(c) {
+        isFirstToken := false
+        if nParens.contents == 0 && c != ")" {
+          error("expected open paren to start")
+        }
       }
     }
     acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
@@ -397,17 +410,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
         acc := error(loc, msg)
       }
       switch tok {
-      | OpenString =>
-        if tokenIdx.contents != 0 {
-          error("expected open string to be at start")
-        }
-      | CloseString =>
-        // this should be an invariant enforced by the lexer, but still
-        // potentially useful to assert here
-        if tokenIdx.contents != Array.length(tokens) - 1 {
-          error("expected close string to be at end")
-        }
-        seenCloseString := true
       | StringLit(s) => add(String(s))
       | SchemaLit({id: schematic, allowed}) => add(Schematic({schematic, allowed}))
       | VarLit(idx) => add(Var({idx: idx})) // some reason i'm not allowed to shorthand here?
@@ -419,27 +421,16 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
           Array.pop(parens)->ignore
         }
       }
-      if isFirstToken.contents && tok != OpenString {
-        error("expected start to be open string")
-      }
       isFirstToken := false
       tokenIdx := tokenIdx.contents + 1
     }
     switch acc.contents {
     | Ok(t) =>
-      switch (Array.length(parens) == 0, seenCloseString.contents) {
-      | (true, true) => Ok(t)
-      | (false, true) => {
-          let loc = Array.pop(parens)->Option.getExn
-          error(loc, "expected closing paren")
-        }
-      | _ => {
-          let loc =
-            Array.last(tokens)
-            ->Option.map(t => t.loc)
-            ->Option.getOr({line: 1, col: 1, idx: 1})
-          error(loc, "expected close string")
-        }
+      if Array.length(parens) == 0 {
+        Ok(t)
+      } else {
+        let loc = Array.pop(parens)->Option.getExn
+        error(loc, "expected closing paren")
       }
     | Error(msg) => Error(msg)
     }
