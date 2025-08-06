@@ -79,6 +79,7 @@ let freeVarsContains = (term: t, subst: subst, idx: int): bool => {
   let set = freeVarsIn(subst, term)
   set->Belt.Set.has(idx)
 }
+// f might map an index to a new one or to a term. when mapping to a term the real index without shifting is passed
 let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =>
   switch term {
   | Symbol(_) => term
