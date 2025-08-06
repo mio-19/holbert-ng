@@ -20,14 +20,13 @@ zoraBlock("parse", t => {
     t->Util.testParse("\\?1(1 23 4)", [Schematic({schematic: 1, allowed: [1, 23, 4]})])
   })
   t->block("flat concat", t => {
-    t->Util.testParse(`"x"."y"`, [String("x"), String("y")])
+    t->Util.testParse(`"x""y"`, [String("x"), String("y")])
+    t->Util.testParse(`"x"  "y"`, [String("x"), String("y")])
     t->Util.testParse(
-      `"x".\\?1(1 2 3).\\1.y`,
+      `"x" \\?1(1 2 3) \\1 y`,
       ~scope=["y"],
       [String("x"), Schematic({schematic: 1, allowed: [1, 2, 3]}), Var({idx: 1}), Var({idx: 0})],
     )
-    // can't end in concat
-    t->Util.testParseFail(`"x".`)
   })
   t->block("paren", t => {
     // empty
@@ -39,10 +38,8 @@ zoraBlock("parse", t => {
     t->Util.testParseFail(`("x"))`)
     t->Util.testParseFail(`(("x")`)
     // multi
-    t->Util.testParse(`"x".("y"."z")`, [String("x"), String("y"), String("z")])
-    t->Util.testParse(`("x"."y")."z"`, [String("x"), String("y"), String("z")])
-    // can't concat
-    t->Util.testParseFail(`("x".)."y"`)
+    t->Util.testParse(`"x" ("y" "z")`, [String("x"), String("y"), String("z")])
+    t->Util.testParse(`("x" "y") "z"`, [String("x"), String("y"), String("z")])
   })
 })
 
@@ -60,8 +57,8 @@ zoraBlock("unify", t => {
   // on at most one side for now
   t->Util.testUnify(x, x, [])
 
-  let xy = parse(`\\?1().\\?2()`)
-  let ab = parse(`"a"."b"`)
+  let xy = parse(`\\?1() \\?2()`)
+  let ab = parse(`"a" "b"`)
   t->Util.testUnify(x, ab, [Map.fromArray([(1, ab)])])
   t->Util.testUnify(
     xy,
@@ -73,20 +70,20 @@ zoraBlock("unify", t => {
     ],
   )
 
-  t->Util.testUnify(parse(`\\?1()."b".\\?2()`), ab, [Map.fromArray([(1, a), (2, [])])])
+  t->Util.testUnify(parse(`\\?1() "b" \\?2()`), ab, [Map.fromArray([(1, a), (2, [])])])
   t->Util.testUnify(
-    parse(`\\?1().\\?2()."b"`),
+    parse(`\\?1() \\?2() "b"`),
     ab,
     [Map.fromArray([(1, []), (2, a)]), Map.fromArray([(1, a), (2, [])])],
   )
   t->Util.testUnify(
-    parse(`"a".\\?1().\\?2()`),
+    parse(`"a" \\?1() \\?2()`),
     ab,
     [Map.fromArray([(1, []), (2, b)]), Map.fromArray([(1, b), (2, [])])],
   )
 
-  let xax = parse(`\\?1()."a".\\?1()`)
+  let xax = parse(`\\?1() "a" \\?1()`)
   t->Util.testUnify(xax, parse(`"a"`), [Map.fromArray([(1, [])])])
-  t->Util.testUnify(xax, parse(`"a"."a"."a"`), [Map.fromArray([(1, a)])])
-  t->Util.testUnify(xax, parse(`"a"."b"."a"."a"."b"`), [Map.fromArray([(1, parse(`"a"."b"`))])])
+  t->Util.testUnify(xax, parse(`"a" "a" "a"`), [Map.fromArray([(1, a)])])
+  t->Util.testUnify(xax, parse(`"a" "b" "a" "a" "b"`), [Map.fromArray([(1, parse(`"a" "b"`))])])
 })

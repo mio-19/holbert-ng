@@ -242,7 +242,6 @@ type token =
   | StringLit(string)
   | VarLit(int)
   | SchemaLit({id: int, allowed: array<int>})
-  | Concat
   | LParen
   | RParen
 type remaining = string
@@ -358,7 +357,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       | " " | "\t" | "\r" => advance1()
       | "\n" => newline()
       | "\"" => stringLit()
-      | "." => add(Concat, ~nAdvance=1)
       | "(" => add(LParen, ~nAdvance=1)
       | ")" => add(RParen, ~nAdvance=1)
       | "\\" => varLit()
@@ -389,11 +387,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
           error("no matching open paren")
         } else {
           Array.pop(parens)->ignore
-        }
-      | Concat =>
-        switch tokens[tokenIdx.contents + 1] {
-        | None | Some({content: RParen}) => error("expected string to follow concatenation")
-        | Some(_) => ()
         }
       }
       tokenIdx := tokenIdx.contents + 1
