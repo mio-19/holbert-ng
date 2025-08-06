@@ -148,6 +148,7 @@ let rec substitute = (term: t, subst: subst) =>
     })
   | Var(_) | Unallowed | Symbol(_) => term
   }
+// TODO: check how will this interact with meta variables (schematics) and check if it is needed to have a subst parameter
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
   | Symbol(_) => term
