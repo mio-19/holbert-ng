@@ -129,7 +129,7 @@ let substAdd = (subst: subst, schematic: schematic, term: t) => {
   assert(subst->Belt.Map.Int.has(schematic) == false)
   subst->Belt.Map.Int.set(schematic, term)
 }
-// TODO: check if upshift is truly not needed when substituting inside a lambda
+// TODO: check if upshift is truly not needed when substituting inside a lambda - it should not be needed for subst produced by pattern unification
 let rec substitute = (term: t, subst: subst) =>
   switch term {
   | Schematic({schematic, _}) =>
@@ -149,7 +149,7 @@ let rec substitute = (term: t, subst: subst) =>
     })
   | Var(_) | Unallowed | Symbol(_) => term
   }
-// TODO: check how will this interact with meta variables (schematics) and check if it is needed to have a subst parameter
+// TODO: check how will this interact with meta variables (schematics) and check if it is needed to have a subst parameter - it should not be needed for subst produced by pattern unification
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
   | Symbol(_) => term
