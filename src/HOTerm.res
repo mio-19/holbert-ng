@@ -129,6 +129,7 @@ let substAdd = (subst: subst, schematic: schematic, term: t) => {
   assert(subst->Belt.Map.Int.has(schematic) == false)
   subst->Belt.Map.Int.set(schematic, term)
 }
+// TODO: check if upshift is truly not needed when substituting inside a lambda
 let rec substitute = (term: t, subst: subst) =>
   switch term {
   | Schematic({schematic, _}) =>
