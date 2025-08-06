@@ -244,14 +244,17 @@ type token =
   | SchemaLit({id: int, allowed: array<int>})
   | LParen
   | RParen
+  | OpenString
+  | CloseString
 type remaining = string
 type errorMessage = string
-let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), string> = (
+type ident = string
+let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), errorMessage> = (
   str: string,
-  ~scope: array<string>,
+  ~scope: array<ident>,
   ~gen=?,
 ) => {
-  let error = (loc: pos, msg: string) => {
+  let error = (loc: pos, msg: errorMessage) => {
     let codeAroundLoc = String.slice(str, ~start=loc.idx, ~end=loc.idx + 5)
     Error(`${Int.toString(loc.line)}:${Int.toString(loc.col)} (${codeAroundLoc})...: ${msg}`)
   }
@@ -265,7 +268,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
     })
   }
 
-  let lex: unit => result<array<located<token>>, string> = () => {
+  let lex: unit => result<(array<located<token>>, remaining), errorMessage> = () => {
     let pos = ref(0)
     let line = ref(1)
     let col = ref(1)
@@ -275,6 +278,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       idx: pos.contents,
     }
     let acc = ref(Ok([]))
+    let seenCloseBrace = ref(false)
     let advance = n => {
       pos := pos.contents + n
       col := col.contents + n
@@ -354,8 +358,15 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       | None => error("unexpected token")
       }
     }
-    while {pos.contents < String.length(str) && Result.isOk(acc.contents)} {
+    while (
+      pos.contents < String.length(str) && Result.isOk(acc.contents) && !seenCloseBrace.contents
+    ) {
       switch String.get(str, pos.contents)->Option.getExn {
+      | "{" => add(OpenString, ~nAdvance=1)
+      | "}" => {
+          add(CloseString, ~nAdvance=1)
+          seenCloseBrace := true
+        }
       | " " | "\t" | "\r" => advance1()
       | "\n" => newline()
       | "\"" => stringLit()
@@ -366,21 +377,37 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       | _ => varScope()
       }
     }
-    acc.contents
+    acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
   }
   let parseExp = (tokens: array<located<token>>) => {
     let tokenIdx = ref(0)
-    let acc: ref<result<array<piece>, (errorMessage, remaining)>> = ref(Ok([]))
+    let acc: ref<result<array<piece>, errorMessage>> = ref(Ok([]))
     let parens = []
     let add = p => {acc.contents->Result.map(acc => acc->Array.push(p))->ignore}
+    let seenCloseString = ref(false)
+    let isFirstToken = ref(true)
 
-    while {tokenIdx.contents < Array.length(tokens) && Result.isOk(acc.contents)} {
+    while (
+      tokenIdx.contents < Array.length(tokens) &&
+      Result.isOk(acc.contents) &&
+      !seenCloseString.contents
+    ) {
       let {content: tok, loc} = tokens[tokenIdx.contents]->Option.getExn
       let error = msg => {
-        acc :=
-          error(loc, msg)->Result.mapError(msg => (msg, String.sliceToEnd(str, ~start=loc.idx)))
+        acc := error(loc, msg)
       }
       switch tok {
+      | OpenString =>
+        if tokenIdx.contents != 0 {
+          error("expected open string to be at start")
+        }
+      | CloseString =>
+        // this should be an invariant enforced by the lexer, but still
+        // potentially useful to assert here
+        if tokenIdx.contents != Array.length(tokens) - 1 {
+          error("expected close string to be at end")
+        }
+        seenCloseString := true
       | StringLit(s) => add(String(s))
       | SchemaLit({id: schematic, allowed}) => add(Schematic({schematic, allowed}))
       | VarLit(idx) => add(Var({idx: idx})) // some reason i'm not allowed to shorthand here?
@@ -392,22 +419,33 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
           Array.pop(parens)->ignore
         }
       }
+      if isFirstToken.contents && tok != OpenString {
+        error("expected start to be open string")
+      }
+      isFirstToken := false
       tokenIdx := tokenIdx.contents + 1
     }
     switch acc.contents {
     | Ok(t) =>
-      if Array.length(parens) == 0 {
-        Ok(t, "")
-      } else {
-        let loc = Array.pop(parens)->Option.getExn
-        error(loc, "expected closing paren")
+      switch (Array.length(parens) == 0, seenCloseString.contents) {
+      | (true, true) => Ok(t)
+      | (false, true) => {
+          let loc = Array.pop(parens)->Option.getExn
+          error(loc, "expected closing paren")
+        }
+      | _ => {
+          let loc =
+            Array.last(tokens)
+            ->Option.map(t => t.loc)
+            ->Option.getOr({line: 1, col: 1, idx: 1})
+          error(loc, "expected close string")
+        }
       }
-    // TODO: decide if this remaining is redundant
-    | Error(msg, remaining) => Error(msg)
+    | Error(msg) => Error(msg)
     }
   }
   switch lex() {
-  | Ok(tokens) => parseExp(tokens)
+  | Ok((tokens, remaining)) => parseExp(tokens)->Result.map(r => (r, remaining))
   | Error(msg) => Error(msg)
   }
 }
