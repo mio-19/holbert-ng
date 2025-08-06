@@ -146,7 +146,7 @@ let rec substitute = (term: t, subst: subst) =>
       func: substitute(func, subst),
       arg: substitute(arg, subst),
     })
-  | _ => term
+  | Var(_) | Unallowed | Symbol(_) => term
   }
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
