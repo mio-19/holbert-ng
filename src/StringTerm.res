@@ -316,28 +316,30 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       }
     }
     let readInt = s => Int.fromString(s)->Option.getExn
+    let schemaLit = () => {
+      let schemaRegex = %re("/\?(\d+)\(((?:\d+\s*)*)\)/")
+      switch execRe(schemaRegex) {
+      | Some([idStr, allowedStr], l) => {
+          let id = readInt(idStr)
+          let allowed =
+            allowedStr
+            ->String.trim
+            ->String.splitByRegExp(%re("/\s+/"))
+            ->Array.keepSome
+            ->Array.filter(s => s != "")
+            ->Array.map(readInt)
+          add(SchemaLit({id, allowed}), ~nAdvance=l)
+        }
+      | Some(_) => error("schema lit regex error")
+      | None => error("expected schematic literal")
+      }
+    }
     let varLit = () => {
       let varRegex = %re("/^\\(\d+)/")
-      let schemaRegex = %re("/\\\?(\d+)\(((?:\d+\s*)*)\)/")
       switch execRe(varRegex) {
       | Some([match], l) => add(VarLit(readInt(match)), ~nAdvance=l)
       | Some(_) => error("var lit regex error")
-      | None =>
-        switch execRe(schemaRegex) {
-        | Some([idStr, allowedStr], l) => {
-            let id = readInt(idStr)
-            let allowed =
-              allowedStr
-              ->String.trim
-              ->String.splitByRegExp(%re("/\s+/"))
-              ->Array.keepSome
-              ->Array.filter(s => s != "")
-              ->Array.map(readInt)
-            add(SchemaLit({id, allowed}), ~nAdvance=l)
-          }
-        | Some(_) => error("schema lit regex error")
-        | None => error("expected var or schema")
-        }
+      | None => error("expected var literal")
       }
     }
     let varScope = () => {
@@ -360,6 +362,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       | "(" => add(LParen, ~nAdvance=1)
       | ")" => add(RParen, ~nAdvance=1)
       | "\\" => varLit()
+      | "?" => schemaLit()
       | _ => varScope()
       }
     }
