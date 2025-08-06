@@ -223,10 +223,6 @@ let rec idx = (is: array<t>, j: int): option<int> => {
     }
   }
 }
-let var = (idx: int): t => {
-  assert(idx >= 0)
-  Var({idx: idx})
-}
 let idx1 = (is: array<t>, j: int): t => {
   switch idx(is, j) {
   | None => Unallowed
