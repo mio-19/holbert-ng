@@ -129,7 +129,6 @@ let substAdd = (subst: subst, schematic: schematic, term: t) => {
   assert(subst->Belt.Map.Int.has(schematic) == false)
   subst->Belt.Map.Int.set(schematic, term)
 }
-// TODO: check if upshift is truly not needed when substituting inside a lambda - it should not be needed for subst produced by pattern unification
 let rec substitute = (term: t, subst: subst) =>
   switch term {
   | Schematic({schematic, _}) =>
@@ -140,7 +139,8 @@ let rec substitute = (term: t, subst: subst) =>
   | Lam({name, body}) =>
     Lam({
       name,
-      body: substitute(body, subst),
+      // upshift is not needed for pattern unification, but it is safer to have upshift here
+      body: substitute(body, subst->Belt.Map.Int.map(t => upshift(t, 1))),
     })
   | App({func, arg}) =>
     App({
