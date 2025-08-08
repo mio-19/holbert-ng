@@ -253,7 +253,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 ) => {
   let error = (loc: pos, msg: errorMessage) => {
     let codeAroundLoc = String.slice(str, ~start=loc.idx, ~end=loc.idx + 5)
-    Error(`problem here: (${codeAroundLoc})...: ${msg}`)
+    Error(`problem here: ${codeAroundLoc}...: ${msg}`)
   }
 
   let execRe = (re, str) => {
@@ -297,7 +297,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     }
     let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
     let stringLit = () => {
-      let regex = %re("/^\"([^\"]*)\"/")
+      let regex = %re(`/^([^!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+)/`)
       switch execRe(regex) {
       | Some([match], l) => add(StringLit(match), ~nAdvance=l)
       | Some(_) => error("regex string lit error")
@@ -324,8 +324,8 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       }
     }
     let varLit = () => {
-      let varLitRegex = %re("/^\\(\d+)/")
-      let varScopeRegex = %re("/^([a-zA-Z]\w*)/")
+      let varLitRegex = %re("/^\$\\(\d+)/")
+      let varScopeRegex = %re("/^\$([a-zA-Z]\w*)/")
       switch execRe(varLitRegex) {
       | Some([match], l) => add(VarLit(readInt(match)), ~nAdvance=l)
       | Some(_) => error("var lit regex error")
@@ -340,9 +340,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
         | None => error("expected var")
         }
       }
-    }
-    let isSpace = str => {
-      str == " " || str == "\t" || str == "\r" || str == "\n"
     }
     // consume leading whitespace
     switch execRe(%re(`/\s*"/`)) {
@@ -372,14 +369,9 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     let tokenIdx = ref(0)
     let acc: ref<result<array<piece>, errorMessage>> = ref(Ok([]))
     let add = p => {acc.contents->Result.map(acc => acc->Array.push(p))->ignore}
-    let seenCloseString = ref(false)
     let isFirstToken = ref(true)
 
-    while (
-      tokenIdx.contents < Array.length(tokens) &&
-      Result.isOk(acc.contents) &&
-      !seenCloseString.contents
-    ) {
+    while tokenIdx.contents < Array.length(tokens) && Result.isOk(acc.contents) {
       let {content: tok, loc} = tokens[tokenIdx.contents]->Option.getExn
       switch tok {
       | StringLit(s) => add(String(s))
