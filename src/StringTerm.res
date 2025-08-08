@@ -297,11 +297,15 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     }
     let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
     let stringLit = () => {
-      let regex = %re(`/^([^!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+)/`)
-      switch execRe(regex) {
+      let identRegex = %re(`/^([a-zA-Z][a-zA-Z\d]+)/`)
+      let symbolRegex = %re(`/^[!@#$%^~&*()_+\-=\[\]{};':"\\|,.<>\/?]+/`)
+      let numberRegex = %re(`/^\d+/`)
+      switch execRe(identRegex)
+      ->Option.orElse(execRe(symbolRegex))
+      ->Option.orElse(execRe(numberRegex)) {
       | Some([match], l) => add(StringLit(match), ~nAdvance=l)
       | Some(_) => error("regex string lit error")
-      | None => error("expected end quote")
+      | None => error("expected string")
       }
     }
     let readInt = s => Int.fromString(s)->Option.getExn
