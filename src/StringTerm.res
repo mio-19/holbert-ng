@@ -3,8 +3,6 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-type pos = {idx: int}
-type located<'a> = {content: 'a, loc: pos}
 type rec piece =
   | String(string)
   | Var({idx: int})
@@ -239,10 +237,6 @@ let prettyPrint = (term: t, ~scope: array<string>) =>
   })->Array.join(".")
 let prettyPrintMeta = (str: string) => `${str}.`
 
-type token =
-  | StringLit(string)
-  | VarLit(int)
-  | SchemaLit({id: int, allowed: array<int>})
 type remaining = string
 type errorMessage = string
 type ident = string
@@ -251,9 +245,13 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   ~scope: array<ident>,
   ~gen=?,
 ) => {
-  let error = (loc: pos, msg: errorMessage) => {
-    let codeAroundLoc = String.slice(str, ~start=loc.idx, ~end=loc.idx + 5)
-    Error(`problem here: ${codeAroundLoc}...: ${msg}`)
+  let pos = ref(0)
+  let seenCloseString = ref(false)
+  let acc = ref(Ok([]))
+
+  let error = (msg: errorMessage) => {
+    let codeAroundLoc = String.slice(str, ~start=pos.contents, ~end=pos.contents + 5)
+    acc := Error(`problem here: ${codeAroundLoc}...: ${msg}`)
   }
 
   let execRe = (re, str) => {
@@ -264,141 +262,100 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       (matches(result), fullMatch(result)->String.length)
     })
   }
-
-  let lex: unit => result<(array<located<token>>, remaining), errorMessage> = () => {
-    let pos = ref(0)
-    let seenCloseString = ref(false)
-    let loc = () => {
-      idx: pos.contents,
-    }
-    let acc = ref(Ok([]))
-    let advance = n => {
-      pos := pos.contents + n
-    }
-    let advance1 = () => advance(1)
-    let add = (token, ~nAdvance=?) => {
-      acc.contents
-      ->Result.map(acc => {
-        Array.push(
-          acc,
-          {
-            content: token,
-            loc: {
-              idx: pos.contents,
-            },
-          },
-        )
-      })
-      ->ignore
-      Option.map(nAdvance, advance)->ignore
-    }
-    let error = msg => {
-      acc := error(loc(), msg)
-    }
-    let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
-    let stringLit = () => {
-      let identRegex = %re(`/^([a-zA-Z][a-zA-Z\d]*)/`)
-      let symbolRegex = %re(`/^([!@#\$%\^~&*_+\-={};':|,.<>\/?]+)/`)
-      let numberRegex = %re(`/^(\d+)/`)
-      switch execRe(identRegex)
-      ->Option.orElse(execRe(symbolRegex))
-      ->Option.orElse(execRe(numberRegex)) {
-      | Some([match], l) => add(StringLit(match), ~nAdvance=l)
-      | Some(_) => error("regex string lit error")
-      | None => error("expected string")
-      }
-    }
-    let escaped = () => {
-      let escapedRegex = %re(`/\\([\$\?\\\"])/`)
-      switch execRe(escapedRegex) {
-      | Some([char], l) => add(StringLit(char), ~nAdvance=l)
-      | Some(_) => error("regex escaped error")
-      | None => error("expected valid escaped character")
-      }
-    }
-    let readInt = s => Int.fromString(s)->Option.getExn
-    let schema = () => {
-      let schemaRegex = %re("/\?(\d+)\(((?:\d+\s*)*)\)/")
-      switch execRe(schemaRegex) {
-      | Some([idStr, allowedStr], l) => {
-          let id = readInt(idStr)
-          let allowed =
-            allowedStr
-            ->String.trim
-            ->String.splitByRegExp(%re("/\s+/"))
-            ->Array.keepSome
-            ->Array.filter(s => s != "")
-            ->Array.map(readInt)
-          add(SchemaLit({id, allowed}), ~nAdvance=l)
-        }
-      | Some(_) => error("schema lit regex error")
-      | None => error("expected schematic literal")
-      }
-    }
-    let var = () => {
-      let varLitRegex = %re("/^\$\\(\d+)/")
-      let varScopeRegex = %re("/^\$([a-zA-Z]\w*)/")
-      switch execRe(varLitRegex) {
-      | Some([match], l) => add(VarLit(readInt(match)), ~nAdvance=l)
-      | Some(_) => error("var lit regex error")
-      | None =>
-        switch execRe(varScopeRegex) {
-        | Some([ident], l) =>
-          switch Array.indexOfOpt(scope, ident) {
-          | Some(idx) => add(VarLit(idx), ~nAdvance=l)
-          | None => error("expected variable in scope")
-          }
-        | Some(_) => error("var regex error")
-        | None => error("expected var")
-        }
-      }
-    }
-    // consume leading whitespace + open quote
-    switch execRe(%re(`/\s*"/`)) {
-    | Some([], l) => pos := l
-    | Some(_) => error("leading whitespace regex error")
-    | None => error("expected open quote")
-    }
-    while (
-      pos.contents < String.length(str) && Result.isOk(acc.contents) && !seenCloseString.contents
-    ) {
-      let c = String.get(str, pos.contents)->Option.getExn
-      switch c {
-      | "\"" => {
-          advance1()
-          seenCloseString := true
-        }
-      | "$" => var()
-      | "?" => schema()
-      | " " | "\t" | "\r" | "\n" => advance1()
-      | ")" | "(" | "[" | "]" => add(StringLit(c), ~nAdvance=1)
-      | "\\" => escaped()
-      | _ => stringLit()
-      }
-    }
-    acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
+  let advance = n => {
+    pos := pos.contents + n
   }
-  // looks as if this is now totally redundant. remove later
-  let parseExp = (tokens: array<located<token>>) => {
-    let tokenIdx = ref(0)
-    let acc: ref<result<array<piece>, errorMessage>> = ref(Ok([]))
-    let add = p => {acc.contents->Result.map(acc => acc->Array.push(p))->ignore}
-    let isFirstToken = ref(true)
-
-    while tokenIdx.contents < Array.length(tokens) && Result.isOk(acc.contents) {
-      let {content: tok, loc} = tokens[tokenIdx.contents]->Option.getExn
-      switch tok {
-      | StringLit(s) => add(String(s))
-      | SchemaLit({id: schematic, allowed}) => add(Schematic({schematic, allowed}))
-      | VarLit(idx) => add(Var({idx: idx})) // some reason i'm not allowed to shorthand here?
-      }
-      isFirstToken := false
-      tokenIdx := tokenIdx.contents + 1
-    }
+  let advance1 = () => advance(1)
+  let add = (token, ~nAdvance=?) => {
     acc.contents
+    ->Result.map(acc => {
+      Array.push(acc, token)
+    })
+    ->ignore
+    Option.map(nAdvance, advance)->ignore
   }
-  switch lex() {
-  | Ok((tokens, remaining)) => parseExp(tokens)->Result.map(r => (r, remaining))
-  | Error(msg) => Error(msg)
+  let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
+  let stringLit = () => {
+    let identRegex = %re(`/^([a-zA-Z][a-zA-Z\d]*)/`)
+    let symbolRegex = %re(`/^([!@#\$%\^~&*_+\-={};':|,.<>\/?]+)/`)
+    let numberRegex = %re(`/^(\d+)/`)
+    switch execRe(identRegex)
+    ->Option.orElse(execRe(symbolRegex))
+    ->Option.orElse(execRe(numberRegex)) {
+    | Some([match], l) => add(String(match), ~nAdvance=l)
+    | Some(_) => error("regex string lit error")
+    | None => error("expected string")
+    }
   }
+  let escaped = () => {
+    let escapedRegex = %re(`/\\([\$\?\\\"])/`)
+    switch execRe(escapedRegex) {
+    | Some([char], l) => add(String(char), ~nAdvance=l)
+    | Some(_) => error("regex escaped error")
+    | None => error("expected valid escaped character")
+    }
+  }
+  let readInt = s => Int.fromString(s)->Option.getExn
+  let schema = () => {
+    let schemaRegex = %re("/\?(\d+)\(((?:\d+\s*)*)\)/")
+    switch execRe(schemaRegex) {
+    | Some([idStr, allowedStr], l) => {
+        let schematic = readInt(idStr)
+        let allowed =
+          allowedStr
+          ->String.trim
+          ->String.splitByRegExp(%re("/\s+/"))
+          ->Array.keepSome
+          ->Array.filter(s => s != "")
+          ->Array.map(readInt)
+        add(Schematic({schematic, allowed}), ~nAdvance=l)
+      }
+    | Some(_) => error("schema lit regex error")
+    | None => error("expected schematic literal")
+    }
+  }
+  let var = () => {
+    let varLitRegex = %re("/^\$\\(\d+)/")
+    let varScopeRegex = %re("/^\$([a-zA-Z]\w*)/")
+    switch execRe(varLitRegex) {
+    | Some([match], l) => add(Var({idx: readInt(match)}), ~nAdvance=l)
+    | Some(_) => error("var lit regex error")
+    | None =>
+      switch execRe(varScopeRegex) {
+      | Some([ident], l) =>
+        switch Array.indexOfOpt(scope, ident) {
+        | Some(idx) => add(Var({idx: idx}), ~nAdvance=l)
+        | None => error("expected variable in scope")
+        }
+      | Some(_) => error("var regex error")
+      | None => error("expected var")
+      }
+    }
+  }
+
+  // consume leading whitespace + open quote
+  switch execRe(%re(`/\s*"/`)) {
+  | Some([], l) => pos := l
+  | Some(_) => error("leading whitespace regex error")
+  | None => error("expected open quote")
+  }
+  while (
+    pos.contents < String.length(str) && Result.isOk(acc.contents) && !seenCloseString.contents
+  ) {
+    let c = String.get(str, pos.contents)->Option.getExn
+    switch c {
+    | "\"" => {
+        advance1()
+        seenCloseString := true
+      }
+    | "$" => var()
+    | "?" => schema()
+    | " " | "\t" | "\r" | "\n" => advance1()
+    | ")" | "(" | "[" | "]" => add(String(c), ~nAdvance=1)
+    | "\\" => escaped()
+    | _ => stringLit()
+    }
+  }
+
+  acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
 }
