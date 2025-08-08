@@ -324,23 +324,21 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       }
     }
     let varLit = () => {
-      let varRegex = %re("/^\\(\d+)/")
-      switch execRe(varRegex) {
+      let varLitRegex = %re("/^\\(\d+)/")
+      let varScopeRegex = %re("/^([a-zA-Z]\w*)/")
+      switch execRe(varLitRegex) {
       | Some([match], l) => add(VarLit(readInt(match)), ~nAdvance=l)
       | Some(_) => error("var lit regex error")
-      | None => error("expected var literal")
-      }
-    }
-    let varScope = () => {
-      let varRegex = %re("/^([a-zA-Z]\w*)/")
-      switch execRe(varRegex) {
-      | Some([ident], l) =>
-        switch Array.indexOfOpt(scope, ident) {
-        | Some(idx) => add(VarLit(idx), ~nAdvance=l)
-        | None => error("expected variable in scope")
+      | None =>
+        switch execRe(varScopeRegex) {
+        | Some([ident], l) =>
+          switch Array.indexOfOpt(scope, ident) {
+          | Some(idx) => add(VarLit(idx), ~nAdvance=l)
+          | None => error("expected variable in scope")
+          }
+        | Some(_) => error("var regex error")
+        | None => error("expected var")
         }
-      | Some(_) => error("var regex error")
-      | None => error("unexpected token")
       }
     }
     let isSpace = str => {
@@ -361,14 +359,15 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
           advance1()
           seenCloseString := true
         }
-      | "\\" => varLit()
+      | "$" => varLit()
       | "?" => schemaLit()
-      | c if isSpace(c) => advance1()
-      | _ => varScope()
+      | " " | "\t" | "\r" | "\n" => advance1()
+      | _ => stringLit()
       }
     }
     acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
   }
+  // looks as if this is now totally redundant. remove later
   let parseExp = (tokens: array<located<token>>) => {
     let tokenIdx = ref(0)
     let acc: ref<result<array<piece>, errorMessage>> = ref(Ok([]))
