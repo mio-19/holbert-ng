@@ -243,8 +243,6 @@ type token =
   | StringLit(string)
   | VarLit(int)
   | SchemaLit({id: int, allowed: array<int>})
-  | LParen
-  | RParen
 type remaining = string
 type errorMessage = string
 type ident = string
@@ -269,8 +267,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 
   let lex: unit => result<(array<located<token>>, remaining), errorMessage> = () => {
     let pos = ref(0)
-    let nParens = ref(0)
-    let isFirstToken = ref(true)
+    let seenCloseString = ref(false)
     let loc = () => {
       idx: pos.contents,
     }
@@ -349,32 +346,25 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     let isSpace = str => {
       str == " " || str == "\t" || str == "\r" || str == "\n"
     }
+    // consume leading whitespace
+    switch execRe(%re(`/\s*"/`)) {
+    | Some([], l) => pos := l
+    | Some(_) => error("leading whitespace regex error")
+    | None => error("expected open quote")
+    }
     while (
-      pos.contents < String.length(str) &&
-      Result.isOk(acc.contents) &&
-      (isFirstToken.contents || nParens.contents > 0)
+      pos.contents < String.length(str) && Result.isOk(acc.contents) && !seenCloseString.contents
     ) {
       let c = String.get(str, pos.contents)->Option.getExn
       switch c {
-      | "\"" => stringLit()
-      | "(" => {
-          nParens := nParens.contents + 1
-          add(LParen, ~nAdvance=1)
-        }
-      | ")" => {
-          nParens := nParens.contents + 1
-          add(RParen, ~nAdvance=1)
+      | "\"" => {
+          advance1()
+          seenCloseString := true
         }
       | "\\" => varLit()
       | "?" => schemaLit()
       | c if isSpace(c) => advance1()
       | _ => varScope()
-      }
-      if !isSpace(c) {
-        isFirstToken := false
-        if nParens.contents == 0 && c != ")" {
-          error("expected open paren to start")
-        }
       }
     }
     acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
@@ -382,7 +372,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   let parseExp = (tokens: array<located<token>>) => {
     let tokenIdx = ref(0)
     let acc: ref<result<array<piece>, errorMessage>> = ref(Ok([]))
-    let parens = []
     let add = p => {acc.contents->Result.map(acc => acc->Array.push(p))->ignore}
     let seenCloseString = ref(false)
     let isFirstToken = ref(true)
@@ -393,34 +382,15 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       !seenCloseString.contents
     ) {
       let {content: tok, loc} = tokens[tokenIdx.contents]->Option.getExn
-      let error = msg => {
-        acc := error(loc, msg)
-      }
       switch tok {
       | StringLit(s) => add(String(s))
       | SchemaLit({id: schematic, allowed}) => add(Schematic({schematic, allowed}))
       | VarLit(idx) => add(Var({idx: idx})) // some reason i'm not allowed to shorthand here?
-      | LParen => Array.push(parens, loc)
-      | RParen =>
-        if Array.length(parens) == 0 {
-          error("no matching open paren")
-        } else {
-          Array.pop(parens)->ignore
-        }
       }
       isFirstToken := false
       tokenIdx := tokenIdx.contents + 1
     }
-    switch acc.contents {
-    | Ok(t) =>
-      if Array.length(parens) == 0 {
-        Ok(t)
-      } else {
-        let loc = Array.pop(parens)->Option.getExn
-        error(loc, "expected closing paren")
-      }
-    | Error(msg) => Error(msg)
-    }
+    acc.contents
   }
   switch lex() {
   | Ok((tokens, remaining)) => parseExp(tokens)->Result.map(r => (r, remaining))
