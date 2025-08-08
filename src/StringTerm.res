@@ -334,7 +334,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   }
 
   // consume leading whitespace + open quote
-  switch execRe(%re(`/\s*"/`)) {
+  switch execRe(%re(`/^\s*"/`)) {
   | Some([], l) => pos := l
   | Some(_) => error("leading whitespace regex error")
   | None => error("expected open quote")

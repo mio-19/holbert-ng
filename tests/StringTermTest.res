@@ -14,6 +14,8 @@ zoraBlock("parse", t => {
       `"y(135ab!!)"`,
       [String("y"), String("("), String("135"), String("ab"), String("!!"), String(")")],
     )
+    t->Util.testParseFail(`foo`)
+    t->Util.testParseFail(`a b" c`)
   })
   t->block("variables", t => {
     t->Util.testParse(`"$\\1"`, [Var({idx: 1})])
