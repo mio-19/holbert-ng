@@ -7,7 +7,7 @@ let mapMapValues = (m: Map.t<'a, 'b>, f: 'b => 'c) => {
   nu
 }
 
-let mapIntersectionWith = (m1: Map.t<'a, 'b>, m2: Map.t<'a, 'b>, f: ('b, 'b) => 'c) => {
+let mapIntersectionWith = (m1: Map.t<'k, 'a>, m2: Map.t<'k, 'b>, f: ('a, 'b) => 'c) => {
   let go = (m1, m2) => {
     let nu: Map.t<'a, 'c> = Map.make()
     m1->Map.forEachWithKey((v1, k) => {
@@ -25,8 +25,28 @@ let mapIntersectionWith = (m1: Map.t<'a, 'b>, m2: Map.t<'a, 'b>, f: ('b, 'b) => 
   }
 }
 
-let mapIntersection = (m1: Map.t<'a, 'b>, m2: Map.t<'a, 'b>) => {
-  mapIntersectionWith(m1, m2, (a, b) => (a, b))
+let mapUnionWith = (m1: Map.t<'k, 'a>, m2: Map.t<'k, 'a>, f: ('a, 'a) => 'a) => {
+  let nu = Map.make()
+  m1->Map.forEachWithKey((v1, k) => {
+    switch m2->Map.get(k) {
+    | Some(v2) => nu->Map.set(k, f(v1, v2))
+    | None => nu->Map.set(k, v1)
+    }
+  })
+  m2->Map.forEachWithKey((v, k) => {
+    switch nu->Map.get(k) {
+    | Some(_) => ()
+    | None => nu->Map.set(k, v)
+    }
+  })
+  nu
+}
+
+// left biased
+let mapUnion = (m1, m2) => mapUnionWith(m1, m2, (v1, _v2) => v1)
+
+let mapIntersection = (m1: Map.t<'a, 'b>, m2: Map.t<'a, 'c>): Map.t<'a, ('b, 'c)> => {
+  mapIntersectionWith(m1, m2, (b, c) => (b, c))
 }
 
 let withKey: ('props, int) => 'props = %raw(`(props, key) => ({...props, key})`)

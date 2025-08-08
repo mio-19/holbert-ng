@@ -25,13 +25,21 @@ let substitute = (term: t, subst: subst) =>
     | _ => [piece]
     }
   })
-let schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (term: t) =>
-  Array.map(term, piece => {
-    switch piece {
-    | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
-    | _ => Belt.Set.make(~id=module(IntCmp))
+let schematicsCountsIn: t => Belt.Map.Int.t<int> = (term: t) =>
+  Array.reduce(term, Belt.Map.Int.empty, (m, p) =>
+    switch p {
+    | Schematic({schematic, _}) =>
+      m->Belt.Map.Int.update(schematic, o =>
+        o
+        ->Option.map(v => v + 1)
+        ->Option.orElse(Some(1))
+      )
+    | _ => m
     }
-  })->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s1, s2) => Belt.Set.union(s1, s2))
+  )
+let maxSchematicCount = (term: t) => {
+  schematicsCountsIn(term)->Belt.Map.Int.maximum->Option.map(snd)->Option.getOr(0)
+}
 let freeVarsIn = (term: t): Belt.Set.t<int, IntCmp.identity> =>
   Array.map(term, piece => {
     switch piece {
@@ -56,6 +64,7 @@ let combineSubst = (s: subst, t: subst) => {
   )
   nu
 }
+
 let emptySubst: subst = Map.make()
 let singletonSubst: (int, t) => subst = (schematic, term) => {
   let s = Map.make()
@@ -78,7 +87,7 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
     | (_, _) => false
     }
   }
-  let rec inner = (s, t) => {
+  let rec oneSide = (s, t) => {
     switch (s, t) {
     | ([], []) => [emptySubst]
     | ([], _) => []
@@ -93,7 +102,7 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
             let allowedVars = Belt.Set.fromArray(allowed, ~id=module(IntCmp))
             if Belt.Set.subset(freeVars, allowedVars) {
               let s1 = singletonSubst(schematic, subTerm)
-              inner(
+              oneSide(
                 substitute(ss, s1),
                 Array.sliceToEnd(t, ~start=i)->substitute(s1),
               )->Array.map(s2 => combineSubst(s1, s2))
@@ -108,7 +117,7 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
           | _ => {
               let (t1, ts) = uncons(t)
               if match(s1, t1) {
-                inner(ss, ts)
+                oneSide(ss, ts)
               } else {
                 []
               }
@@ -119,11 +128,58 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
     }
   }
 
+  let rec graphSearch = (s, t, seen: array<(t, t)>): array<subst> => {
+    let haveSeen = seen->Array.find(e => e == (s, t))->Option.isSome
+    let newSeen = Array.concat(seen, [(s, t)])
+    let searchSub = (sub: subst) =>
+      graphSearch(substitute(s, sub), substitute(t, sub), newSeen)->Array.map(sub' =>
+        // TODO: double check this is the right order
+        Util.mapUnionWith(sub, sub', Array.concat)
+      )
+    if haveSeen {
+      // TODO: fill in
+      []
+    } else {
+      switch (s[0], t[0]) {
+      | (None, None) => [emptySubst]
+      | (Some(Schematic({schematic, _})), None) | (None, Some(Schematic({schematic, _}))) =>
+        searchSub(singletonSubst(schematic, []))
+      | (Some(Schematic({schematic, _}) as schem), Some(String(str)))
+      | (Some(String(str)), Some(Schematic({schematic, _}) as schem)) =>
+        Array.concat(
+          searchSub(singletonSubst(schematic, [String(str), schem])),
+          searchSub(singletonSubst(schematic, [])),
+        )
+      | (
+          Some(Schematic({schematic: s1, _}) as schem1),
+          Some(Schematic({schematic: s2, _}) as schem2),
+        ) =>
+        let p1 = searchSub(singletonSubst(s1, []))
+        if s1 == s2 {
+          p1
+        } else {
+          Array.concat(p1, searchSub(singletonSubst(s1, [schem2, schem1])))
+        }
+      | (Some(String(str1)), Some(String(str2))) =>
+        if str1 == str2 {
+          [emptySubst]
+        } else {
+          []
+        }
+      | _ => []
+      }
+    }
+  }
+
   // naive: assume schematics appear in at most one side
-  if schematicsIn(s)->Belt.Set.isEmpty {
-    inner(t, s)
-  } else if schematicsIn(t)->Belt.Set.isEmpty {
-    inner(s, t)
+  let maxCountS = maxSchematicCount(s)
+  let maxCountT = maxSchematicCount(t)
+  if maxCountS == 0 {
+    oneSide(t, s)
+  } else if maxCountT == 0 {
+    oneSide(s, t)
+  } else if max(maxCountS, maxCountT) <= 2 {
+    []
   } else {
     []
   }
