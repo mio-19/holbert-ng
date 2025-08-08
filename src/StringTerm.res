@@ -297,9 +297,9 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     }
     let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
     let stringLit = () => {
-      let identRegex = %re(`/^([a-zA-Z][a-zA-Z\d]+)/`)
-      let symbolRegex = %re(`/^[!@#$%^~&*()_+\-=\[\]{};':"\\|,.<>\/?]+/`)
-      let numberRegex = %re(`/^\d+/`)
+      let identRegex = %re(`/^([a-zA-Z][a-zA-Z\d]*)/`)
+      let symbolRegex = %re(`/^([!@#\$%\^~&*_+\-={};':|,.<>\/?]+)/`)
+      let numberRegex = %re(`/^(\d+)/`)
       switch execRe(identRegex)
       ->Option.orElse(execRe(symbolRegex))
       ->Option.orElse(execRe(numberRegex)) {
@@ -308,8 +308,16 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       | None => error("expected string")
       }
     }
+    let escaped = () => {
+      let escapedRegex = %re(`/\\([\$\?\\\"])/`)
+      switch execRe(escapedRegex) {
+      | Some([char], l) => add(StringLit(char), ~nAdvance=l)
+      | Some(_) => error("regex escaped error")
+      | None => error("expected valid escaped character")
+      }
+    }
     let readInt = s => Int.fromString(s)->Option.getExn
-    let schemaLit = () => {
+    let schema = () => {
       let schemaRegex = %re("/\?(\d+)\(((?:\d+\s*)*)\)/")
       switch execRe(schemaRegex) {
       | Some([idStr, allowedStr], l) => {
@@ -327,7 +335,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       | None => error("expected schematic literal")
       }
     }
-    let varLit = () => {
+    let var = () => {
       let varLitRegex = %re("/^\$\\(\d+)/")
       let varScopeRegex = %re("/^\$([a-zA-Z]\w*)/")
       switch execRe(varLitRegex) {
@@ -345,7 +353,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
         }
       }
     }
-    // consume leading whitespace
+    // consume leading whitespace + open quote
     switch execRe(%re(`/\s*"/`)) {
     | Some([], l) => pos := l
     | Some(_) => error("leading whitespace regex error")
@@ -360,9 +368,11 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
           advance1()
           seenCloseString := true
         }
-      | "$" => varLit()
-      | "?" => schemaLit()
+      | "$" => var()
+      | "?" => schema()
       | " " | "\t" | "\r" | "\n" => advance1()
+      | ")" | "(" | "[" | "]" => add(StringLit(c), ~nAdvance=1)
+      | "\\" => escaped()
       | _ => stringLit()
       }
     }
