@@ -3,7 +3,7 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-type pos = {line: int, col: int, idx: int}
+type pos = {idx: int}
 type located<'a> = {content: 'a, loc: pos}
 type rec piece =
   | String(string)
@@ -255,7 +255,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 ) => {
   let error = (loc: pos, msg: errorMessage) => {
     let codeAroundLoc = String.slice(str, ~start=loc.idx, ~end=loc.idx + 5)
-    Error(`${Int.toString(loc.line)}:${Int.toString(loc.col)} (${codeAroundLoc})...: ${msg}`)
+    Error(`problem here: (${codeAroundLoc})...: ${msg}`)
   }
 
   let execRe = (re, str) => {
@@ -269,26 +269,16 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 
   let lex: unit => result<(array<located<token>>, remaining), errorMessage> = () => {
     let pos = ref(0)
-    let line = ref(1)
-    let col = ref(1)
     let nParens = ref(0)
     let isFirstToken = ref(true)
     let loc = () => {
-      line: line.contents,
-      col: col.contents,
       idx: pos.contents,
     }
     let acc = ref(Ok([]))
     let advance = n => {
       pos := pos.contents + n
-      col := col.contents + n
     }
     let advance1 = () => advance(1)
-    let newline = () => {
-      pos := pos.contents + 1
-      line := line.contents + 1
-      col := 1
-    }
     let add = (token, ~nAdvance=?) => {
       acc.contents
       ->Result.map(acc => {
@@ -297,8 +287,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
           {
             content: token,
             loc: {
-              line: line.contents,
-              col: col.contents,
               idx: pos.contents,
             },
           },
@@ -359,7 +347,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       }
     }
     let isSpace = str => {
-      str == " " || str == "\t" || str == "\r"
+      str == " " || str == "\t" || str == "\r" || str == "\n"
     }
     while (
       pos.contents < String.length(str) &&
@@ -368,7 +356,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     ) {
       let c = String.get(str, pos.contents)->Option.getExn
       switch c {
-      | "\n" => newline()
       | "\"" => stringLit()
       | "(" => {
           nParens := nParens.contents + 1
