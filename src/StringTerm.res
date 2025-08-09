@@ -3,8 +3,6 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-type pos = {line: int, col: int, idx: int}
-type located<'a> = {content: 'a, loc: pos}
 type rec piece =
   | String(string)
   | Var({idx: int})
@@ -79,6 +77,16 @@ let uncons = (xs: array<'a>): ('a, array<'a>) => {
   }
 }
 
+let substEqual = (s1: subst, s2: subst) => {
+  Map.size(s1) == Map.size(s1) &&
+    Util.mapIntersection(s1, s2)
+    ->Map.values
+    ->Iterator.toArray
+    ->Array.filter(((a, b)) => a == b)
+    ->Array.length == Map.size(s2)
+}
+
+type graphSub = Eps | S(string) | V(int, array<int>)
 let unify = (s: array<piece>, t: array<piece>): array<subst> => {
   let match = (p1: piece, p2: piece) => {
     switch (p1, p2) {
@@ -128,41 +136,48 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
     }
   }
 
-  let rec graphSearch = (s, t, seen: array<(t, t)>): array<subst> => {
+  // definitely bugs in here
+  let rec graphSearch = (s, t, seen: array<(t, t)>): array<array<(int, graphSub)>> => {
     let haveSeen = seen->Array.find(e => e == (s, t))->Option.isSome
     let newSeen = Array.concat(seen, [(s, t)])
-    let searchSub = (sub: subst) =>
-      graphSearch(substitute(s, sub), substitute(t, sub), newSeen)->Array.map(sub' =>
-        // TODO: double check this is the right order
-        Util.mapUnionWith(sub, sub', Array.concat)
+    let searchSub = (schematic: int, allowed: array<int>, edge: graphSub): array<
+      array<(int, graphSub)>,
+    > => {
+      let piece = Schematic({schematic, allowed})
+      let sub = switch edge {
+      | Eps => singletonSubst(schematic, [])
+      | S(str) => singletonSubst(schematic, [String(str), piece])
+      | V(s2, a2) => singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2}), piece])
+      }
+      graphSearch(substitute(s, sub), substitute(t, sub), newSeen)->Array.map(path =>
+        Array.concat(path, [(schematic, edge)])
       )
+    }
     if haveSeen {
       // TODO: fill in
       []
     } else {
+      // TODO: variables
       switch (s[0], t[0]) {
-      | (None, None) => [emptySubst]
-      | (Some(Schematic({schematic, _})), None) | (None, Some(Schematic({schematic, _}))) =>
-        searchSub(singletonSubst(schematic, []))
-      | (Some(Schematic({schematic, _}) as schem), Some(String(str)))
-      | (Some(String(str)), Some(Schematic({schematic, _}) as schem)) =>
-        Array.concat(
-          searchSub(singletonSubst(schematic, [String(str), schem])),
-          searchSub(singletonSubst(schematic, [])),
-        )
+      | (None, None) => [[]]
+      | (Some(Schematic({schematic, allowed})), None)
+      | (None, Some(Schematic({schematic, allowed}))) =>
+        searchSub(schematic, allowed, Eps)
+      | (Some(Schematic({schematic, allowed})), Some(String(str)))
+      | (Some(String(str)), Some(Schematic({schematic, allowed}))) =>
+        Array.concat(searchSub(schematic, allowed, S(str)), searchSub(schematic, allowed, Eps))
       | (
-          Some(Schematic({schematic: s1, _}) as schem1),
-          Some(Schematic({schematic: s2, _}) as schem2),
+          Some(Schematic({schematic: s1, allowed: a1})),
+          Some(Schematic({schematic: s2, allowed: a2})),
         ) =>
-        let p1 = searchSub(singletonSubst(s1, []))
         if s1 == s2 {
-          p1
+          graphSearch(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), newSeen)
         } else {
-          Array.concat(p1, searchSub(singletonSubst(s1, [schem2, schem1])))
+          Array.concat(searchSub(s1, a1, Eps), searchSub(s1, a1, V(s2, a2)))
         }
       | (Some(String(str1)), Some(String(str2))) =>
         if str1 == str2 {
-          [emptySubst]
+          graphSearch(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), newSeen)
         } else {
           []
         }
@@ -179,7 +194,24 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
   } else if maxCountT == 0 {
     oneSide(s, t)
   } else if max(maxCountS, maxCountT) <= 2 {
-    []
+    let paths = graphSearch(s, t, [])
+    paths->Array.map(path => {
+      let sub = Map.make()
+      path->Array.forEach(((schem, edge)) => {
+        Map.set(
+          sub,
+          schem,
+          switch edge {
+          | Eps => []
+          | S(str) => Array.concat(Map.get(sub, schem)->Option.getOr([]), [String(str)])
+          | V(s2, _) =>
+            Array.concat(Map.get(sub, schem)->Option.getOr([]), Map.get(sub, s2)->Option.getOr([]))
+          },
+        )
+      })
+
+      sub
+    })
   } else {
     []
   }
@@ -295,12 +327,6 @@ let prettyPrint = (term: t, ~scope: array<string>) =>
   })->Array.join(".")
 let prettyPrintMeta = (str: string) => `${str}.`
 
-type token =
-  | StringLit(string)
-  | VarLit(int)
-  | SchemaLit({id: int, allowed: array<int>})
-  | LParen
-  | RParen
 type remaining = string
 type errorMessage = string
 type ident = string
@@ -309,9 +335,13 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   ~scope: array<ident>,
   ~gen=?,
 ) => {
-  let error = (loc: pos, msg: errorMessage) => {
-    let codeAroundLoc = String.slice(str, ~start=loc.idx, ~end=loc.idx + 5)
-    Error(`${Int.toString(loc.line)}:${Int.toString(loc.col)} (${codeAroundLoc})...: ${msg}`)
+  let pos = ref(0)
+  let seenCloseString = ref(false)
+  let acc = ref(Ok([]))
+
+  let error = (msg: errorMessage) => {
+    let codeAroundLoc = String.slice(str, ~start=pos.contents, ~end=pos.contents + 5)
+    acc := Error(`problem here: ${codeAroundLoc}...: ${msg}`)
   }
 
   let execRe = (re, str) => {
@@ -322,177 +352,99 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
       (matches(result), fullMatch(result)->String.length)
     })
   }
-
-  let lex: unit => result<(array<located<token>>, remaining), errorMessage> = () => {
-    let pos = ref(0)
-    let line = ref(1)
-    let col = ref(1)
-    let nParens = ref(0)
-    let isFirstToken = ref(true)
-    let loc = () => {
-      line: line.contents,
-      col: col.contents,
-      idx: pos.contents,
+  let advance = n => {
+    pos := pos.contents + n
+  }
+  let advance1 = () => advance(1)
+  let add = (token, ~nAdvance=?) => {
+    acc.contents
+    ->Result.map(acc => {
+      Array.push(acc, token)
+    })
+    ->ignore
+    Option.map(nAdvance, advance)->ignore
+  }
+  let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
+  let stringLit = () => {
+    let identRegex = %re(`/^([a-zA-Z][a-zA-Z\d]*)/`)
+    let symbolRegex = %re(`/^([!@#\$%\^~&*_+\-={};':|,.<>\/?]+)/`)
+    let numberRegex = %re(`/^(\d+)/`)
+    switch execRe(identRegex)
+    ->Option.orElse(execRe(symbolRegex))
+    ->Option.orElse(execRe(numberRegex)) {
+    | Some([match], l) => add(String(match), ~nAdvance=l)
+    | Some(_) => error("regex string lit error")
+    | None => error("expected string")
     }
-    let acc = ref(Ok([]))
-    let advance = n => {
-      pos := pos.contents + n
-      col := col.contents + n
+  }
+  let escaped = () => {
+    let escapedRegex = %re(`/\\([\$\?\\\"])/`)
+    switch execRe(escapedRegex) {
+    | Some([char], l) => add(String(char), ~nAdvance=l)
+    | Some(_) => error("regex escaped error")
+    | None => error("expected valid escaped character")
     }
-    let advance1 = () => advance(1)
-    let newline = () => {
-      pos := pos.contents + 1
-      line := line.contents + 1
-      col := 1
-    }
-    let add = (token, ~nAdvance=?) => {
-      acc.contents
-      ->Result.map(acc => {
-        Array.push(
-          acc,
-          {
-            content: token,
-            loc: {
-              line: line.contents,
-              col: col.contents,
-              idx: pos.contents,
-            },
-          },
-        )
-      })
-      ->ignore
-      Option.map(nAdvance, advance)->ignore
-    }
-    let error = msg => {
-      acc := error(loc(), msg)
-    }
-    let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
-    let stringLit = () => {
-      let regex = %re("/^\"([^\"]*)\"/")
-      switch execRe(regex) {
-      | Some([match], l) => add(StringLit(match), ~nAdvance=l)
-      | Some(_) => error("regex string lit error")
-      | None => error("expected end quote")
+  }
+  let readInt = s => Int.fromString(s)->Option.getExn
+  let schema = () => {
+    let schemaRegex = %re("/\?(\d+)\(((?:\d+\s*)*)\)/")
+    switch execRe(schemaRegex) {
+    | Some([idStr, allowedStr], l) => {
+        let schematic = readInt(idStr)
+        let allowed =
+          allowedStr
+          ->String.trim
+          ->String.splitByRegExp(%re("/\s+/"))
+          ->Array.keepSome
+          ->Array.filter(s => s != "")
+          ->Array.map(readInt)
+        add(Schematic({schematic, allowed}), ~nAdvance=l)
       }
+    | Some(_) => error("schema lit regex error")
+    | None => error("expected schematic literal")
     }
-    let readInt = s => Int.fromString(s)->Option.getExn
-    let schemaLit = () => {
-      let schemaRegex = %re("/\?(\d+)\(((?:\d+\s*)*)\)/")
-      switch execRe(schemaRegex) {
-      | Some([idStr, allowedStr], l) => {
-          let id = readInt(idStr)
-          let allowed =
-            allowedStr
-            ->String.trim
-            ->String.splitByRegExp(%re("/\s+/"))
-            ->Array.keepSome
-            ->Array.filter(s => s != "")
-            ->Array.map(readInt)
-          add(SchemaLit({id, allowed}), ~nAdvance=l)
-        }
-      | Some(_) => error("schema lit regex error")
-      | None => error("expected schematic literal")
-      }
-    }
-    let varLit = () => {
-      let varRegex = %re("/^\\(\d+)/")
-      switch execRe(varRegex) {
-      | Some([match], l) => add(VarLit(readInt(match)), ~nAdvance=l)
-      | Some(_) => error("var lit regex error")
-      | None => error("expected var literal")
-      }
-    }
-    let varScope = () => {
-      let varRegex = %re("/^([a-zA-Z]\w*)/")
-      switch execRe(varRegex) {
+  }
+  let var = () => {
+    let varLitRegex = %re("/^\$\\(\d+)/")
+    let varScopeRegex = %re("/^\$([a-zA-Z]\w*)/")
+    switch execRe(varLitRegex) {
+    | Some([match], l) => add(Var({idx: readInt(match)}), ~nAdvance=l)
+    | Some(_) => error("var lit regex error")
+    | None =>
+      switch execRe(varScopeRegex) {
       | Some([ident], l) =>
         switch Array.indexOfOpt(scope, ident) {
-        | Some(idx) => add(VarLit(idx), ~nAdvance=l)
+        | Some(idx) => add(Var({idx: idx}), ~nAdvance=l)
         | None => error("expected variable in scope")
         }
       | Some(_) => error("var regex error")
-      | None => error("unexpected token")
+      | None => error("expected var")
       }
     }
-    let isSpace = str => {
-      str == " " || str == "\t" || str == "\r"
-    }
-    while (
-      pos.contents < String.length(str) &&
-      Result.isOk(acc.contents) &&
-      (isFirstToken.contents || nParens.contents > 0)
-    ) {
-      let c = String.get(str, pos.contents)->Option.getExn
-      switch c {
-      | "\n" => newline()
-      | "\"" => stringLit()
-      | "(" => {
-          nParens := nParens.contents + 1
-          add(LParen, ~nAdvance=1)
-        }
-      | ")" => {
-          nParens := nParens.contents + 1
-          add(RParen, ~nAdvance=1)
-        }
-      | "\\" => varLit()
-      | "?" => schemaLit()
-      | c if isSpace(c) => advance1()
-      | _ => varScope()
-      }
-      if !isSpace(c) {
-        isFirstToken := false
-        if nParens.contents == 0 && c != ")" {
-          error("expected open paren to start")
-        }
-      }
-    }
-    acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
   }
-  let parseExp = (tokens: array<located<token>>) => {
-    let tokenIdx = ref(0)
-    let acc: ref<result<array<piece>, errorMessage>> = ref(Ok([]))
-    let parens = []
-    let add = p => {acc.contents->Result.map(acc => acc->Array.push(p))->ignore}
-    let seenCloseString = ref(false)
-    let isFirstToken = ref(true)
 
-    while (
-      tokenIdx.contents < Array.length(tokens) &&
-      Result.isOk(acc.contents) &&
-      !seenCloseString.contents
-    ) {
-      let {content: tok, loc} = tokens[tokenIdx.contents]->Option.getExn
-      let error = msg => {
-        acc := error(loc, msg)
+  // consume leading whitespace + open quote
+  switch execRe(%re(`/^\s*"/`)) {
+  | Some(_, l) => pos := l
+  | None => error("expected open quote")
+  }
+  while (
+    pos.contents < String.length(str) && Result.isOk(acc.contents) && !seenCloseString.contents
+  ) {
+    let c = String.get(str, pos.contents)->Option.getExn
+    switch c {
+    | "\"" => {
+        advance1()
+        seenCloseString := true
       }
-      switch tok {
-      | StringLit(s) => add(String(s))
-      | SchemaLit({id: schematic, allowed}) => add(Schematic({schematic, allowed}))
-      | VarLit(idx) => add(Var({idx: idx})) // some reason i'm not allowed to shorthand here?
-      | LParen => Array.push(parens, loc)
-      | RParen =>
-        if Array.length(parens) == 0 {
-          error("no matching open paren")
-        } else {
-          Array.pop(parens)->ignore
-        }
-      }
-      isFirstToken := false
-      tokenIdx := tokenIdx.contents + 1
-    }
-    switch acc.contents {
-    | Ok(t) =>
-      if Array.length(parens) == 0 {
-        Ok(t)
-      } else {
-        let loc = Array.pop(parens)->Option.getExn
-        error(loc, "expected closing paren")
-      }
-    | Error(msg) => Error(msg)
+    | "$" => var()
+    | "?" => schema()
+    | " " | "\t" | "\r" | "\n" => advance1()
+    | ")" | "(" | "[" | "]" => add(String(c), ~nAdvance=1)
+    | "\\" => escaped()
+    | _ => stringLit()
     }
   }
-  switch lex() {
-  | Ok((tokens, remaining)) => parseExp(tokens)->Result.map(r => (r, remaining))
-  | Error(msg) => Error(msg)
-  }
+
+  acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
 }
