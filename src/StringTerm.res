@@ -3,7 +3,7 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-type rec piece =
+type piece =
   | String(string)
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
@@ -86,7 +86,7 @@ let substEqual = (s1: subst, s2: subst) => {
     ->Array.length == Map.size(s2)
 }
 
-type graphSub = Eps | S(string) | V(int, array<int>)
+type graphSub = Eps | S(string) | V(int, array<int>) | J(int, array<int>)
 let unify = (s: array<piece>, t: array<piece>): array<subst> => {
   let match = (p1: piece, p2: piece) => {
     switch (p1, p2) {
@@ -148,6 +148,7 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
       | Eps => singletonSubst(schematic, [])
       | S(str) => singletonSubst(schematic, [String(str), piece])
       | V(s2, a2) => singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2}), piece])
+      | J(s2, a2) => singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2})])
       }
       graphSearch(substitute(s, sub), substitute(t, sub), newSeen)->Array.map(path =>
         Array.concat(path, [(schematic, edge)])
@@ -161,11 +162,10 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
       switch (s[0], t[0]) {
       | (None, None) => [[]]
       | (Some(Schematic({schematic, allowed})), None)
-      | (None, Some(Schematic({schematic, allowed}))) =>
-        searchSub(schematic, allowed, Eps)
+      | (None, Some(Schematic({schematic, allowed}))) => []
       | (Some(Schematic({schematic, allowed})), Some(String(str)))
       | (Some(String(str)), Some(Schematic({schematic, allowed}))) =>
-        Array.concat(searchSub(schematic, allowed, S(str)), searchSub(schematic, allowed, Eps))
+        searchSub(schematic, allowed, S(str))
       | (
           Some(Schematic({schematic: s1, allowed: a1})),
           Some(Schematic({schematic: s2, allowed: a2})),
@@ -173,7 +173,9 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
         if s1 == s2 {
           graphSearch(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), newSeen)
         } else {
-          Array.concat(searchSub(s1, a1, Eps), searchSub(s1, a1, V(s2, a2)))
+          searchSub(s1, a1, J(s2, a2))
+          ->Array.concat(searchSub(s2, a2, V(s1, a1)))
+          ->Array.concat(searchSub(s1, a1, V(s2, a2)))
         }
       | (Some(String(str1)), Some(String(str2))) =>
         if str1 == str2 {
@@ -206,6 +208,7 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
           | S(str) => Array.concat(Map.get(sub, schem)->Option.getOr([]), [String(str)])
           | V(s2, _) =>
             Array.concat(Map.get(sub, schem)->Option.getOr([]), Map.get(sub, s2)->Option.getOr([]))
+          | J(s2, _) => Map.get(sub, s2)->Option.getOr([])
           },
         )
       })
@@ -344,14 +347,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     acc := Error(`problem here: ${codeAroundLoc}...: ${msg}`)
   }
 
-  let execRe = (re, str) => {
-    re
-    ->RegExp.exec(str)
-    ->Option.map(result => {
-      open RegExp.Result
-      (matches(result), fullMatch(result)->String.length)
-    })
-  }
+  let execRe = Util.execRe
   let advance = n => {
     pos := pos.contents + n
   }
@@ -366,7 +362,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   }
   let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
   let stringLit = () => {
-    let identRegex = %re(`/^([a-zA-Z][a-zA-Z\d]*)/`)
+    let identRegex = RegExp.fromString(`^${Util.identRegexStr}`)
     let symbolRegex = %re(`/^([!@#\$%\^~&*_+\-={};':|,.<>\/?]+)/`)
     let numberRegex = %re(`/^(\d+)/`)
     switch execRe(identRegex)

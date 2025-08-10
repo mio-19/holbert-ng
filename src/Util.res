@@ -56,3 +56,14 @@ let arrayWithIndex = (arr: array<React.element>) => {
 @send external toString: 'a => string = "toString"
 let showArray: array<'a> => string = a => `[${Array.toString(a)}]`
 let showTuple: (('a, 'b)) => string = ((a, b)) => `(${toString(a)} ${toString(b)})`
+
+let execRe = (re, str) => {
+  re
+  ->RegExp.exec(str)
+  ->Option.map(result => {
+    open RegExp.Result
+    (matches(result), fullMatch(result)->String.length)
+  })
+}
+
+let identRegexStr = `([a-zA-Z][a-zA-Z\\d]*)`
