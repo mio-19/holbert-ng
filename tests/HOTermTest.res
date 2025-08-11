@@ -116,6 +116,14 @@ zoraBlock("parse lambda", t => {
   // TODO: test if remaining strings are returned correctly
 })
 
+zoraBlock("parse and prettyprint", t => {
+  t->block("examples", t => {
+    t->Util.testParsePrettyPrint("\\1", "\\1")
+    t->Util.testParsePrettyPrint("?1", "?1")
+    t->Util.testParsePrettyPrint("(x. x)", "(x. \\0)")
+  })
+})
+
 zoraBlock("unify test", t => {
   t->block("symbols", t => {
     let x = "x"

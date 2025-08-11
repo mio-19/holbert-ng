@@ -54,4 +54,15 @@ module MakeTerm = (Term: TERM) => {
       t->ok(true, ~msg=msg->Option.getOr("unification failed"))
     }
   }
+  let testParsePrettyPrint = (t: Zora.t, input, expected, ~scope=[]) => {
+    let res = Term.parse(input, ~scope=[], ~gen=Term.makeGen())
+
+    switch res {
+    | Ok(res) => {
+        let result = Term.prettyPrint(res->fst, ~scope)
+        t->equal(result, expected, ~msg="prettyPrint output matches expected")
+      }
+    | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
+    }
+  }
 }
