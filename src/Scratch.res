@@ -18,4 +18,5 @@ module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
 module TheoremStr = Editable.TextArea(
   Theorem.Make(StringTerm, StringTermJudgment, StringTermJView, DerivationsOrLemmasStrView),
 )
+// TODO: is this necessary?
 module ConfStr = ConfigBlock.Make(StringTerm, StringTermJudgment)

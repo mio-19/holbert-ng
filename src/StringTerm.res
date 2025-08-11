@@ -310,24 +310,26 @@ let parseMeta = (str: string) => {
   }
 }
 let prettyPrintVar = (idx: int, scope: array<string>) =>
+  "$" ++
   switch scope[idx] {
+  // TODO: why false here?
   | Some(n) if Array.indexOf(scope, n) == idx && false => n
   | _ => "\\"->String.concat(String.make(idx))
   }
 let prettyPrint = (term: t, ~scope: array<string>) =>
-  Array.map(term, piece => {
-    switch piece {
-    | String(str) => `"${str}"`
-    | Var({idx}) => prettyPrintVar(idx, scope)
-    | Schematic({schematic, allowed}) => {
-        let allowedStr =
-          allowed
-          ->Array.map(idx => prettyPrintVar(idx, scope))
-          ->Array.join(" ")
-        `?${Int.toString(schematic)}(${allowedStr})`
+  `"${Array.map(term, piece => {
+      switch piece {
+      | String(str) => str
+      | Var({idx}) => prettyPrintVar(idx, scope)
+      | Schematic({schematic, allowed}) => {
+          let allowedStr =
+            allowed
+            ->Array.map(idx => prettyPrintVar(idx, scope))
+            ->Array.join(" ")
+          `?${Int.toString(schematic)}(${allowedStr})`
+        }
       }
-    }
-  })->Array.join(".")
+    })->Array.join(" ")}"`
 let prettyPrintMeta = (str: string) => `${str}.`
 
 type remaining = string

@@ -92,6 +92,6 @@ ComponentGraph.setup({
   "hol-config": HolComp(ConfS),
   "hol-proof": HolComp(TheoremS),
   "hol-string": HolComp(AxiomStr),
-  "hol-config-str": HolComp(ConfStr),
-  "hol-proof-str": HolComp(TheoremStr),
+  "hol-string-config": HolComp(ConfStr),
+  "hol-string-proof": HolComp(TheoremStr),
 }); //"hol-config": ConfigComponent, "hol-proof":ProofComponent});

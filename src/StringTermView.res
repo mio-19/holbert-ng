@@ -52,5 +52,15 @@ module Piece = {
 @react.componentWithProps
 let make = ({term, scope}) =>
   <span className="term-compound">
-    {term->Array.map(piece => <Piece piece scope />)->intersperse->React.array}
+    {switch term {
+    | [] => React.string("ϵ")
+    | _ =>
+      term
+      ->Array.mapWithIndex((piece, i) => {
+        let key = Int.toString(i)
+        <Piece piece scope key />
+      })
+      ->intersperse
+      ->React.array
+    }}
   </span>
