@@ -208,7 +208,7 @@ let rec lams = (amount: int, term: t): t => {
     term
   } else {
     Lam({
-      name: "",
+      name: "x",
       body: lams(amount - 1, term),
     })
   }

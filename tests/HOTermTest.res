@@ -155,7 +155,7 @@ zoraBlock("unify test", t => {
       ~reduce=false,
       ~subst=emptySubst->substAdd(
         0,
-        Lam({name: "", body: App({func: Symbol({name: "y"}), arg: Var({idx: 0})})}),
+        Lam({name: "x", body: App({func: Symbol({name: "y"}), arg: Var({idx: 0})})}),
       ),
     )
     t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
@@ -163,7 +163,7 @@ zoraBlock("unify test", t => {
   t->block("?0 \\0", t => {
     let x = "(?0 \\0)"
     let y = "\\0"
-    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Lam({name: "", body: Var({idx: 0})})))
+    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Lam({name: "x", body: Var({idx: 0})})))
   })
   t->block("?0 x y", t => {
     let x = "(x. y. ?0 x y)"
@@ -176,8 +176,8 @@ zoraBlock("unify test", t => {
       ~subst=emptySubst->substAdd(
         0,
         Lam({
-          name: "",
-          body: Lam({name: "", body: App({func: Var({idx: 0}), arg: Var({idx: 1})})}),
+          name: "x",
+          body: Lam({name: "x", body: App({func: Var({idx: 0}), arg: Var({idx: 1})})}),
         }),
       ),
     )
