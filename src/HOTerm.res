@@ -450,7 +450,7 @@ let place = (x: int, ~scope: array<string>) => Schematic({
 })
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
-  | Some(n) if Array.indexOf(scope, n) == idx && false => n
+  | Some(n) if Array.indexOf(scope, n) == idx => n
   | _ => "\\"->String.concat(String.make(idx))
   }
 let makeGen = () => {
@@ -465,7 +465,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     "("
     ->String.concat(name)
     ->String.concat(". ")
-    ->String.concat(prettyPrint(body, ~scope=scope->Array.concat([name])))
+    ->String.concat(prettyPrint(body, ~scope=Array.concat([name], scope)))
     ->String.concat(")")
   | App(_) =>
     let (func, args) = strip(it)
