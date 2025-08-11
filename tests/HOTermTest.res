@@ -121,8 +121,11 @@ zoraBlock("parse and prettyprint", t => {
     t->Util.testParsePrettyPrint("\\1", "\\1")
     t->Util.testParsePrettyPrint("?1", "?1")
     t->Util.testParsePrettyPrint("(x. x)", "(x. x)")
-    t->Util.testParsePrettyPrint("(x. x. \\0)", "(x. (x. x))")
-    t->Util.testParsePrettyPrint("(x. x. \\1)", "(x. (x. \\1))")
+    t->Util.testParsePrettyPrint("(x. x. \\0)", "(x. x. x)")
+    t->Util.testParsePrettyPrint("(x. x. \\1)", "(x. x. \\1)")
+    t->Util.testParsePrettyPrint("(x. y. z. z)", "(x. y. z. z)")
+    t->Util.testParsePrettyPrint("(x. y. z. y)", "(x. y. z. y)")
+    t->Util.testParsePrettyPrint("(x. y. z. x)", "(x. y. z. x)")
   })
 })
 

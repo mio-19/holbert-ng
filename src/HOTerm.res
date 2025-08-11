@@ -456,16 +456,24 @@ let prettyPrintVar = (idx: int, scope: array<string>) =>
 let makeGen = () => {
   ref(0)
 }
+let rec stripLam = (it: t): (array<string>, t) =>
+  switch it {
+  | Lam({name, body}) =>
+    let (names, body) = stripLam(body)
+    (Array.concat([name], names), body)
+  | _ => ([], it)
+  }
 let rec prettyPrint = (it: t, ~scope: array<string>) =>
   switch it {
   | Symbol({name}) => name
   | Var({idx}) => prettyPrintVar(idx, scope)
   | Schematic({schematic}) => "?"->String.concat(String.make(schematic))
-  | Lam({name, body}) =>
+  | Lam(_) =>
+    let (names, body) = stripLam(it)
     "("
-    ->String.concat(name)
-    ->String.concat(". ")
-    ->String.concat(prettyPrint(body, ~scope=Array.concat([name], scope)))
+    ->String.concat(Array.join(names->Array.map(name => String.concat(name, ".")), " "))
+    ->String.concat(" ")
+    ->String.concat(prettyPrint(body, ~scope=Array.concat(Array.toReversed(names), scope)))
     ->String.concat(")")
   | App(_) =>
     let (func, args) = strip(it)
