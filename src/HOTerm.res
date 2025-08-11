@@ -463,9 +463,9 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
   | Var({idx}) => prettyPrintVar(idx, scope)
   | Schematic({schematic}) => "?"->String.concat(String.make(schematic))
   | Lam({name, body}) =>
-    "(lambda "
+    "("
     ->String.concat(name)
-    ->String.concat(" ")
+    ->String.concat(". ")
     ->String.concat(prettyPrint(body, ~scope=scope->Array.concat([name])))
     ->String.concat(")")
   | App({func, arg}) =>
