@@ -253,6 +253,7 @@
   </style>
   </head>
   <body>
+    <h1>SExp</h1>
     <hol-comp id="index.html/baz" deps="index.html/myconfig">
       x.y. 
       (/\ x y)
@@ -284,6 +285,22 @@
           |- by (ayx) {} } 
       }
     </hol-proof>
+  <h1>String</h1>
+  <hol-string id="index.html/quux" deps="index.html/myconfig">
+
+      ---- Empty
+      "" p
+
+      p1.
+      "$p1" p
+      ------- Surround
+      "($p1)" p
+
+      p1. p2.
+      "$p1" p   "$p2" p
+      ------- Concat
+      "$p1 $p2" p
+  </hol-string>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
 </html>

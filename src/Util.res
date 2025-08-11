@@ -67,3 +67,12 @@ let execRe = (re, str) => {
 }
 
 let identRegexStr = `([a-zA-Z][a-zA-Z\\d]*)`
+
+let intersperse = (a: array<'a>, ~with: 'a) =>
+  a->Array.flatMapWithIndex((e, i) =>
+    if i == 0 {
+      [e]
+    } else {
+      [with, e]
+    }
+  )

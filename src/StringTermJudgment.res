@@ -26,3 +26,5 @@ let parse = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
 
 let prettyPrint = ((t, m): t, ~scope: array<StringTerm.meta>) =>
   `${StringTerm.prettyPrint(t, ~scope)} ${m}`
+
+let get = x => x
