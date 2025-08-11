@@ -3,7 +3,7 @@ module type TERM = {
   type schematic
   type meta
   type subst
-  let mapMapValues: (subst, t => t) => subst
+  let mapSubst: (subst, t => t) => subst
   type gen
   let substitute: (t, subst) => t
   let unify: (t, t, ~gen: gen=?) => array<subst>

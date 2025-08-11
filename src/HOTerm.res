@@ -17,7 +17,7 @@ type schematic = int
 type subst = Belt.Map.Int.t<t>
 let substHas = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.has(schematic)
 let substGet = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.get(schematic)
-let mapMapValues = (m: subst, f: t => t): subst => {
+let mapSubst = (m: subst, f: t => t): subst => {
   m->Belt.Map.Int.map(f)
 }
 let rec equivalent = (a: t, b: t) => {
