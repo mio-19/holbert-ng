@@ -468,11 +468,12 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(". ")
     ->String.concat(prettyPrint(body, ~scope=scope->Array.concat([name])))
     ->String.concat(")")
-  | App({func, arg}) =>
+  | App(_) =>
+    let (func, args) = strip(it)
     "("
     ->String.concat(prettyPrint(func, ~scope))
     ->String.concat(" ")
-    ->String.concat(prettyPrint(arg, ~scope))
+    ->String.concat(Array.join(args->Array.map(e => prettyPrint(e, ~scope)), " "))
     ->String.concat(")")
   | Unallowed => ""
   }
