@@ -37,24 +37,11 @@ module MakeTerm = (Term: TERM) => {
   }
 
   let substEqual = (s1: Term.subst, s2: Term.subst) => {
-    Map.size(s1) == Map.size(s1) &&
-      Util.mapIntersection(s1, s2)
-      ->Map.values
-      ->Iterator.toArray
-      ->Array.filter(((a, b)) => a == b)
-      ->Array.length == Map.size(s2)
-  }
-
-  let substPrettyPrint = (subst: Term.subst) => {
-    Util.mapMapValues(subst, t => Term.prettyPrint(t, ~scope=[]))
-    ->Map.entries
-    ->Iterator.toArray
-    ->Array.map(Util.showTuple)
-    ->Util.showArray
+    s1 == s2
   }
 
   let substArrayPrettyPrint = (ss: array<Term.subst>) => {
-    ss->Array.map(substPrettyPrint)->Util.showArray
+    ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
   }
 
   let testUnify = (t: Zora.t, t1: Term.t, t2: Term.t, expect: array<Term.subst>, ~msg=?) => {
@@ -68,7 +55,7 @@ module MakeTerm = (Term: TERM) => {
     let noMatches =
       res
       ->Array.filter(sub1 => Array.find(expect, sub2 => substEqual(sub1, sub2))->Option.isNone)
-      ->Array.map(substPrettyPrint)
+      ->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))
     let msg = msg->Option.getOr("each substitution should have a match in `expect`")
     t->equal(noMatches, [], ~msg)
   }

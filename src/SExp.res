@@ -11,6 +11,8 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
+type substVal = t
+let mapSubst = Util.mapMapValues
 let equivalent = (a: t, b: t) => {
   a == b
 }
@@ -89,7 +91,8 @@ and unifyArray = (a: array<(t, t)>) => {
     let (x, y) = a[0]->Option.getUnsafe
     switch unifyTerm(x, y) {
     | None => None
-    | Some(s1) => switch a
+    | Some(s1) =>
+      switch a
       ->Array.sliceToEnd(~start=1)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
       ->unifyArray {
@@ -154,6 +157,7 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
       ),
     })
   }
+let upshiftSubstVal = upshift
 let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
@@ -192,6 +196,9 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
     ->String.concat(")")
   }
+let prettyPrintSubstVal: (substVal, ~scope: array<meta>) => string = prettyPrint
+
+let prettyPrintSubst = (sub, ~scope) => Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
 let symbolRegexpString = "^([^\\s()]+)"
 let varRegexpString = "^\\\\([0-9]+)$"
 let schematicRegexpString = "^\\?([0-9]+)$"
@@ -303,7 +310,8 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
               Array.push(bits, it.contents->getVar->Option.getUnsafe)
             }
             switch it.contents {
-            | Some(RParen) => switch gen {
+            | Some(RParen) =>
+              switch gen {
               | Some(g) => {
                   seen(g, num)
                   Some(Schematic({schematic: num, allowed: bits}))
@@ -340,3 +348,5 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   | Some(e) => Ok((e, cur.contents))
   }
 }
+
+let parseSubstVal = parse

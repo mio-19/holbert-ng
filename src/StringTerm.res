@@ -11,6 +11,7 @@ type t = array<piece>
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
+let mapSubst = Util.mapMapValues
 
 let substitute = (term: t, subst: subst) =>
   Array.flatMap(term, piece => {
@@ -161,21 +162,24 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
       // TODO: variables
       switch (s[0], t[0]) {
       | (None, None) => [[]]
-      | (Some(Schematic({schematic, allowed})), None)
-      | (None, Some(Schematic({schematic, allowed}))) => []
-      | (Some(Schematic({schematic, allowed})), Some(String(str)))
-      | (Some(String(str)), Some(Schematic({schematic, allowed}))) =>
-        searchSub(schematic, allowed, S(str))
-      | (
-          Some(Schematic({schematic: s1, allowed: a1})),
-          Some(Schematic({schematic: s2, allowed: a2})),
-        ) =>
-        if s1 == s2 {
-          graphSearch(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), newSeen)
-        } else {
-          searchSub(s1, a1, J(s2, a2))
-          ->Array.concat(searchSub(s2, a2, V(s1, a1)))
-          ->Array.concat(searchSub(s1, a1, V(s2, a2)))
+      | (Some(Schematic({schematic, allowed})), other)
+      | (other, Some(Schematic({schematic, allowed}))) =>
+        switch other {
+        | None => searchSub(schematic, allowed, Eps)
+        | Some(p) =>
+          switch p {
+          | String(str) =>
+            Array.concat(searchSub(schematic, allowed, S(str)), searchSub(schematic, allowed, Eps))
+          | Schematic({schematic: s2, allowed: a2}) =>
+            if schematic == s2 {
+              graphSearch(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), newSeen)
+            } else {
+              Array.concat(
+                searchSub(schematic, allowed, Eps),
+                searchSub(schematic, allowed, V(s2, a2)),
+              )
+            }
+          }
         }
       | (Some(String(str1)), Some(String(str2))) =>
         if str1 == str2 {
@@ -331,6 +335,7 @@ let prettyPrint = (term: t, ~scope: array<string>) =>
       }
     })->Array.join(" ")}"`
 let prettyPrintMeta = (str: string) => `${str}.`
+let prettyPrintSubst = (sub, ~scope) => Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
 
 type remaining = string
 type errorMessage = string

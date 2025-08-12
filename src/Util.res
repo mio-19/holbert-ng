@@ -7,6 +7,24 @@ let mapMapValues = (m: Map.t<'a, 'b>, f: 'b => 'c) => {
   nu
 }
 
+@send external toString: 'a => string = "toString"
+let showArray: array<'a> => string = a => `[${Array.toString(a)}]`
+let showTuple: (('a, 'b)) => string = ((a, b)) => `(${toString(a)} ${toString(b)})`
+
+let prettyPrintMap = (
+  m: Map.t<'k, 'v>,
+  ~showK: 'k => string=toString,
+  ~showV: 'v => string=toString,
+) => {
+  m
+  ->Map.entries
+  ->Iterator.toArray
+  ->Array.map(((k, v)) => {
+    (showK(k), showV(v))
+  })
+  ->showArray
+}
+
 let mapIntersectionWith = (m1: Map.t<'k, 'a>, m2: Map.t<'k, 'b>, f: ('a, 'b) => 'c) => {
   let go = (m1, m2) => {
     let nu: Map.t<'k, 'c> = Map.make()
@@ -53,9 +71,6 @@ let withKey: ('props, int) => 'props = %raw(`(props, key) => ({...props, key})`)
 let arrayWithIndex = (arr: array<React.element>) => {
   React.array(arr->Array.mapWithIndex((m, i) => <span key={String.make(i)}> m </span>))
 }
-@send external toString: 'a => string = "toString"
-let showArray: array<'a> => string = a => `[${Array.toString(a)}]`
-let showTuple: (('a, 'b)) => string = ((a, b)) => `(${toString(a)} ${toString(b)})`
 
 let execRe = (re, str) => {
   re

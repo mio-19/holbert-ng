@@ -3,10 +3,10 @@ type props = {
   judgment: StringTermJudgment.t,
   scope: array<string>,
 }
-let make = ({judgment, scope}) => {
-  let (term, m) = StringTermJudgment.get(judgment)
+let make = ({judgment: (term, m, j), scope}) => {
   <span className="term-compound">
     <StringTermView term scope />
-    {React.string(` ${m}`)}
+    {React.string(` ${m} `)}
+    <SExpView term=j scope={[]} />
   </span>
 }
