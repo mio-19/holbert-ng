@@ -126,6 +126,7 @@ zoraBlock("parse and prettyprint", t => {
     t->Util.testParsePrettyPrint("(x. y. z. z)", "(x. y. z. z)")
     t->Util.testParsePrettyPrint("(x. y. z. y)", "(x. y. z. y)")
     t->Util.testParsePrettyPrint("(x. y. z. x)", "(x. y. z. x)")
+    t->Util.testParsePrettyPrint("(x. y. z. z y x)", "(x. y. z. z y x)")
   })
 })
 

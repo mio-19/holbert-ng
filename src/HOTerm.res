@@ -470,10 +470,13 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
   | Schematic({schematic}) => "?"->String.concat(String.make(schematic))
   | Lam(_) =>
     let (names, body) = stripLam(it)
+    let (func, args) = strip(body)
+    let bodies = Array.concat([func], args)
+    let innerScope = Array.concat(Array.toReversed(names), scope)
     "("
     ->String.concat(Array.join(names->Array.map(name => String.concat(name, ".")), " "))
     ->String.concat(" ")
-    ->String.concat(prettyPrint(body, ~scope=Array.concat(Array.toReversed(names), scope)))
+    ->String.concat(Array.join(bodies->Array.map(e => prettyPrint(e, ~scope=innerScope)), " "))
     ->String.concat(")")
   | App(_) =>
     let (func, args) = strip(it)
