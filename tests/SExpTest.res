@@ -11,6 +11,7 @@ zoraBlock("parse symbol", t => {
 zoraBlock("parse var", t => {
   t->block("single digit", t => t->Util.testParse("\\1", Var({idx: 1})))
   t->block("multi digit", t => t->Util.testParse("\\234", Var({idx: 234})))
+  t->block("scope", t => t->Util.testParse("p", ~scope=["q", "p"], Var({idx: 1})))
 })
 
 zoraBlock("parse schematic", t => {

@@ -7,6 +7,6 @@ let make = ({judgment: (term, m, j), scope}) => {
   <span className="term-compound">
     <StringTermView term scope />
     {React.string(` ${m} `)}
-    <SExpView term=j scope={[]} />
+    <SExpView term=j scope />
   </span>
 }

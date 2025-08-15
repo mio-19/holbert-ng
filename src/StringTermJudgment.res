@@ -70,7 +70,7 @@ let parse = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
     switch Util.execRe(re, str) {
     | Some([m], l) => {
         let str = str->String.sliceToEnd(~start=l)
-        SExp.parse(str, ~scope=[])->Result.map(((j, str)) => ((t, m, j), str))
+        SExp.parse(str, ~scope)->Result.map(((j, str)) => ((t, m, j), str))
       }
     | Some(_) => Error("judgement regex error")
     | None => Error("expected judgement identifier")
@@ -93,7 +93,7 @@ let parseSubstVal = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
 }
 
 let prettyPrint = ((t, m, j): t, ~scope: array<StringTerm.meta>) =>
-  `${StringTerm.prettyPrint(t, ~scope)} ${m} ${SExp.prettyPrint(j, ~scope=[])}`
+  `${StringTerm.prettyPrint(t, ~scope)} ${m} ${SExp.prettyPrint(j, ~scope)}`
 let prettyPrintSubstVal = (v: substVal, ~scope: array<StringTerm.meta>) =>
   switch v {
   | StringV(t) => StringTerm.prettyPrint(t, ~scope)

@@ -173,11 +173,13 @@ let fresh = (g: gen, ~replacing as _=?) => {
   g := g.contents + 1
   v
 }
-let prettyPrintVar = (idx: int, scope: array<string>) =>
+let prettyPrintVar = (idx: int, scope: array<string>) => {
+  Console.log(("ppVar", "idx", idx, "scope[idx]", scope[idx], "scope", scope))
   switch scope[idx] {
   | Some(n) if Array.indexOf(scope, n) == idx && false => n
   | _ => "\\"->String.concat(String.make(idx))
   }
+}
 let makeGen = () => {
   ref(0)
 }
