@@ -177,6 +177,7 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     })
   | Unallowed => Unallowed
   }
+// beta reduced and eta reduced
 let rec reduceFull = (term: t, subst: subst): t => {
   switch term {
   | Schematic({schematic}) if subst->substHas(schematic) =>
