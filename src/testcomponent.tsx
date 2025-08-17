@@ -4,8 +4,9 @@ import {
   ConfS,
   TheoremS,
   AxiomStr,
-  ConfStr,
   TheoremStr,
+  AxiomSExpStr,
+  TheoremSExpStr,
 } from "./Scratch.mjs";
 import ReactDOM from "react-dom/client";
 import React from "react";
@@ -92,6 +93,7 @@ ComponentGraph.setup({
   "hol-config": HolComp(ConfS),
   "hol-proof": HolComp(TheoremS),
   "hol-string": HolComp(AxiomStr),
-  "hol-string-config": HolComp(ConfStr),
   "hol-string-proof": HolComp(TheoremStr),
+  "hol-sexp-string": HolComp(AxiomSExpStr),
+  "hol-sexp-string-proof": HolComp(TheoremSExpStr),
 }); //"hol-config": ConfigComponent, "hol-proof":ProofComponent});
