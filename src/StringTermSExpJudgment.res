@@ -22,18 +22,16 @@ let equivalent = ((t1, m1, j1): t, (t2, m2, j2): t) =>
 let unify = ((t1, m1, j1): t, (t2, m2, j2): t) => {
   if m1 == m2 {
     // cartesian prod of possible unifications
-    let liftStringSub = u => u->Array.map(s => s->Util.mapMapValues(t => StringV(t)))
-    let liftSExpSub = u => u->Array.map(s => s->Util.mapMapValues(t => SExpV(t)))
-    let judgeSubs = SExp.unify(j1, j2)->liftSExpSub
-    StringTerm.unify(t1, t2)
-    ->liftStringSub
-    ->Array.flatMap(stringSub =>
+    let judgeSubs = SExp.unify(j1, j2)->Seq.map(s => s->Util.mapMapValues(t => SExpV(t)))
+    let stringSubs = StringTerm.unify(t1, t2)->Seq.map(s => s->Util.mapMapValues(t => StringV(t)))
+    judgeSubs->Seq.flatMap(judgeSub =>
       // NOTE: silent failure mode here where substitution exists for a given schematic on both string
       // SExp side. for now, bias string sub. in future, maybe consider this not a valid judgement to begin with.
-      judgeSubs->Array.map(judgeSub => Util.mapUnion(stringSub, judgeSub))
+      // FIXME: we can just perform a naive conversion between strings and sexp
+      stringSubs->Seq.map(stringSub => Util.mapUnion(stringSub, judgeSub))
     )
   } else {
-    []
+    Seq.fromArray([])
   }
 }
 let substDeBruijn = ((t, m, j): t, scope: array<substVal>, ~from: int=0) => {

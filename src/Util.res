@@ -68,6 +68,15 @@ let mapIntersection = (m1: Map.t<'k, 'a>, m2: Map.t<'k, 'b>): Map.t<'k, ('a, 'b)
 
 let withKey: ('props, int) => 'props = %raw(`(props, key) => ({...props, key})`)
 
+let mapEqual = (m1, m2) => {
+  Map.size(m1) == Map.size(m1) &&
+    mapIntersection(m1, m2)
+    ->Map.values
+    ->Iterator.toArray
+    ->Array.filter(((a, b)) => a == b)
+    ->Array.length == Map.size(m2)
+}
+
 let arrayWithIndex = (arr: array<React.element>) => {
   React.array(arr->Array.mapWithIndex((m, i) => <span key={String.make(i)}> m </span>))
 }

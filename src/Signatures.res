@@ -4,9 +4,10 @@ module type TERM = {
   type meta
   type subst
   let mapSubst: (subst, t => t) => subst
+  let substEqual: (subst, subst) => bool
   let prettyPrintSubst: (subst, ~scope: array<meta>) => string
   let substitute: (t, subst) => t
-  let unify: (t, t) => array<subst>
+  let unify: (t, t) => Seq.t<subst>
   // law: unify(a,b) == [{}] iff equivalent(a,b)
   let equivalent: (t, t) => bool
   let substDeBruijn: (t, array<t>, ~from: int=?) => t
@@ -30,7 +31,7 @@ module type JUDGMENT = {
   let mapSubst: (subst, substVal => substVal) => subst
   let substitute: (t, subst) => t
   let equivalent: (t, t) => bool
-  let unify: (t, t) => array<subst>
+  let unify: (t, t) => Seq.t<subst>
   let substDeBruijn: (t, array<substVal>, ~from: int=?) => t
   let upshift: (t, int, ~from: int=?) => t
   let upshiftSubstVal: (substVal, int, ~from: int=?) => substVal

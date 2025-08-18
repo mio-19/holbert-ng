@@ -83,12 +83,20 @@ zoraBlock("unify", t => {
 
   t->block("schematics appearing at most twice", t => {
     t->Util.testUnify(x, x, [Map.fromArray([(1, [])])])
-    // FIXME: filter for unique subs
     t->Util.testUnify(x, y, [Map.fromArray([(1, []), (2, [])])])
 
     t->Util.testUnify(a, parse(`"?1() a"`), [Map.fromArray([(1, [])])])
-    // NOTE: has infinite solutions ("", "a", "aa", ...), but we don't treat them for now
-    t->Util.testUnify(parse(`"?1() a"`), parse(`"a ?1()"`), [Map.fromArray([(1, [])])])
+    t->Util.testUnify(
+      parse(`"?1() a"`),
+      parse(`"a ?1()"`),
+      [
+        Map.fromArray([(1, [])]),
+        Map.fromArray([(1, parse(`"a"`))]),
+        Map.fromArray([(1, parse(`"a a"`))]),
+        Map.fromArray([(1, parse(`"a a a"`))]),
+        Map.fromArray([(1, parse(`"a a a a"`))]),
+      ],
+    )
     t->Util.testUnify(parse(`"a ?1()"`), parse(`"?2() b`), [Map.fromArray([(1, b), (2, a)])])
     t->Util.testUnify(parse(`"a ?1() a"`), parse(`"?2() b a"`), [Map.fromArray([(1, b), (2, a)])])
     t->Util.testUnify(

@@ -12,6 +12,7 @@ type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
 let mapSubst = Util.mapMapValues
+let substEqual = Util.mapEqual
 
 let substitute = (term: t, subst: subst) =>
   Array.flatMap(term, piece => {
@@ -78,17 +79,8 @@ let uncons = (xs: array<'a>): ('a, array<'a>) => {
   }
 }
 
-let substEqual = (s1: subst, s2: subst) => {
-  Map.size(s1) == Map.size(s1) &&
-    Util.mapIntersection(s1, s2)
-    ->Map.values
-    ->Iterator.toArray
-    ->Array.filter(((a, b)) => a == b)
-    ->Array.length == Map.size(s2)
-}
-
-type graphSub = Eps | S(string) | V(int, array<int>) | J(int, array<int>)
-let unify = (s: array<piece>, t: array<piece>): array<subst> => {
+type graphSub = Eps | S(string) | V(int, array<int>)
+let unify = (s: array<piece>, t: array<piece>): Seq.t<subst> => {
   let match = (p1: piece, p2: piece) => {
     switch (p1, p2) {
     | (String(na), String(nb)) if na == nb => true
@@ -137,90 +129,138 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
     }
   }
 
-  // definitely bugs in here
-  let rec graphSearch = (s, t, seen: array<(t, t)>): array<array<(int, graphSub)>> => {
-    let haveSeen = seen->Array.find(e => e == (s, t))->Option.isSome
-    let newSeen = Array.concat(seen, [(s, t)])
-    let searchSub = (schematic: int, allowed: array<int>, edge: graphSub): array<
-      array<(int, graphSub)>,
-    > => {
-      let piece = Schematic({schematic, allowed})
-      let sub = switch edge {
-      | Eps => singletonSubst(schematic, [])
-      | S(str) => singletonSubst(schematic, [String(str), piece])
-      | V(s2, a2) => singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2}), piece])
-      | J(s2, a2) => singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2})])
-      }
-      graphSearch(substitute(s, sub), substitute(t, sub), newSeen)->Array.map(path =>
-        Array.concat(path, [(schematic, edge)])
-      )
-    }
-    if haveSeen {
-      // TODO: fill in
-      []
-    } else {
-      // TODO: variables
-      switch (s[0], t[0]) {
-      | (None, None) => [[]]
-      | (Some(Schematic({schematic, allowed})), other)
-      | (other, Some(Schematic({schematic, allowed}))) =>
-        switch other {
-        | None => searchSub(schematic, allowed, Eps)
-        | Some(p) =>
-          switch p {
-          | String(str) =>
-            Array.concat(searchSub(schematic, allowed, S(str)), searchSub(schematic, allowed, Eps))
-          | Schematic({schematic: s2, allowed: a2}) =>
-            if schematic == s2 {
-              graphSearch(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), newSeen)
-            } else {
-              Array.concat(
-                searchSub(schematic, allowed, Eps),
-                searchSub(schematic, allowed, V(s2, a2)),
-              )
+  // it's really absurdly hard to define an immutable Map (Belt) with (t, t) keys
+  let pigPug = (s, t) => {
+    let search = (targetCycles: int): (array<subst>, bool) => {
+      let moreSolsMightExist = ref(false)
+      let rec inner = (s, t, cycle: int, seen: array<((t, t), int)>): array<
+        array<(int, graphSub)>,
+      > => {
+        let (newSeen, thisCycle) = switch seen->Array.findIndexOpt(((e, _)) => e == (s, t)) {
+        | Some(i) => {
+            let ((_, _), thisCycle) = seen[i]->Option.getExn
+            let newSeen = seen->Array.mapWithIndex((e, j) => i == j ? ((s, t), cycle + 1) : e)
+            (newSeen, thisCycle)
+          }
+
+        | None => (Array.concat([((s, t), 1)], seen), 0)
+        }
+        let cycle = max(thisCycle, cycle)
+        let searchSub = (schematic: int, allowed: array<int>, edge: graphSub): array<
+          array<(int, graphSub)>,
+        > => {
+          let piece = Schematic({schematic, allowed})
+          let sub = switch edge {
+          | Eps => singletonSubst(schematic, [])
+          | S(str) => singletonSubst(schematic, [String(str), piece])
+          | V(s2, a2) => singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2}), piece])
+          }
+          inner(substitute(s, sub), substitute(t, sub), cycle, newSeen)->Array.map(path =>
+            Array.concat(path, [(schematic, edge)])
+          )
+        }
+        if cycle > targetCycles {
+          moreSolsMightExist := true
+          []
+        } else {
+          switch (s[0], t[0]) {
+          | (None, None) => cycle == targetCycles ? [[]] : []
+          | (Some(Schematic({schematic, allowed})), other)
+          | (other, Some(Schematic({schematic, allowed}))) =>
+            switch other {
+            | None => searchSub(schematic, allowed, Eps)
+            | Some(p) =>
+              switch p {
+              | String(str) =>
+                Array.concat(
+                  searchSub(schematic, allowed, S(str)),
+                  searchSub(schematic, allowed, Eps),
+                )
+              | Schematic({schematic: s2, allowed: a2}) =>
+                if schematic == s2 {
+                  inner(
+                    s->Array.sliceToEnd(~start=1),
+                    t->Array.sliceToEnd(~start=1),
+                    cycle,
+                    newSeen,
+                  )
+                } else {
+                  Array.concat(
+                    searchSub(schematic, allowed, Eps),
+                    searchSub(schematic, allowed, V(s2, a2)),
+                  )
+                }
+              // FIXME: appropriate checking of allowed
+              | Var({idx}) => []
+              }
             }
+          | (Some(String(str1)), Some(String(str2))) =>
+            if str1 == str2 {
+              inner(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), cycle, newSeen)
+            } else {
+              []
+            }
+          | _ => []
           }
         }
-      | (Some(String(str1)), Some(String(str2))) =>
-        if str1 == str2 {
-          graphSearch(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), newSeen)
-        } else {
-          []
-        }
-      | _ => []
       }
+      let paths = inner(s, t, 0, [])
+      let substs = paths->Array.map(path => {
+        let sub = Map.make()
+        path->Array.forEach(((schem, edge)) => {
+          Map.set(
+            sub,
+            schem,
+            switch edge {
+            | Eps => []
+            | S(str) => Array.concat(Map.get(sub, schem)->Option.getOr([]), [String(str)])
+            | V(s2, _) =>
+              Array.concat(
+                Map.get(sub, schem)->Option.getOr([]),
+                Map.get(sub, s2)->Option.getOr([]),
+              )
+            },
+          )
+        })
+        sub
+      })
+      let substsSorted = substs->Array.toSorted((s1, s2) => {
+        let substLength = s =>
+          s
+          ->Util.mapMapValues(Array.length)
+          ->Map.values
+          ->Iterator.toArray
+          ->Array.reduce(0, (acc, v) => acc + v)
+        let (s1Length, s2Length) = (substLength(s1), substLength(s2))
+        s1Length < s2Length
+          ? Ordering.less
+          : s2Length < s1Length
+          ? Ordering.greater
+          : Ordering.equal
+      })
+      (substsSorted, moreSolsMightExist.contents)
     }
+    Seq.unfold((0, true), ((c, moreSolsMightExist)) => {
+      if moreSolsMightExist {
+        let (substs, moreSolsMightExist) = search(c)
+        Some(substs->Seq.fromArray, (c + 1, moreSolsMightExist))
+      } else {
+        None
+      }
+    })->Seq.flatten
   }
 
   // naive: assume schematics appear in at most one side
   let maxCountS = maxSchematicCount(s)
   let maxCountT = maxSchematicCount(t)
   if maxCountS == 0 {
-    oneSide(t, s)
+    Seq.fromArray(oneSide(t, s))
   } else if maxCountT == 0 {
-    oneSide(s, t)
+    Seq.fromArray(oneSide(s, t))
   } else if max(maxCountS, maxCountT) <= 2 {
-    let paths = graphSearch(s, t, [])
-    paths->Array.map(path => {
-      let sub = Map.make()
-      path->Array.forEach(((schem, edge)) => {
-        Map.set(
-          sub,
-          schem,
-          switch edge {
-          | Eps => []
-          | S(str) => Array.concat(Map.get(sub, schem)->Option.getOr([]), [String(str)])
-          | V(s2, _) =>
-            Array.concat(Map.get(sub, schem)->Option.getOr([]), Map.get(sub, s2)->Option.getOr([]))
-          | J(s2, _) => Map.get(sub, s2)->Option.getOr([])
-          },
-        )
-      })
-
-      sub
-    })
+    pigPug(s, t)
   } else {
-    []
+    Seq.fromArray([])
   }
 }
 

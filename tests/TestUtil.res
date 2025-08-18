@@ -36,27 +36,20 @@ module MakeTerm = (Term: TERM) => {
     }
   }
 
-  let substEqual = (s1: Term.subst, s2: Term.subst) => {
-    s1 == s2
-  }
-
   let substArrayPrettyPrint = (ss: array<Term.subst>) => {
     ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
   }
 
   let testUnify = (t: Zora.t, t1: Term.t, t2: Term.t, expect: array<Term.subst>, ~msg=?) => {
-    let res = Term.unify(t1, t2)
-    t->equal(
-      Array.length(expect),
-      Array.length(res),
-      ~msg=`solutions: ${substArrayPrettyPrint(res)}\n\
-      should have same length as expect: ${substArrayPrettyPrint(expect)}\n`,
-    )
+    let expect = Seq.fromArray(expect)
+    let res = Term.unify(t1, t2)->Seq.take(10)
+    Console.log(res->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Seq.join(","))
     let noMatches =
-      res
-      ->Array.filter(sub1 => Array.find(expect, sub2 => substEqual(sub1, sub2))->Option.isNone)
-      ->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))
-    let msg = msg->Option.getOr("each substitution should have a match in `expect`")
+      expect
+      ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)
+      ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
+      ->Seq.toArray
+    let msg = msg->Option.getOr("each substitution in `expect` should have a match in solutions")
     t->equal(noMatches, [], ~msg)
   }
 }

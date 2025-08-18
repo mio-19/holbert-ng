@@ -13,6 +13,7 @@ type schematic = int
 type subst = Map.t<schematic, t>
 type substVal = t
 let mapSubst = Util.mapMapValues
+let substEqual = Util.mapEqual
 let equivalent = (a: t, b: t) => {
   a == b
 }
@@ -103,10 +104,12 @@ and unifyArray = (a: array<(t, t)>) => {
   }
 }
 let unify = (a: t, b: t) => {
-  switch unifyTerm(a, b) {
-  | None => []
-  | Some(s) => [s]
-  }
+  Seq.fromArray(
+    switch unifyTerm(a, b) {
+    | None => []
+    | Some(s) => [s]
+    },
+  )
 }
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {

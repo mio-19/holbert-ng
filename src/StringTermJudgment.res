@@ -7,7 +7,7 @@ let unify = ((t1, m1): t, (t2, m2): t) =>
   if m1 == m2 {
     StringTerm.unify(t1, t2)
   } else {
-    []
+    Seq.fromArray([])
   }
 let substDeBruijn = ((t, m): t, scope: array<StringTerm.t>, ~from: int=0) => (
   StringTerm.substDeBruijn(t, scope, ~from),
