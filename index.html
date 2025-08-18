@@ -383,6 +383,12 @@
       ------------------- Juxtapose
       "$s1 $s2" arr (p1 p2)
     </hol-sexp-string>
+    <hol-sexp-string id="index.html/quux-induct" deps="index.html/myconfig">
+      s. p.
+      "" arr    s1. p1. "$s1" arr (p1 ) |- 
+      ---------------------------------- M-Induct
+      "$s" arr p
+    </hol-sexp-string>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
 </html>
