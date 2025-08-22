@@ -80,7 +80,7 @@ let uncons = (xs: array<'a>): ('a, array<'a>) => {
 }
 
 type graphSub = Eps | S(string) | V(int, array<int>)
-let unify = (s: array<piece>, t: array<piece>): Seq.t<subst> => {
+let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
   let match = (p1: piece, p2: piece) => {
     switch (p1, p2) {
     | (String(na), String(nb)) if na == nb => true

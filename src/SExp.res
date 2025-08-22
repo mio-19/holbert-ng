@@ -103,7 +103,7 @@ and unifyArray = (a: array<(t, t)>) => {
     }
   }
 }
-let unify = (a: t, b: t) => {
+let unify = (a: t, b: t, ~gen=?) => {
   Seq.fromArray(
     switch unifyTerm(a, b) {
     | None => []

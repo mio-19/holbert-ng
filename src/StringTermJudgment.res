@@ -3,7 +3,7 @@ type subst = Map.t<int, StringTerm.t>
 type substVal = StringTerm.t
 let substitute = ((term, m): t, sub) => (StringTerm.substitute(term, sub), m)
 let equivalent = ((t1, m1): t, (t2, m2): t) => StringTerm.equivalent(t1, t2) && m1 == m2
-let unify = ((t1, m1): t, (t2, m2): t) =>
+let unify = ((t1, m1): t, (t2, m2): t, ~gen=?) =>
   if m1 == m2 {
     StringTerm.unify(t1, t2)
   } else {

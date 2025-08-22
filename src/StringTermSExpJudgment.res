@@ -19,7 +19,7 @@ let substitute = ((term, m, judge): t, sub) => {
 }
 let equivalent = ((t1, m1, j1): t, (t2, m2, j2): t) =>
   StringTerm.equivalent(t1, t2) && m1 == m2 && SExp.equivalent(j1, j2)
-let unify = ((t1, m1, j1): t, (t2, m2, j2): t) => {
+let unify = ((t1, m1, j1): t, (t2, m2, j2): t, ~gen=?) => {
   if m1 == m2 {
     // cartesian prod of possible unifications
     let judgeSubs = SExp.unify(j1, j2)->Seq.map(s => s->Util.mapMapValues(t => SExpV(t)))

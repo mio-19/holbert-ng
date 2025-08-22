@@ -25,6 +25,15 @@ let prettyPrintMap = (
   ->showArray
 }
 
+let prettyPrintIntMap = (m: Belt.Map.Int.t<'v>, ~showV: 'v => string=toString) => {
+  m
+  ->Belt.Map.Int.toArray
+  ->Array.map(((k, v)) => {
+    (Int.toString(k), showV(v))
+  })
+  ->showArray
+}
+
 let mapIntersectionWith = (m1: Map.t<'k, 'a>, m2: Map.t<'k, 'b>, f: ('a, 'b) => 'c) => {
   let go = (m1, m2) => {
     let nu: Map.t<'k, 'c> = Map.make()
@@ -80,7 +89,6 @@ let mapEqual = (m1, m2) => {
 let arrayWithIndex = (arr: array<React.element>) => {
   React.array(arr->Array.mapWithIndex((m, i) => <span key={String.make(i)}> m </span>))
 }
-
 let execRe = (re, str) => {
   re
   ->RegExp.exec(str)
@@ -100,3 +108,6 @@ let intersperse = (a: array<'a>, ~with: 'a) =>
       [with, e]
     }
   )
+
+exception Unreachable(string)
+exception Err(string)
