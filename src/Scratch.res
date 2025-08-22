@@ -18,23 +18,3 @@ module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
 module TheoremStr = Editable.TextArea(
   Theorem.Make(StringTerm, StringTermJudgment, StringTermJView, DerivationsOrLemmasStrView),
 )
-// TODO: is this necessary?
-module ConfSExpStr = ConfigBlock.Make(StringTerm, StringTermJudgment)
-
-module AxiomSExpStr = Editable.TextArea(
-  AxiomSet.Make(StringTerm, StringTermSExpJudgment, StringTermSExpJView),
-)
-module DerivationsOrLemmasSExpStrView = MethodView.CombineMethodView(
-  StringTerm,
-  StringTermSExpJudgment,
-  MethodView.DerivationView(StringTerm, StringTermSExpJudgment),
-  MethodView.LemmaView(StringTerm, StringTermSExpJudgment, StringTermSExpJView),
-)
-module TheoremSExpStr = Editable.TextArea(
-  Theorem.Make(
-    StringTerm,
-    StringTermSExpJudgment,
-    StringTermSExpJView,
-    DerivationsOrLemmasSExpStrView,
-  ),
-)

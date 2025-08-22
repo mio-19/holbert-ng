@@ -375,27 +375,27 @@
       }
     </hol-string-proof>
     <h2>With first-order term judgments</h2>
-    <hol-sexp-string id="index.html/quux-comp" deps="index.html/myconfig">
+    <hol-string id="index.html/quux-comp" deps="index.html/myconfig">
       ---- Empty
-      "" arr ()
+      "" ()
 
       s1. p1.
-      "$s1" arr p1
+      "$s1" p1
       ------------- Surround
-      "($s1)" arr (p1)
+      "($s1)" (p1)
 
       s1. s2. p1. p2.
-      "$s1" arr p1
-      "$s1" arr p2
+      "$s1" p1
+      "$s1" p2
       ------------------- Juxtapose
-      "$s1 $s2" arr (p1 p2)
-    </hol-sexp-string>
-    <hol-sexp-string id="index.html/quux-induct" deps="index.html/myconfig">
+      "$s1 $s2" (p1 p2)
+    </hol-string>
+    <hol-string id="index.html/quux-induct" deps="index.html/myconfig">
       s. p.
       "" arr    s1. p1. "$s1" arr (p1 ) |- 
       ---------------------------------- M-Induct
       "$s" arr p
-    </hol-sexp-string>
+    </hol-string>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
 </html>
