@@ -129,16 +129,16 @@ let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
     }
   }
 
-  // it's really absurdly hard to define an immutable Map (Belt) with (t, t) keys
   let pigPug = (s, t) => {
     let search = (targetCycles: int): (array<subst>, bool) => {
       let moreSolsMightExist = ref(false)
+      // seen is an assoc list
       let rec inner = (s, t, cycle: int, seen: array<((t, t), int)>): array<
         array<(int, graphSub)>,
       > => {
         let (newSeen, thisCycle) = switch seen->Array.findIndexOpt(((e, _)) => e == (s, t)) {
         | Some(i) => {
-            let ((_, _), thisCycle) = seen[i]->Option.getExn
+            let (_, thisCycle) = seen[i]->Option.getExn
             let newSeen = seen->Array.mapWithIndex((e, j) => i == j ? ((s, t), cycle + 1) : e)
             (newSeen, thisCycle)
           }
@@ -491,3 +491,21 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 
   acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
 }
+
+let toSExp = t => SExp.Compound({
+  subexps: t->Array.map(p =>
+    switch p {
+    | String(s) => SExp.Symbol({name: s})
+    | Var({idx}) => SExp.Var({idx: idx})
+    | Schematic({schematic, allowed}) => SExp.Schematic({schematic, allowed})
+    }
+  ),
+})
+
+let rec fromSExp = (t: SExp.t) =>
+  switch t {
+  | SExp.Symbol({name}) => [String(name)]
+  | SExp.Schematic({schematic, allowed}) => [Schematic({schematic, allowed})]
+  | SExp.Var({idx}) => [Var({idx: idx})]
+  | SExp.Compound({subexps}) => subexps->Array.flatMap(fromSExp)
+  }

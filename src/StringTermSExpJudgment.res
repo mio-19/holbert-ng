@@ -27,7 +27,6 @@ let unify = ((t1, m1, j1): t, (t2, m2, j2): t, ~gen=?) => {
     judgeSubs->Seq.flatMap(judgeSub =>
       // NOTE: silent failure mode here where substitution exists for a given schematic on both string
       // SExp side. for now, bias string sub. in future, maybe consider this not a valid judgement to begin with.
-      // FIXME: we can just perform a naive conversion between strings and sexp
       stringSubs->Seq.map(stringSub => Util.mapUnion(stringSub, judgeSub))
     )
   } else {
@@ -35,17 +34,18 @@ let unify = ((t1, m1, j1): t, (t2, m2, j2): t, ~gen=?) => {
   }
 }
 let substDeBruijn = ((t, m, j): t, scope: array<substVal>, ~from: int=0) => {
-  // NOTE: again, silent failure here where variable has wrong type
+  // NOTE: implicit type coercion here. if we unify and expect a string but get an sexp,
+  // perform naive flattening of compound to substitute. likewise in opposite direction.
   let stringScope = scope->Array.map(v =>
     switch v {
     | StringV(t) => t
-    | _ => []
+    | SExpV(t) => StringTerm.fromSExp(t)
     }
   )
   let judgeScope = scope->Array.map(v =>
     switch v {
     | SExpV(t) => t
-    | _ => SExp.Compound({subexps: []})
+    | StringV(t) => StringTerm.toSExp(t)
     }
   )
   (StringTerm.substDeBruijn(t, stringScope, ~from), m, SExp.substDeBruijn(j, judgeScope, ~from))

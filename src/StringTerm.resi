@@ -10,3 +10,6 @@ include Signatures.TERM
   and type meta = string
   and type schematic = int
   and type subst := subst
+
+let fromSExp: SExp.t => t
+let toSExp: t => SExp.t
