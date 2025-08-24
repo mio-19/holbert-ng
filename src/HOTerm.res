@@ -239,6 +239,22 @@ let idx2 = (is: array<t>, j: int): result<int, int => t> => {
   | Some(idx) => Ok(idx)
   }
 }
+let lookup = (term: t, subst: array<(t, t)>): option<t> => {
+  subst
+  ->Array.find(((from, _)) => equivalent(term, from))
+  ->Option.map(((_, to)) => to)
+}
+let rec discharge = (subst: array<(t, t)>, term: t): t => {
+  switch lookup(term, subst) {
+  | Some(found) => found
+  | None =>
+    switch term {
+    | App({func, arg}) => App({func: discharge(subst, func), arg: discharge(subst, arg)})
+    | Lam({name, body}) => Lam({name, body: discharge(subst, body)})
+    | Var(_) | Schematic(_) | Symbol(_) | Unallowed => term
+    }
+  }
+}
 let rec app = (term: t, args: array<t>): t => {
   if args->Array.length == 0 {
     term
