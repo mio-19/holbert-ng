@@ -250,6 +250,7 @@ let rec discharge = (subst: array<(t, t)>, term: t): t => {
   | None =>
     switch term {
     | App({func, arg}) => App({func: discharge(subst, func), arg: discharge(subst, arg)})
+    // Lam case is not actually needed by FCU
     | Lam({name, body}) => Lam({name, body: discharge(subst, body)})
     | Var(_) | Schematic(_) | Symbol(_) | Unallowed => term
     }
