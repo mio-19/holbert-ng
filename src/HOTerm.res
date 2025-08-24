@@ -334,14 +334,14 @@ let eqsel = (vsm: int, tn: int, sm: array<t>): array<t> =>
       "TODO: doesn't know what is the eqsel in Makoto Hamana's paper A Functional Implementation of  Function-as-Constructor Higher-Order Unification",
     ),
   )
-let rec prune = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
+let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, u)) {
-  | (Lam({name, body}), args) => prune(~tn=tn + 1, subst, body, ~gen)
+  | (Lam({name, body}), args) => prune_fcu(~tn=tn + 1, subst, body, ~gen)
   | (Unallowed, args) => raise(UnifyFail("unallowed"))
-  | (Symbol(_), rr) => Array.reduce(rr, subst, (acc, a) => prune(~tn, acc, a, ~gen))
+  | (Symbol(_), rr) => Array.reduce(rr, subst, (acc, a) => prune_fcu(~tn, acc, a, ~gen))
   | (Var({idx}), rr) =>
     if idx < tn {
-      Array.reduce(rr, subst, (acc, a) => prune(~tn, acc, a, ~gen))
+      Array.reduce(rr, subst, (acc, a) => prune_fcu(~tn, acc, a, ~gen))
     } else {
       raise(UnifyFail("Not unifiable"))
     }
@@ -367,11 +367,12 @@ let rec prune = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
   | _ => raise(UnifyFail("no rule applies"))
   }
 }
-let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
+// this function is called proj in Nipkow 1993 and it is called pruning in FCU paper
+let rec prune = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
-  | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
+  | (Lam({name, body}), args) if args->Array.length == 0 => prune(subst, body, ~gen)
   | (Unallowed, args) => raise(UnifyFail("unallowed"))
-  | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
+  | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => prune(acc, a, ~gen))
   | (Schematic({schematic}), args) => {
       assert(!substHas(subst, schematic))
       if gen->Option.isNone {
@@ -448,7 +449,7 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
   let u = b->mapbind0(bind => idx2(xs, bind))
-  proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
+  prune(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
   switch (devar(subst, a), devar(subst, b)) {
