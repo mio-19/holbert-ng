@@ -328,6 +328,12 @@ let rec devar = (subst: subst, term: t): t => {
   | _ => term
   }
 }
+let eqsel = (vsm: int, tn: int, sm: array<t>): array<t> =>
+  raise(
+    UnifyFail(
+      "TODO: doesn't know what is the eqsel in Makoto Hamana's paper A Functional Implementation of  Function-as-Constructor Higher-Order Unification",
+    ),
+  )
 let rec prune = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, u)) {
   | (Lam({name, body}), args) => prune(~tn=tn + 1, subst, body, ~gen)
@@ -356,7 +362,7 @@ let rec prune = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
         raise(UnifyFail("no gen provided"))
       }
       let h = Schematic({schematic: fresh(Option.getExn(gen))})
-      raise(UnifyFail("TODO"))
+      subst->substAdd(schematic, hnf(sm->Array.length, h, eqsel(sm->Array.length, tn, sm)))
     }
   | _ => raise(UnifyFail("no rule applies"))
   }
