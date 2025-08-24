@@ -214,6 +214,7 @@ let rec lams = (amount: int, term: t): t => {
     })
   }
 }
+let lams1 = (xs: array<string>, t: t): t => lams(xs->Array.length, t)
 let rec idx = (is: array<t>, j: int): option<int> => {
   if is->Array.length == 0 {
     None
@@ -264,6 +265,12 @@ let rec app = (term: t, args: array<t>): t => {
     let rest = args->Array.sliceToEnd(~start=1)
     app(App({func: term, arg: head}), rest)
   }
+}
+let hnf = (xs: int, f: t, ss: array<t>): t => {
+  lams(xs, app(f, ss))
+}
+let hnf1 = (xs: array<string>, f: t, ss: array<t>): t => {
+  lams1(xs, app(f, ss))
 }
 exception UnifyFail(string)
 let isvar = (term: t): bool =>
