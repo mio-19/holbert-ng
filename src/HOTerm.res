@@ -321,6 +321,39 @@ let rec devar = (subst: subst, term: t): t => {
   | _ => term
   }
 }
+let rec prune = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
+  switch strip(devar(subst, u)) {
+  | (Lam({name, body}), args) => prune(~tn=tn + 1, subst, body, ~gen)
+  | (Unallowed, args) => raise(UnifyFail("unallowed"))
+  | (Symbol(_), rr) => Array.reduce(rr, subst, (acc, a) => prune(~tn, acc, a, ~gen))
+  | (Var({idx}), rr) =>
+    if idx < tn {
+      Array.reduce(rr, subst, (acc, a) => prune(~tn, acc, a, ~gen))
+    } else {
+      raise(UnifyFail("Not unifiable"))
+    }
+  | (Schematic({schematic}), sm) =>
+    // all sm appear in lhs
+    if (
+      sm->Array.every(a =>
+        switch a {
+        | Var({idx}) => idx < tn
+        | _ => false
+        }
+      )
+    ) {
+      subst
+    } else {
+      assert(!substHas(subst, schematic))
+      if gen->Option.isNone {
+        raise(UnifyFail("no gen provided"))
+      }
+      let h = Schematic({schematic: fresh(Option.getExn(gen))})
+      raise(UnifyFail("TODO"))
+    }
+  | _ => raise(UnifyFail("no rule applies"))
+  }
+}
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
   | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
