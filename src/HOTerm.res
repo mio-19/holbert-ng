@@ -245,6 +245,7 @@ let lookup = (term: t, subst: array<(t, t)>): option<t> => {
   ->Array.find(((from, _)) => equivalent(term, from))
   ->Option.map(((_, to)) => to)
 }
+// where pattern matching used mapbind we will need to use discharge for FCU
 let rec discharge = (subst: array<(t, t)>, term: t): t => {
   switch lookup(term, subst) {
   | Some(found) => found
