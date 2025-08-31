@@ -329,27 +329,28 @@ let rec devar = (subst: subst, term: t): t => {
   | _ => term
   }
 }
-// TODO: define eqsel for FCU. eqsel here is the pattern unification version
-let eqsel = (vsm: int, tn: int, sm: array<t>): array<t> =>
-  sm->Array.filter(s =>
-    switch s {
-    | Var({idx}) => idx < tn
-    | _ => false
+let rec is_restricted = (t: t, ~tn: int): bool =>
+  switch t {
+  | Var({idx}) => idx < tn
+  | Symbol(_) => true
+  | App({func, arg}) => is_restricted(func, ~tn) && is_restricted(arg, ~tn)
+  | Lam(_) | Schematic(_) | Unallowed => false
+  }
+let eqsel_fcu = (vsm: int, tn: int, sm: array<t>): array<t> =>
+  sm
+  ->Belt.Array.mapWithIndex((s, j) =>
+    if is_restricted(j, ~tn) {
+      Some(Var({idx: vsm - s - 1}))
+    } else {
+      None
     }
   )
-// TODO: define subst for FCU. subst here is the pattern unification version
-let substof = (sm: array<t>, ~tn: int=0) => {
-  sm->Array.every(a =>
-    switch a {
-    | Var({idx}) => idx < tn
-    | _ => false
-    }
-  )
-}
+  ->Array.keepSome
+let substof_fcu = (sm: array<t>, ~tn: int): bool => sm->Array.every(s => is_restricted(s, ~tn))
 let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, u)) {
   | (Lam({name, body}), args) => prune_fcu(~tn=tn + 1, subst, body, ~gen)
-  | (Unallowed, args) => raise(UnifyFail("unallowed"))
+  | (Unallowed, _) => raise(UnifyFail("unallowed"))
   | (Symbol(_), rr) => Array.reduce(rr, subst, (acc, a) => prune_fcu(~tn, acc, a, ~gen))
   | (Var({idx}), rr) =>
     if idx < tn {
@@ -358,8 +359,8 @@ let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst =
       raise(UnifyFail("Not unifiable"))
     }
   | (Schematic({schematic}), sm) =>
-    // all sm appear in lhs
-    if substof(sm, ~tn) {
+    if substof_fcu(sm, ~tn) {
+      // all sm appear in lhs
       subst
     } else {
       assert(!substHas(subst, schematic))
@@ -367,7 +368,7 @@ let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst =
         raise(UnifyFail("no gen provided"))
       }
       let h = Schematic({schematic: fresh(Option.getExn(gen))})
-      subst->substAdd(schematic, hnf(sm->Array.length, h, eqsel(sm->Array.length, tn, sm)))
+      subst->substAdd(schematic, hnf(sm->Array.length, h, eqsel_fcu(sm->Array.length, tn, sm)))
     }
   | _ => raise(UnifyFail("no rule applies"))
   }
