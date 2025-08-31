@@ -330,10 +330,11 @@ let rec devar = (subst: subst, term: t): t => {
   }
 }
 let eqsel = (vsm: int, tn: int, sm: array<t>): array<t> =>
-  raise(
-    UnifyFail(
-      "TODO: doesn't know what is the eqsel in Makoto Hamana's paper A Functional Implementation of  Function-as-Constructor Higher-Order Unification",
-    ),
+  sm->Array.filter(s =>
+    switch s {
+    | Var({idx}) => idx < tn
+    | _ => false
+    }
   )
 let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, u)) {
