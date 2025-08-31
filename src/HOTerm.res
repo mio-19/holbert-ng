@@ -515,6 +515,58 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
   let u = b->mapbind0(bind => idx2(xs, bind))
   proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
+let rec unifyTerm_fcu = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
+  switch (devar(subst, a), devar(subst, b)) {
+  | (Symbol({name: na}), Symbol({name: nb})) =>
+    if na == nb {
+      subst
+    } else {
+      raise(UnifyFail("symbols do not match"))
+    }
+  | (Var({idx: ia}), Var({idx: ib})) =>
+    if ia == ib {
+      subst
+    } else {
+      raise(UnifyFail("variables do not match"))
+    }
+  | (Schematic({schematic: sa}), Schematic({schematic: sb})) if sa == sb => subst
+  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm_fcu(ba, bb, subst, ~gen)
+  | (Lam({name: _, body: ba}), b) =>
+    unifyTerm_fcu(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), subst, ~gen)
+  | (a, Lam({name: _, body: bb})) =>
+    unifyTerm_fcu(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, subst, ~gen)
+  | (_, _) =>
+    switch (strip(a), strip(b)) {
+    | ((Schematic({schematic: sa}), xs), (Schematic({schematic: sb}), ys)) =>
+      flexflex_fcu(sa, xs, sb, ys, subst, ~gen)
+    | ((Schematic({schematic: sa}), xs), _) => flexrigid_fcu(sa, xs, b, subst, ~gen)
+    | (_, (Schematic({schematic: sb}), ys)) => flexrigid_fcu(sb, ys, a, subst, ~gen)
+    | ((a, xs), (b, ys)) => rigidrigid_fcu(a, xs, b, ys, subst, ~gen)
+    | (_, _) => raise(UnifyFail("no rules match"))
+    }
+  }
+and unifyArray = (xs: array<t>, ys: array<t>, subst: subst, ~gen: option<gen>): subst => {
+  if xs->Array.length != ys->Array.length {
+    raise(UnifyFail("arrays have different lengths"))
+  }
+  Belt.Array.zip(xs, ys)->Belt.Array.reduce(subst, (acc, (x, y)) => unifyTerm_fcu(x, y, acc, ~gen))
+}
+and rigidrigid_fcu = (
+  a: t,
+  xs: array<t>,
+  b: t,
+  ys: array<t>,
+  subst: subst,
+  ~gen: option<gen>,
+): subst => {
+  if !equivalent(a, b) {
+    raise(UnifyFail("rigid terms do not match"))
+  }
+  if xs->Array.length != ys->Array.length {
+    raise(UnifyFail("rigid terms have different number of arguments"))
+  }
+  unifyArray(xs, ys, subst, ~gen)
+}
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
   switch (devar(subst, a), devar(subst, b)) {
   | (Symbol({name: na}), Symbol({name: nb})) =>
@@ -552,58 +604,6 @@ and unifyArray = (xs: array<t>, ys: array<t>, subst: subst, ~gen: option<gen>): 
   Belt.Array.zip(xs, ys)->Belt.Array.reduce(subst, (acc, (x, y)) => unifyTerm(x, y, acc, ~gen))
 }
 and rigidrigid = (
-  a: t,
-  xs: array<t>,
-  b: t,
-  ys: array<t>,
-  subst: subst,
-  ~gen: option<gen>,
-): subst => {
-  if !equivalent(a, b) {
-    raise(UnifyFail("rigid terms do not match"))
-  }
-  if xs->Array.length != ys->Array.length {
-    raise(UnifyFail("rigid terms have different number of arguments"))
-  }
-  unifyArray(xs, ys, subst, ~gen)
-}
-let rec unifyTerm_fcu = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
-  switch (devar(subst, a), devar(subst, b)) {
-  | (Symbol({name: na}), Symbol({name: nb})) =>
-    if na == nb {
-      subst
-    } else {
-      raise(UnifyFail("symbols do not match"))
-    }
-  | (Var({idx: ia}), Var({idx: ib})) =>
-    if ia == ib {
-      subst
-    } else {
-      raise(UnifyFail("variables do not match"))
-    }
-  | (Schematic({schematic: sa}), Schematic({schematic: sb})) if sa == sb => subst
-  | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, subst, ~gen)
-  | (Lam({name: _, body: ba}), b) =>
-    unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), subst, ~gen)
-  | (a, Lam({name: _, body: bb})) =>
-    unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, subst, ~gen)
-  | (_, _) =>
-    switch (strip(a), strip(b)) {
-    | ((Schematic({schematic: sa}), xs), (Schematic({schematic: sb}), ys)) =>
-      flexflex_fcu(sa, xs, sb, ys, subst, ~gen)
-    | ((Schematic({schematic: sa}), xs), _) => flexrigid_fcu(sa, xs, b, subst, ~gen)
-    | (_, (Schematic({schematic: sb}), ys)) => flexrigid_fcu(sb, ys, a, subst, ~gen)
-    | ((a, xs), (b, ys)) => rigidrigid_fcu(a, xs, b, ys, subst, ~gen)
-    | (_, _) => raise(UnifyFail("no rules match"))
-    }
-  }
-and unifyArray = (xs: array<t>, ys: array<t>, subst: subst, ~gen: option<gen>): subst => {
-  if xs->Array.length != ys->Array.length {
-    raise(UnifyFail("arrays have different lengths"))
-  }
-  Belt.Array.zip(xs, ys)->Belt.Array.reduce(subst, (acc, (x, y)) => unifyTerm(x, y, acc, ~gen))
-}
-and rigidrigid_fcu = (
   a: t,
   xs: array<t>,
   b: t,
