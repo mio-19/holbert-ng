@@ -377,11 +377,11 @@ let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst =
   }
 }
 // this function is called proj in Nipkow 1993 and it is called pruning in FCU paper
-let rec prune = (subst: subst, term: t, ~gen: option<gen>): subst => {
+let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
-  | (Lam({name, body}), args) if args->Array.length == 0 => prune(subst, body, ~gen)
+  | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
   | (Unallowed, args) => raise(UnifyFail("unallowed"))
-  | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => prune(acc, a, ~gen))
+  | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
   | (Schematic({schematic}), args) => {
       assert(!substHas(subst, schematic))
       if gen->Option.isNone {
@@ -506,14 +506,14 @@ let flexrigid_fcu = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: opti
   }
   let zn = mkvars(xs->Array.length)
   let u = discharge(Belt.Array.zip(xs, zn), b)
-  prune(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
+  prune_fcu(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {
   if occ(sa, subst, b) {
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
   let u = b->mapbind0(bind => idx2(xs, bind))
-  prune(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
+  proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
   switch (devar(subst, a), devar(subst, b)) {
