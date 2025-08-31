@@ -346,6 +346,9 @@ let eqsel_fcu = (vsm: int, tn: int, sm: array<t>): array<t> =>
     }
   )
   ->Array.keepSome
+let mkvars = (n: int): array<t> => {
+  Belt.Array.init(n, i => n - i - 1)->Array.map(x => Var({idx: x}))
+}
 let substof_fcu = (sm: array<t>, ~tn: int): bool => sm->Array.every(s => is_restricted(s, ~tn))
 let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, u)) {
@@ -449,6 +452,14 @@ let flexflex = (
     let h = Schematic({schematic: fresh(Option.getExn(gen))})
     subst->substAdd(sa, lam(xs, h, common))->substAdd(sb, lam(ys, h, common))
   }
+}
+let flexrigid_fcu = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {
+  if occ(sa, subst, b) {
+    raise(UnifyFail("flexible schematic occurs in rigid term"))
+  }
+  let zn = mkvars(xs->Array.length)
+  let u = discharge(Belt.Array.zip(xs, zn), b)
+  prune(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {
   if occ(sa, subst, b) {
