@@ -329,6 +329,7 @@ let rec devar = (subst: subst, term: t): t => {
   | _ => term
   }
 }
+// TODO: define eqsel for FCU. eqsel here is the pattern unification version
 let eqsel = (vsm: int, tn: int, sm: array<t>): array<t> =>
   sm->Array.filter(s =>
     switch s {
@@ -336,6 +337,15 @@ let eqsel = (vsm: int, tn: int, sm: array<t>): array<t> =>
     | _ => false
     }
   )
+// TODO: define subst for FCU. subst here is the pattern unification version
+let substof = (sm: array<t>, ~tn: int=0) => {
+  sm->Array.every(a =>
+    switch a {
+    | Var({idx}) => idx < tn
+    | _ => false
+    }
+  )
+}
 let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, u)) {
   | (Lam({name, body}), args) => prune_fcu(~tn=tn + 1, subst, body, ~gen)
@@ -349,14 +359,7 @@ let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst =
     }
   | (Schematic({schematic}), sm) =>
     // all sm appear in lhs
-    if (
-      sm->Array.every(a =>
-        switch a {
-        | Var({idx}) => idx < tn
-        | _ => false
-        }
-      )
-    ) {
+    if substof(sm, ~tn) {
       subst
     } else {
       assert(!substHas(subst, schematic))
