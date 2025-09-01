@@ -65,7 +65,13 @@ module MakeTerm = (Term: TERM) => {
   let testUnify = (t: Zora.t, t1: Term.t, t2: Term.t, expect: array<Term.subst>, ~msg=?) => {
     let expect = Seq.fromArray(expect)
     let res = Term.unify(t1, t2)->Seq.take(10)
-    // Console.log(res->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Seq.join(","))
+    // Console.log(
+    //   `t1: ${Term.prettyPrint(t1, ~scope=[])}   t2:${Term.prettyPrint(t2, ~scope=[])}\nsubsts: ${res
+    //     ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
+    //     ->Seq.join(",")}\n`,
+    // )
+    // TODO: present string judgements as in textual form
+    // TODO: prove M expressions are all N expressions w induction
     let noMatches =
       expect
       ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)

@@ -79,7 +79,7 @@ let uncons = (xs: array<'a>): ('a, array<'a>) => {
   }
 }
 
-type graphSub = Eps | S(string) | V(int, array<int>)
+type graphSub = Eps | PieceLitSub(piece) | SchemaSub(int, array<int>)
 let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
   let match = (p1: piece, p2: piece) => {
     switch (p1, p2) {
@@ -152,8 +152,9 @@ let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
           let piece = Schematic({schematic, allowed})
           let sub = switch edge {
           | Eps => singletonSubst(schematic, [])
-          | S(str) => singletonSubst(schematic, [String(str), piece])
-          | V(s2, a2) => singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2}), piece])
+          | PieceLitSub(p) => singletonSubst(schematic, [p, piece])
+          | SchemaSub(s2, a2) =>
+            singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2}), piece])
           }
           inner(substitute(s, sub), substitute(t, sub), cycle, newSeen)->Array.map(path =>
             Array.concat(path, [(schematic, edge)])
@@ -171,9 +172,9 @@ let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
             | None => searchSub(schematic, allowed, Eps)
             | Some(p) =>
               switch p {
-              | String(str) =>
+              | String(_) =>
                 Array.concat(
-                  searchSub(schematic, allowed, S(str)),
+                  searchSub(schematic, allowed, PieceLitSub(p)),
                   searchSub(schematic, allowed, Eps),
                 )
               | Schematic({schematic: s2, allowed: a2}) =>
@@ -187,19 +188,22 @@ let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
                 } else {
                   Array.concat(
                     searchSub(schematic, allowed, Eps),
-                    searchSub(schematic, allowed, V(s2, a2)),
+                    searchSub(schematic, allowed, SchemaSub(s2, a2)),
                   )
                 }
-              // FIXME: appropriate checking of allowed
-              | Var({idx}) => []
+              | Var({idx}) =>
+                if Belt.Set.Int.fromArray(allowed)->Belt.Set.Int.has(idx) {
+                  Array.concat(
+                    searchSub(schematic, allowed, PieceLitSub(p)),
+                    searchSub(schematic, allowed, Eps),
+                  )
+                } else {
+                  searchSub(schematic, allowed, Eps)
+                }
               }
             }
-          | (Some(String(str1)), Some(String(str2))) =>
-            if str1 == str2 {
-              inner(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), cycle, newSeen)
-            } else {
-              []
-            }
+          | (p1, p2) if p1 == p2 =>
+            inner(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), cycle, newSeen)
           | _ => []
           }
         }
@@ -213,8 +217,8 @@ let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
             schem,
             switch edge {
             | Eps => []
-            | S(str) => Array.concat(Map.get(sub, schem)->Option.getOr([]), [String(str)])
-            | V(s2, _) =>
+            | PieceLitSub(p) => Array.concat(Map.get(sub, schem)->Option.getOr([]), [p])
+            | SchemaSub(s2, _) =>
               Array.concat(
                 Map.get(sub, schem)->Option.getOr([]),
                 Map.get(sub, s2)->Option.getOr([]),
