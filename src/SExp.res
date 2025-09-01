@@ -204,7 +204,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
 let prettyPrintSubstVal: (substVal, ~scope: array<meta>) => string = prettyPrint
 
 let prettyPrintSubst = (sub, ~scope) => Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
-let symbolRegexpString = "^([^\\s()]+)"
+let symbolRegexpString = `^([^\\s()\\[\\]]+)`
 let varRegexpString = "^\\\\([0-9]+)$"
 let schematicRegexpString = "^\\?([0-9]+)$"
 type lexeme = LParen | RParen | VarT(int) | SymbolT(string) | SchematicT(int)

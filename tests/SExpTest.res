@@ -6,6 +6,9 @@ module Util = TestUtil.MakeTerm(SExp)
 zoraBlock("parse symbol", t => {
   t->block("single char", t => t->Util.testParse("x", Symbol({name: "x"})))
   t->block("multi char", t => t->Util.testParse("xyz", Symbol({name: "xyz"})))
+  t->block("judgement terminal", t =>
+    t->Util.testParse("a]", Symbol({name: "a"}), ~expectRemaining="]")
+  )
 })
 
 zoraBlock("parse var", t => {

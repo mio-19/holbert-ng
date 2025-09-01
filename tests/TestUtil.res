@@ -10,14 +10,25 @@ module MakeTerm = (Term: TERM) => {
       ~msg=msg->Option.getOr(`${stringifyExn(t1)} equivalent to ${stringifyExn(t2)}`),
     )
   }
-  let testParse = (t: Zora.t, input: string, t2: Term.t, ~scope=[], ~msg=?) => {
+  let testParse = (
+    t: Zora.t,
+    input: string,
+    expect: Term.t,
+    ~scope=[],
+    ~msg=?,
+    ~expectRemaining=?,
+  ) => {
     let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
     switch res {
-    | Ok(res) => {
-        t->equal(res->snd, "", ~msg=input ++ " input consumed")
+    | Ok((parsed, parsedRemaining)) => {
+        t->equal(
+          parsedRemaining,
+          expectRemaining->Option.getOr(""),
+          ~msg=input ++ " input consumed",
+        )
         // NOTE: we're checking for equality here, not equivalency
         // error messages are better this way
-        t->equal(res->fst, t2, ~msg?)
+        t->equal(parsed, expect, ~msg?)
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
@@ -54,7 +65,7 @@ module MakeTerm = (Term: TERM) => {
   let testUnify = (t: Zora.t, t1: Term.t, t2: Term.t, expect: array<Term.subst>, ~msg=?) => {
     let expect = Seq.fromArray(expect)
     let res = Term.unify(t1, t2)->Seq.take(10)
-    Console.log(res->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Seq.join(","))
+    // Console.log(res->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Seq.join(","))
     let noMatches =
       expect
       ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)
