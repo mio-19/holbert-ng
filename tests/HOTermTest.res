@@ -190,7 +190,7 @@ zoraBlock("unify test", t => {
     )
   })
   t->block("flex-rigid-fcu-2", t => {
-    let x = "(?0 \\10)"
+    let x = "(?0 (fst \\10))"
     let y = "(r (fst (fst \\10)))"
     t->Util.testUnify(x, y)
   })
