@@ -6,7 +6,7 @@ type props = {
 let make = ({judgment: (term, j), scope}) => {
   <span className="term-compound">
     <StringTermView term scope />
-    {React.string(" - ")}
+    {React.string(" ")}
     <SExpView term=j scope />
   </span>
 }
