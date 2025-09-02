@@ -171,7 +171,7 @@ zoraBlock("unify test", t => {
     let y = "(fst \\10)"
     t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "fst"})))
   })
-  t->block("flex-rigid-fcu", t => {
+  t->block("flex-rigid", t => {
     let x = "(?0 \\10)"
     let y = "(r (fst \\10))"
     t->Util.testUnify(
