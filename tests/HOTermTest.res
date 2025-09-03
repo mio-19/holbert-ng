@@ -17,6 +17,7 @@ let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=f
     switch subst {
     | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
     | Some(subst) =>
+      t->equal(subst->Belt.Map.Int.size, res->Belt.Map.Int.size)
       subst->Belt.Map.Int.forEach((k, v) => {
         let expected = subst->Belt.Map.Int.getExn(k)
         if res->Belt.Map.Int.has(k) == false {
