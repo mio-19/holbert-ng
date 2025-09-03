@@ -202,6 +202,18 @@ zoraBlock("unify test", t => {
       ),
     )
   })
+  t->block("flex-rigid-fcu-3", t => {
+    let x = "(?1 (fst \\10) (snd \\1))"
+    let y = "(r (q (snd \\1) (fst \\10)))"
+    t->Util.testUnify(
+      x,
+      y,
+      ~subst=emptySubst->substAdd(
+        1,
+        HOTerm.parse("(x. x. (r (q \\0 \\1)))", ~scope=[])->Result.getExn->fst,
+      ),
+    )
+  })
   t->block("?0 \\0", t => {
     let x = "(?0 \\0)"
     let y = "\\0"
