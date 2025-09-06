@@ -282,18 +282,6 @@ let rec red = (term: t, is: array<t>): t => {
   | term => app(term, is)
   }
 }
-// app with beta reduction
-let rec app1 = (term: t, args: array<t>): t =>
-  if args->Array.length == 0 {
-    term
-  } else {
-    let head = args[0]->Option.getExn
-    let rest = args->Array.sliceToEnd(~start=1)
-    switch term {
-    | Lam({body}) => app1(substDeBruijn(body, [head]), rest)
-    | _ => app1(App({func: term, arg: head}), rest)
-    }
-  }
 let lam = (is: array<t>, g: t, js: array<t>): t => {
   lams(is->Array.length, app(g, js->Array.map(j => idx1'(is, j))))
 }
