@@ -274,12 +274,6 @@ let rec app = (term: t, args: array<t>): t => {
     app(App({func: term, arg: head}), rest)
   }
 }
-let hnf = (xs: int, f: t, ss: array<t>): t => {
-  lams(xs, app(f, ss))
-}
-let hnf1 = (xs: array<string>, f: t, ss: array<t>): t => {
-  lams(xs->Array.length, app(f, ss))
-}
 exception UnifyFail(string)
 let isvar = (term: t): bool =>
   switch term {
