@@ -130,14 +130,15 @@ let lookup = (term: t, subst: array<(t, t)>): option<t> => {
   ->Option.map(((_, to)) => to)
 }
 // where pattern matching used mapbind we will need to use discharge for FCU
-let rec discharge = (subst: array<(t, t)>, term: t): t => {
+let rec discharge = (subst: array<(t, t)>, term: t, ~prune: bool): t => {
   switch lookup(term, subst) {
   | Some(found) => found
   | None =>
     switch term {
-    | App({func, arg}) => App({func: discharge(subst, func), arg: discharge(subst, arg)})
+    | App({func, arg}) => App({func: discharge(subst, func, ~prune), arg: discharge(subst, arg, ~prune)})
     // Lam case is not actually needed by FCU
-    | Lam({name, body}) => Lam({name, body: discharge(subst, body)})
+    | Lam({name, body}) => Lam({name, body: discharge(subst, body, ~prune)})
+    | Var(_) if prune => Unallowed
     | Var(_) | Schematic(_) | Symbol(_) | Unallowed => term
     }
   }
@@ -461,7 +462,7 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
   let u0 = b->mapbind0(bind => idx2(xs, bind))
   // FCU
   let zn = mkvars(xs->Array.length)
-  let u = discharge(Belt.Array.zip(xs, zn), b)
+  let u = discharge(Belt.Array.zip(xs, zn), b, ~prune=true)
   proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
