@@ -27,7 +27,7 @@ let rec equivalent = (a: t, b: t) => {
   | (Schematic({schematic: sa}), Schematic({schematic: sb})) => sa == sb
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => equivalent(ba, bb)
   | (App({func: fa, arg: aa}), App({func: fb, arg: ab})) => equivalent(fa, fb) && equivalent(aa, ab)
-  | (Unallowed, Unallowed) => true
+  | (Unallowed, Unallowed) => false
   | (_, _) => false
   }
 }
