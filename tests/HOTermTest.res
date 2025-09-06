@@ -17,6 +17,7 @@ let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=f
     switch subst {
     | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
     | Some(subst) =>
+      t->equal(subst->Belt.Map.Int.size, res->Belt.Map.Int.size)
       subst->Belt.Map.Int.forEach((k, v) => {
         let expected = subst->Belt.Map.Int.getExn(k)
         if res->Belt.Map.Int.has(k) == false {
@@ -192,7 +193,38 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid-fcu-2", t => {
     let x = "(?0 (fst \\10))"
     let y = "(r (fst (fst \\10)))"
-    t->Util.testUnify(x, y)
+    t->Util.testUnify(
+      x,
+      y,
+      ~subst=emptySubst->substAdd(
+        0,
+        HOTerm.parse("(x. (r (fst x)))", ~scope=[])->Result.getExn->fst,
+      ),
+    )
+  })
+  t->block("flex-rigid-fcu-3", t => {
+    let x = "(?1 (fst \\10) (snd \\1))"
+    let y = "(r (q (snd \\1) (fst \\10)))"
+    t->Util.testUnify(
+      x,
+      y,
+      ~subst=emptySubst->substAdd(
+        1,
+        HOTerm.parse("(x. x. (r (q \\0 \\1)))", ~scope=[])->Result.getExn->fst,
+      ),
+    )
+  })
+  t->block("flex-rigid-fcu-4", t => {
+    let x = "(?1 (fst \\10) \\1)"
+    let y = "(r (q (snd \\1) (fst \\10)))"
+    t->Util.testUnify(
+      x,
+      y,
+      ~subst=emptySubst->substAdd(
+        1,
+        HOTerm.parse("(x. x. (r (q (snd \\0) \\1)))", ~scope=[])->Result.getExn->fst,
+      ),
+    )
   })
   t->block("?0 \\0", t => {
     let x = "(?0 \\0)"
