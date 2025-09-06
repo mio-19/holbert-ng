@@ -333,6 +333,21 @@ let rec devar = (subst: subst, term: t): t => {
 let mkvars = (n: int): array<t> => {
   Belt.Array.init(n, i => n - i - 1)->Array.map(x => Var({idx: x}))
 }
+let rec proj_allowed = (subst: subst, term: t): bool => {
+  switch devar(subst, term) {
+  | Lam(_) => false
+  | Unallowed => false
+  | Schematic(_) => false
+  | Symbol(_) => false
+  | Var(_) => true // pattern matching only allows this
+  // FCU allows this, right?
+  | App(app) =>
+    switch strip(devar(subst, App(app))) {
+    | (Symbol(_), args) => Array.every(args, x => proj_allowed(subst, x))
+    | _ => false
+    }
+  }
+}
 // this function is called proj in Nipkow 1993 and it is called pruning in FCU paper
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
@@ -352,9 +367,10 @@ let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
           app(
             h,
             Belt.Array.init(args->Array.length, j => {
-              switch args[j]->Option.getExn {
-              | Var({idx}) => Some(Var({idx: args->Belt.Array.length - j - 1}))
-              | _ => None
+              if proj_allowed(subst, args[j]->Option.getExn) {
+                Some(Var({idx: args->Belt.Array.length - j - 1}))
+              } else {
+                None
               }
             })->Array.keepSome,
           ),
