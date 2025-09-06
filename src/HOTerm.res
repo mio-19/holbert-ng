@@ -275,22 +275,11 @@ let rec app = (term: t, args: array<t>): t => {
   }
 }
 exception UnifyFail(string)
-let isvar = (term: t): bool =>
+let rec red = (term: t, is: array<t>): t => {
   switch term {
-  | Var(_) => true
-  | _ => false
-  }
-let rec red = (term: t, is: array<t>, js: array<int>): t => {
-  switch term {
-  | Lam({_, body}) if is->Array.length > 0 && isvar(is[0]->Option.getExn) => {
-      let head = switch is[0]->Option.getExn {
-      | Var({idx}) => idx
-      | _ => raise(Unreachable(""))
-      }
-      let rest = is->Array.sliceToEnd(~start=1)
-      red(body, rest, Array.concat([head], js))
-    }
-  | _ => app(term->mapbind(k => js[k]->Option.getExn), is)
+  | _ if is->Array.length == 0 => term
+  | Lam({body}) => red(substDeBruijn(body, [is[0]->Option.getExn]), is->Array.sliceToEnd(~start=1))
+  | term => app(term, is)
   }
 }
 // app with beta reduction
@@ -320,7 +309,7 @@ let rec devar = (subst: subst, term: t): t => {
   let (func, args) = strip(term)
   switch func {
   | Schematic({schematic}) if substHas(subst, schematic) =>
-    devar(subst, red(substGet(subst, schematic)->Option.getExn, args, []))
+    devar(subst, red(substGet(subst, schematic)->Option.getExn, args))
   | _ => term
   }
 }
