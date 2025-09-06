@@ -444,7 +444,7 @@ let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
     unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), subst, ~gen)
   | (a, Lam({name: _, body: bb})) =>
     unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, subst, ~gen)
-  | (_, _) =>
+  | (a, b) =>
     switch (strip(a), strip(b)) {
     | ((Schematic({schematic: sa}), xs), (Schematic({schematic: sb}), ys)) =>
       flexflex(sa, xs, sb, ys, subst, ~gen)
