@@ -132,7 +132,7 @@ let lookup = (term: t, subst: array<(t, t)>): option<t> => {
 let upshift_tt = (subst: array<(t, t)>, ~amount: int=1): array<(t, t)> => {
   subst->Array.map(((a, b)) => (upshift(a, amount), upshift(b, amount)))
 }
-// where pattern matching used mapbind we will need to use discharge for FCU
+// where pattern unification used mapbind we will need to use discharge for FCU
 let rec discharge = (subst: array<(t, t)>, term: t, ~prune: bool): t => {
   switch lookup(term, subst) {
   | Some(found) => found
@@ -339,7 +339,7 @@ let rec proj_allowed = (subst: subst, term: t): bool => {
   | Unallowed => false
   | Schematic(_) => false
   | Symbol(_) => false
-  | Var(_) => true // pattern matching only allows this
+  | Var(_) => true // pattern unification only allows this
   // FCU allows this, right?
   | App(app) =>
     switch strip(devar(subst, App(app))) {
@@ -416,7 +416,7 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
   if occ(sa, subst, b) {
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
-  // pattern matching
+  // pattern unification
   //let u = b->mapbind0(bind => idx2(xs, bind))
   // FCU
   let zn = mkvars(xs->Array.length)
