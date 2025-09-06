@@ -238,31 +238,33 @@ let rec lams = (amount: int, term: t): t => {
     })
   }
 }
-let rec idx = (is: array<t>, j: int): option<int> => {
+let rec idx = (is: array<t>, j: t): option<int> => {
   if is->Array.length == 0 {
     None
   } else {
     let head = is[0]->Option.getExn
     let tail = is->Array.sliceToEnd(~start=1)
-    if equivalent(head, Var({idx: j})) {
+    if equivalent(head, j) {
       Some(tail->Array.length)
     } else {
       idx(tail, j)
     }
   }
 }
-let idx1 = (is: array<t>, j: int): t => {
+let idx1' = (is: array<t>, j: t): t => {
   switch idx(is, j) {
   | None => Unallowed
   | Some(idx) => Var({idx: idx})
   }
 }
-let idx2 = (is: array<t>, j: int): result<int, int => t> => {
+let idx1 = (is: array<t>, j: int): t => idx1'(is, Var({idx: j}))
+let idx2' = (is: array<t>, j: t): result<int, int => t> => {
   switch idx(is, j) {
   | None => Error(_ => Unallowed)
   | Some(idx) => Ok(idx)
   }
 }
+let idx2 = (is: array<t>, j: int) => idx2'(is, Var({idx: j}))
 let rec app = (term: t, args: array<t>): t => {
   if args->Array.length == 0 {
     term
@@ -315,8 +317,8 @@ let rec app1 = (term: t, args: array<t>): t =>
     | _ => app1(App({func: term, arg: head}), rest)
     }
   }
-let lam = (is: array<t>, g: t, js: array<int>): t => {
-  lams(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
+let lam = (is: array<t>, g: t, js: array<t>): t => {
+  lams(is->Array.length, app(g, js->Array.map(j => idx1'(is, j))))
 }
 let rec strip = (term: t): (t, array<t>) => {
   switch term {
@@ -395,21 +397,7 @@ let flexflex = (
     })->Array.keepSome
     subst->substAdd(sa, lams(len, app(h, xs)))
   } else {
-    let y_vars = Belt.Set.fromArray(
-      ys->Array.filterMap(y =>
-        switch y {
-        | Var({idx}) => Some(idx)
-        | _ => None
-        }
-      ),
-      ~id=module(IntCmp),
-    )
-    let common = xs->Array.filterMap(x =>
-      switch x {
-      | Var({idx}) if y_vars->Belt.Set.has(idx) => Some(idx)
-      | _ => None
-      }
-    )
+    let common = xs->Array.filter(x => ys->Belt.Array.some(y => equivalent(x, y)))
     let h = Schematic({schematic: fresh(Option.getExn(gen))})
     subst->substAdd(sa, lam(xs, h, common))->substAdd(sb, lam(ys, h, common))
   }
