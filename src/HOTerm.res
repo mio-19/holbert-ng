@@ -401,9 +401,10 @@ let flexflex = (
     let xs = Belt.Array.init(len, k => {
       let a = xs[k]->Option.getExn
       let b = ys[k]->Option.getExn
-      switch (a, b) {
-      | (Var(_), Var(_)) if equivalent(a, b) => Some(Var({idx: len - k - 1}))
-      | _ => None
+      if equivalent(a, b) {
+        Some(Var({idx: len - k - 1}))
+      } else {
+        None
       }
     })->Array.keepSome
     subst->substAdd(sa, lams(len, app(h, xs)))
@@ -450,7 +451,8 @@ let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
       flexflex(sa, xs, sb, ys, subst, ~gen)
     | ((Schematic({schematic: sa}), xs), _) => flexrigid(sa, xs, b, subst, ~gen)
     | (_, (Schematic({schematic: sb}), ys)) => flexrigid(sb, ys, a, subst, ~gen)
-    | ((a, xs), (b, ys)) => switch (a, b) {
+    | ((a, xs), (b, ys)) =>
+      switch (a, b) {
       | (Symbol(_) | Var(_), Symbol(_) | Var(_)) => rigidrigid(a, xs, b, ys, subst, ~gen)
       | _ => raise(UnifyFail("no rules match"))
       }
@@ -485,9 +487,6 @@ let unify = (a: t, b: t, ~gen=?) => {
   | UnifyFail(_) => []
   }
 }
-let place = (x: int, ~scope: array<string>) => Schematic({
-  schematic: x,
-})
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
   | Some(n) if Array.indexOf(scope, n) == idx => n
