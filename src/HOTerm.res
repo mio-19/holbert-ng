@@ -135,7 +135,8 @@ let rec discharge = (subst: array<(t, t)>, term: t, ~prune: bool): t => {
   | Some(found) => found
   | None =>
     switch term {
-    | App({func, arg}) => App({func: discharge(subst, func, ~prune), arg: discharge(subst, arg, ~prune)})
+    | App({func, arg}) =>
+      App({func: discharge(subst, func, ~prune), arg: discharge(subst, arg, ~prune)})
     // Lam case is not actually needed by FCU
     | Lam({name, body}) => Lam({name, body: discharge(subst, body, ~prune)})
     | Var(_) if prune => Unallowed
@@ -330,52 +331,8 @@ let rec devar = (subst: subst, term: t): t => {
   | _ => term
   }
 }
-let rec is_restricted = (t: t, ~tn: int): bool =>
-  switch t {
-  | Var({idx}) => idx < tn
-  | Symbol(_) => true
-  | App({func, arg}) => is_restricted(func, ~tn) && is_restricted(arg, ~tn)
-  | Lam(_) | Schematic(_) | Unallowed => false
-  }
-let eqsel_fcu = (vsm: int, tn: int, sm: array<t>): array<t> =>
-  sm
-  ->Belt.Array.mapWithIndex((s, j) =>
-    if is_restricted(j, ~tn) {
-      Some(Var({idx: vsm - s - 1}))
-    } else {
-      None
-    }
-  )
-  ->Array.keepSome
 let mkvars = (n: int): array<t> => {
   Belt.Array.init(n, i => n - i - 1)->Array.map(x => Var({idx: x}))
-}
-let substof_fcu = (sm: array<t>, ~tn: int): bool => sm->Array.every(s => is_restricted(s, ~tn))
-let rec prune_fcu = (~tn: int=0, subst: subst, u: t, ~gen: option<gen>): subst => {
-  switch strip(devar(subst, u)) {
-  | (Lam({name, body}), args) => prune_fcu(~tn=tn + 1, subst, body, ~gen)
-  | (Unallowed, _) => raise(UnifyFail("unallowed"))
-  | (Symbol(_), rr) => Array.reduce(rr, subst, (acc, a) => prune_fcu(~tn, acc, a, ~gen))
-  | (Var({idx}), rr) =>
-    if idx < tn {
-      Array.reduce(rr, subst, (acc, a) => prune_fcu(~tn, acc, a, ~gen))
-    } else {
-      raise(UnifyFail("Not unifiable"))
-    }
-  | (Schematic({schematic}), sm) =>
-    if substof_fcu(sm, ~tn) {
-      // all sm appear in lhs
-      subst
-    } else {
-      assert(!substHas(subst, schematic))
-      if gen->Option.isNone {
-        raise(UnifyFail("no gen provided"))
-      }
-      let h = Schematic({schematic: fresh(Option.getExn(gen))})
-      subst->substAdd(schematic, hnf(sm->Array.length, h, eqsel_fcu(sm->Array.length, tn, sm)))
-    }
-  | _ => raise(UnifyFail("no rule applies"))
-  }
 }
 // this function is called proj in Nipkow 1993 and it is called pruning in FCU paper
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
