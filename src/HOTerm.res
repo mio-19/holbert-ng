@@ -280,23 +280,17 @@ let isvar = (term: t): bool =>
   | Var(_) => true
   | _ => false
   }
-let rec red = (term: t, is: array<t>, js: array<t>): t => {
+let rec red = (term: t, is: array<t>, js: array<int>): t => {
   switch term {
-  | Lam({name, body}) if is->Array.length > 0 && isvar(is[0]->Option.getExn) => {
-      let head = is[0]->Option.getExn
+  | Lam({_, body}) if is->Array.length > 0 && isvar(is[0]->Option.getExn) => {
+      let head = switch is[0]->Option.getExn {
+      | Var({idx}) => idx
+      | _ => raise(Unreachable(""))
+      }
       let rest = is->Array.sliceToEnd(~start=1)
       red(body, rest, Array.concat([head], js))
     }
-  | _ =>
-    app(
-      term->mapbind(k =>
-        switch js[k]->Option.getExn {
-        | Var({idx}) => idx
-        | _ => raise(UnifyFail("expected variable in red"))
-        }
-      ),
-      is,
-    )
+  | _ => app(term->mapbind(k => js[k]->Option.getExn), is)
   }
 }
 // app with beta reduction
@@ -487,6 +481,9 @@ let unify = (a: t, b: t, ~gen=?) => {
   | UnifyFail(_) => []
   }
 }
+let place = (x: int, ~scope: array<string>) => Schematic({
+  schematic: x,
+})
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
   | Some(n) if Array.indexOf(scope, n) == idx => n
