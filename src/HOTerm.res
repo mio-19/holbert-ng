@@ -344,7 +344,7 @@ let rec proj_allowed = (subst: subst, term: t): bool => {
   // FCU allows this, right?
   | App(_) =>
     switch strip(term') {
-    | (Symbol(_), args) => Array.every(args, x => proj_allowed(subst, x))
+    | (Symbol(_) | Var(_), args) => Array.every(args, x => proj_allowed(subst, x))
     | _ => false
     }
   }
@@ -450,8 +450,10 @@ let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
       flexflex(sa, xs, sb, ys, subst, ~gen)
     | ((Schematic({schematic: sa}), xs), _) => flexrigid(sa, xs, b, subst, ~gen)
     | (_, (Schematic({schematic: sb}), ys)) => flexrigid(sb, ys, a, subst, ~gen)
-    | ((a, xs), (b, ys)) => rigidrigid(a, xs, b, ys, subst, ~gen)
-    | (_, _) => raise(UnifyFail("no rules match"))
+    | ((a, xs), (b, ys)) => switch (a, b) {
+      | (Symbol(_) | Var(_), Symbol(_) | Var(_)) => rigidrigid(a, xs, b, ys, subst, ~gen)
+      | _ => raise(UnifyFail("no rules match"))
+      }
     }
   }
 and unifyArray = (xs: array<t>, ys: array<t>, subst: subst, ~gen: option<gen>): subst => {
