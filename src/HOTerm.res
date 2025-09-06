@@ -416,7 +416,7 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
   // pattern matching
-  let u0 = b->mapbind0(bind => idx2(xs, bind))
+  //let u = b->mapbind0(bind => idx2(xs, bind))
   // FCU
   let zn = mkvars(xs->Array.length)
   let u = discharge(Belt.Array.zip(xs, zn), b, ~prune=true)
