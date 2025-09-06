@@ -334,15 +334,16 @@ let mkvars = (n: int): array<t> => {
   Belt.Array.init(n, i => n - i - 1)->Array.map(x => Var({idx: x}))
 }
 let rec proj_allowed = (subst: subst, term: t): bool => {
-  switch devar(subst, term) {
+  let term' = devar(subst, term)
+  switch term' {
   | Lam(_) => false
   | Unallowed => false
   | Schematic(_) => false
   | Symbol(_) => false
   | Var(_) => true // pattern unification only allows this
   // FCU allows this, right?
-  | App(app) =>
-    switch strip(devar(subst, App(app))) {
+  | App(_) =>
+    switch strip(term') {
     | (Symbol(_), args) => Array.every(args, x => proj_allowed(subst, x))
     | _ => false
     }
