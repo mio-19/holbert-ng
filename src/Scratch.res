@@ -8,7 +8,7 @@ module DerivationsOrLemmasView = MethodView.CombineMethodView(
 module TheoremS = Editable.TextArea(Theorem.Make(SExp, SExp, SExpJView, DerivationsOrLemmasView))
 module ConfS = ConfigBlock.Make(SExp, SExp)
 
-module AxiomStr = Editable.TextArea(AxiomSet.Make(StringTerm, StringTermJudgment, StringTermJView))
+module AxiomStr = Editable.TextArea(StringAxiomSet)
 module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
   StringTerm,
   StringTermJudgment,

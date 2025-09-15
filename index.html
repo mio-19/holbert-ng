@@ -431,6 +431,12 @@
     </hol-string-proof>
     <hol-string-proof id="index.html/mexp-induct-proof" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp">
     <hol-string-proof id="index.html/lexp-juxt" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp">
+      s1.s2. "$s1" L "$s2" L
+      --------------------- lexp-juxt
+      "$s1 $s2" L
+      s1. s2 |- by (L_induct )
+    </hol-string-proof>
+    <hol-string-proof id="index.html/lexp-juxt" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp">
       s. "$s" L
       --------lexp-surr
       "($s)" L
