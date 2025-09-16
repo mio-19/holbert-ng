@@ -27,6 +27,7 @@ let rec equivalent = (a: t, b: t) => {
   | (Schematic({schematic: sa}), Schematic({schematic: sb})) => sa == sb
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => equivalent(ba, bb)
   | (App({func: fa, arg: aa}), App({func: fb, arg: ab})) => equivalent(fa, fb) && equivalent(aa, ab)
+  | (Unallowed, Unallowed) => false
   | (_, _) => false
   }
 }
@@ -123,6 +124,29 @@ let downshift = (term: t, amount: int, ~from: int=1) => {
   }
   mapbind(term, idx => idx - amount, ~from)
 }
+let lookup = (term: t, subst: array<(t, t)>): option<t> => {
+  subst
+  ->Array.find(((from, _)) => equivalent(term, from))
+  ->Option.map(((_, to)) => to)
+}
+let upshift_tt = (subst: array<(t, t)>, ~amount: int=1): array<(t, t)> => {
+  subst->Array.map(((a, b)) => (upshift(a, amount), upshift(b, amount)))
+}
+// where pattern unification used mapbind we will need to use discharge for FCU
+let rec discharge = (subst: array<(t, t)>, term: t, ~prune: bool): t => {
+  switch lookup(term, subst) {
+  | Some(found) => found
+  | None =>
+    switch term {
+    | App({func, arg}) =>
+      App({func: discharge(subst, func, ~prune), arg: discharge(subst, arg, ~prune)})
+    // Lam case is not actually needed by FCU
+    | Lam({name, body}) => Lam({name, body: discharge(upshift_tt(subst), body, ~prune)})
+    | Var(_) if prune => Unallowed
+    | Var(_) | Schematic(_) | Symbol(_) | Unallowed => term
+    }
+  }
+}
 let emptySubst: subst = Belt.Map.Int.empty
 let substAdd = (subst: subst, schematic: schematic, term: t) => {
   assert(schematic >= 0)
@@ -214,31 +238,33 @@ let rec lams = (amount: int, term: t): t => {
     })
   }
 }
-let rec idx = (is: array<t>, j: int): option<int> => {
+let rec idx = (is: array<t>, j: t): option<int> => {
   if is->Array.length == 0 {
     None
   } else {
     let head = is[0]->Option.getExn
     let tail = is->Array.sliceToEnd(~start=1)
-    if equivalent(head, Var({idx: j})) {
+    if equivalent(head, j) {
       Some(tail->Array.length)
     } else {
       idx(tail, j)
     }
   }
 }
-let idx1 = (is: array<t>, j: int): t => {
+let idx1' = (is: array<t>, j: t): t => {
   switch idx(is, j) {
   | None => Unallowed
   | Some(idx) => Var({idx: idx})
   }
 }
-let idx2 = (is: array<t>, j: int): result<int, int => t> => {
+let idx1 = (is: array<t>, j: int): t => idx1'(is, Var({idx: j}))
+let idx2' = (is: array<t>, j: t): result<int, int => t> => {
   switch idx(is, j) {
   | None => Error(_ => Unallowed)
   | Some(idx) => Ok(idx)
   }
 }
+let idx2 = (is: array<t>, j: int) => idx2'(is, Var({idx: j}))
 let rec app = (term: t, args: array<t>): t => {
   if args->Array.length == 0 {
     term
@@ -249,44 +275,15 @@ let rec app = (term: t, args: array<t>): t => {
   }
 }
 exception UnifyFail(string)
-let isvar = (term: t): bool =>
+let rec red = (term: t, is: array<t>): t => {
   switch term {
-  | Var(_) => true
-  | _ => false
-  }
-let rec red = (term: t, is: array<t>, js: array<t>): t => {
-  switch term {
-  | Lam({name, body}) if is->Array.length > 0 && isvar(is[0]->Option.getExn) => {
-      let head = is[0]->Option.getExn
-      let rest = is->Array.sliceToEnd(~start=1)
-      red(body, rest, Array.concat([head], js))
-    }
-  | _ =>
-    app(
-      term->mapbind(k =>
-        switch js[k]->Option.getExn {
-        | Var({idx}) => idx
-        | _ => raise(UnifyFail("expected variable in red"))
-        }
-      ),
-      is,
-    )
+  | _ if is->Array.length == 0 => term
+  | Lam({body}) => red(substDeBruijn(body, [is[0]->Option.getExn]), is->Array.sliceToEnd(~start=1))
+  | term => app(term, is)
   }
 }
-// app with beta reduction
-let rec app1 = (term: t, args: array<t>): t =>
-  if args->Array.length == 0 {
-    term
-  } else {
-    let head = args[0]->Option.getExn
-    let rest = args->Array.sliceToEnd(~start=1)
-    switch term {
-    | Lam({body}) => app1(substDeBruijn(body, [head]), rest)
-    | _ => app1(App({func: term, arg: head}), rest)
-    }
-  }
-let lam = (is: array<t>, g: t, js: array<int>): t => {
-  lams(is->Array.length, app(g, js->Array.map(j => idx1(is, j))))
+let lam = (is: array<t>, g: t, js: array<t>): t => {
+  lams(is->Array.length, app(g, js->Array.map(j => idx1'(is, j))))
 }
 let rec strip = (term: t): (t, array<t>) => {
   switch term {
@@ -300,10 +297,30 @@ let rec devar = (subst: subst, term: t): t => {
   let (func, args) = strip(term)
   switch func {
   | Schematic({schematic}) if substHas(subst, schematic) =>
-    devar(subst, red(substGet(subst, schematic)->Option.getExn, args, []))
+    devar(subst, red(substGet(subst, schematic)->Option.getExn, args))
   | _ => term
   }
 }
+let mkvars = (n: int): array<t> => {
+  Belt.Array.init(n, i => n - i - 1)->Array.map(x => Var({idx: x}))
+}
+let rec proj_allowed = (subst: subst, term: t): bool => {
+  let term' = devar(subst, term)
+  switch term' {
+  | Lam(_) => false
+  | Unallowed => false
+  | Schematic(_) => false
+  | Symbol(_) => false
+  | Var(_) => true // pattern unification only allows this
+  // FCU allows this, right?
+  | App(_) =>
+    switch strip(term') {
+    | (Symbol(_) | Var(_), args) => Array.every(args, x => proj_allowed(subst, x))
+    | _ => false
+    }
+  }
+}
+// this function is called proj in Nipkow 1993 and it is called pruning in FCU paper
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
   | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
@@ -322,9 +339,10 @@ let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
           app(
             h,
             Belt.Array.init(args->Array.length, j => {
-              switch args[j]->Option.getExn {
-              | Var({idx}) => Some(Var({idx: args->Belt.Array.length - j - 1}))
-              | _ => None
+              if proj_allowed(subst, args[j]->Option.getExn) {
+                Some(Var({idx: args->Belt.Array.length - j - 1}))
+              } else {
+                None
               }
             })->Array.keepSome,
           ),
@@ -354,28 +372,15 @@ let flexflex = (
     let xs = Belt.Array.init(len, k => {
       let a = xs[k]->Option.getExn
       let b = ys[k]->Option.getExn
-      switch (a, b) {
-      | (Var(_), Var(_)) if equivalent(a, b) => Some(Var({idx: len - k - 1}))
-      | _ => None
+      if equivalent(a, b) {
+        Some(Var({idx: len - k - 1}))
+      } else {
+        None
       }
     })->Array.keepSome
     subst->substAdd(sa, lams(len, app(h, xs)))
   } else {
-    let y_vars = Belt.Set.fromArray(
-      ys->Array.filterMap(y =>
-        switch y {
-        | Var({idx}) => Some(idx)
-        | _ => None
-        }
-      ),
-      ~id=module(IntCmp),
-    )
-    let common = xs->Array.filterMap(x =>
-      switch x {
-      | Var({idx}) if y_vars->Belt.Set.has(idx) => Some(idx)
-      | _ => None
-      }
-    )
+    let common = xs->Array.filter(x => ys->Belt.Array.some(y => equivalent(x, y)))
     let h = Schematic({schematic: fresh(Option.getExn(gen))})
     subst->substAdd(sa, lam(xs, h, common))->substAdd(sb, lam(ys, h, common))
   }
@@ -384,7 +389,11 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
   if occ(sa, subst, b) {
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
-  let u = b->mapbind0(bind => idx2(xs, bind))
+  // pattern unification
+  //let u = b->mapbind0(bind => idx2(xs, bind))
+  // FCU
+  let zn = mkvars(xs->Array.length)
+  let u = discharge(Belt.Array.zip(xs, zn), b, ~prune=true)
   proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
@@ -407,14 +416,17 @@ let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
     unifyTerm(ba, App({func: upshift(b, 1), arg: Var({idx: 0})}), subst, ~gen)
   | (a, Lam({name: _, body: bb})) =>
     unifyTerm(App({func: upshift(a, 1), arg: Var({idx: 0})}), bb, subst, ~gen)
-  | (_, _) =>
+  | (a, b) =>
     switch (strip(a), strip(b)) {
     | ((Schematic({schematic: sa}), xs), (Schematic({schematic: sb}), ys)) =>
       flexflex(sa, xs, sb, ys, subst, ~gen)
     | ((Schematic({schematic: sa}), xs), _) => flexrigid(sa, xs, b, subst, ~gen)
     | (_, (Schematic({schematic: sb}), ys)) => flexrigid(sb, ys, a, subst, ~gen)
-    | ((a, xs), (b, ys)) => rigidrigid(a, xs, b, ys, subst, ~gen)
-    | (_, _) => raise(UnifyFail("no rules match"))
+    | ((a, xs), (b, ys)) =>
+      switch (a, b) {
+      | (Symbol(_) | Var(_), Symbol(_) | Var(_)) => rigidrigid(a, xs, b, ys, subst, ~gen)
+      | _ => raise(UnifyFail("no rules match"))
+      }
     }
   }
 and unifyArray = (xs: array<t>, ys: array<t>, subst: subst, ~gen: option<gen>): subst => {
