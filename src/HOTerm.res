@@ -312,7 +312,7 @@ let rec proj_allowed = (subst: subst, term: t): bool => {
   | Schematic(_) => false
   | Symbol(_) => false
   | Var(_) => true // pattern unification only allows this
-  // FCU allows this, right?
+  // FCU allows this:
   | App(_) =>
     switch strip(term') {
     | (Symbol(_) | Var(_), args) => Array.every(args, x => proj_allowed(subst, x))
