@@ -387,10 +387,11 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
   // pattern unification
-  //let u = b->mapbind0(bind => idx2(xs, bind))
+  // let u = b->mapbind0(bind => idx2(xs, bind))
   // FCU
   let zn = mkvars(xs->Array.length)
-  let u = discharge(Belt.Array.zip(xs, zn), b, ~prune=true)
+  // we reversed it so that the last one will be picked if there are duplicates. This behaviour helps certain real world cases.
+  let u = discharge(Belt.Array.reverse(Belt.Array.zip(xs, zn)), b, ~prune=true)
   proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
