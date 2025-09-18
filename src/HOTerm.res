@@ -307,10 +307,7 @@ let mkvars = (n: int): array<t> => {
 let rec proj_allowed = (subst: subst, term: t): bool => {
   let term' = devar(subst, term)
   switch term' {
-  | Lam(_) => false
-  | Unallowed => false
-  | Schematic(_) => false
-  | Symbol(_) => false
+  | Lam(_) | Unallowed | Schematic(_) | Symbol(_) => false
   | Var(_) => true // pattern unification only allows this
   // FCU allows this:
   | App(_) =>
