@@ -133,6 +133,9 @@ let upshift_tt = (subst: array<(t, t)>, ~amount: int=1): array<(t, t)> => {
   subst->Array.map(((a, b)) => (upshift(a, amount), upshift(b, amount)))
 }
 // where pattern unification used mapbind we will need to use discharge for FCU
+//
+// When `prune` is true, it marks “dead” variables as Unallowed. Nipkow 1993 uses Var(-infinity) for this in the de Bruijn’s notation implementation.
+// Nipkow 1993's non de Bruijn implementation handle this logic in `proj`. Similarly Makoto Hamana's paper uses `elem` and `subst` in `prune`
 let rec discharge = (subst: array<(t, t)>, term: t, ~prune: bool): t => {
   switch lookup(term, subst) {
   | Some(found) => found
