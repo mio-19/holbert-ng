@@ -274,4 +274,10 @@ zoraBlock("unify test", t => {
     // TODO: should it not unify or not?
     t->Util.testNotUnify(a, divergent)
   })
+  t->block("dup var", t => {
+    let a = "(?0 \\0 \\0)"
+    let b = "\\0"
+    // TODO: but we want (x. x. \\0)
+    t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. \\1)")))
+  })
 })
