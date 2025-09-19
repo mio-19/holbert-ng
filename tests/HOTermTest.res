@@ -283,6 +283,21 @@ zoraBlock("unify test", t => {
   t->block("break global resctriction", t => {
     let a = "(x. y. ?0 (c x) (c y))"
     let b = "(x. y. c (?1 x y))"
-    t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. (c ?2))"))->substAdd(1, t->Util.parse("(x. x. ?2)")))
+    t->testUnify(
+      a,
+      b,
+      ~subst=emptySubst
+      ->substAdd(0, t->Util.parse("(x. x. (c ?2))"))
+      ->substAdd(1, t->Util.parse("(x. x. ?2)")),
+    )
+  })
+  t->block("violate global restriction only", t => {
+    let a = "(l. (?0 (fst l)))"
+    let b = "(l. (snd (?1 (cons (fst l) (snd l)))))"
+    t->testUnify(
+      a,
+      b,
+      ~subst=emptySubst->substAdd(0, t->Util.parse("(x. (snd ?2))"))->substAdd(1, t->Util.parse("(x. ?2)")),
+    )
   })
 })
