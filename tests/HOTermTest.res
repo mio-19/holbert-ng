@@ -279,4 +279,10 @@ zoraBlock("unify test", t => {
     let b = "\\0"
     t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. \\0)")))
   })
+  // Yokoyama et al.'s example in A Functional Implementation of  Function-as-Constructor Higher-Order Unification  Makoto Hamana1
+  t->block("break global resctriction", t => {
+    let a = "(x. y. ?0 (c x) (c y))"
+    let b = "(x. y. c (?1 x y))"
+    t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. (c ?2))"))->substAdd(1, t->Util.parse("(x. x. ?2)")))
+  })
 })
