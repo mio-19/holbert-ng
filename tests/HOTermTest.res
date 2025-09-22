@@ -46,7 +46,7 @@ let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=f
     )
   }
 }
-let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=true) => {
+let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
   testUnify0(t, at, bt, ~subst?, ~msg?, ~reduce)
   testUnify0(t, bt, at, ~subst?, ~msg?, ~reduce)
 }
@@ -170,7 +170,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid3", t => {
     let x = "(?0 \\10)"
     let y = "(fst \\10)"
-    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "fst"})))
+    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "fst"})))
   })
   t->block("flex-rigid", t => {
     let x = "(?0 \\10)"
@@ -281,23 +281,28 @@ zoraBlock("unify test", t => {
   })
   // Yokoyama et al.'s example in A Functional Implementation of  Function-as-Constructor Higher-Order Unification  Makoto Hamana1
   t->block("break global resctriction", t => {
-    let a = "(x. y. ?0 (c x) (c y))"
-    let b = "(x. y. c (?1 x y))"
     t->testUnify(
-      a,
-      b,
+      "(x. y. ?0 (c x) (c y))",
+      "(x. y. c (?1 x y))",
+      ~reduce=true,
       ~subst=emptySubst
       ->substAdd(0, t->Util.parse("(x. x. (c ?2))"))
       ->substAdd(1, t->Util.parse("(x. x. ?2)")),
     )
   })
   t->block("violate global restriction only", t => {
-    let a = "(l. (?0 (fst l)))"
-    let b = "(l. (snd (?1 (cons (fst l) (snd l)))))"
     t->testUnify(
-      a,
-      b,
-      ~subst=emptySubst->substAdd(0, t->Util.parse("(x. (snd ?2))"))->substAdd(1, t->Util.parse("(x. ?2)")),
+      "(l. (?0 (fst l)))",
+      "(l. (snd (?1 (cons (fst l) (snd l)))))",
+      ~reduce=true,
+      ~subst=emptySubst
+      ->substAdd(0, t->Util.parse("(x. (snd ?2))"))
+      ->substAdd(1, t->Util.parse("(x. ?2)")),
     )
+  })
+  t->block("violate local restriction", t => {
+    let a = "(?0 (fst l) l)"
+    let b = "(cons l)"
+    t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. cons x)")))
   })
 })
