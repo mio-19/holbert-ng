@@ -30,6 +30,13 @@ module Make = (
     ->Array.concat(["?"])
     ->Array.find(kw => String.trim(input)->String.startsWith(kw))
   }
+  let rec substitute = (prf: t, subst: Term.subst) => {
+    fixes: prf.fixes, 
+    assumptions: prf.assumptions, 
+    method: prf.method->Option.map(m => 
+      m->Method.substitute(subst)->Method.map(m => m->substitute(subst))
+    )
+  }
   let rec prettyPrint = (prf: t, ~scope, ~indentation=0) => {
     let mtd = switch prf.method {
     | None => "?"
@@ -122,14 +129,13 @@ module Make = (
         fixes,
         assumptions,
         method: switch method {
-        | Do(m) => Some(m->Method.uncheck(uncheck))
+        | Do(m) => Some(m->Method.map(uncheck))
         | Goal(_) => None
         } 
       }
     }
   let rec check = (ctx: Context.t, prf: t, rule: Rule.t) => {
     let ruleStr = Rule.prettyPrintInline(rule, ~scope=[])
-    Console.log(("CHECK", ctx, prf, ruleStr))
     switch enter(ctx, prf, rule) {
     | Ok(ctx') =>
       switch prf.method {
@@ -166,6 +172,16 @@ module Make = (
     | Error(e) => ProofError({raw: prf, rule, msg: e})
     }
   } // result<checked,string>
+  
+  let substituteChecked = (prf: checked,ctx: Context.t, subst: Term.subst) => {
+    switch prf {
+    | Checked(prf) =>
+      check(ctx,Checked(prf)->uncheck->substitute(subst),prf.rule->Rule.substitute(subst))
+    | ProofError({raw, rule, msg}) =>
+      ProofError({raw: raw->substitute(subst), rule: rule->Rule.substitute(subst), msg})
+    }
+    
+  }
 }
 
 /*

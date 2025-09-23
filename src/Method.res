@@ -15,9 +15,10 @@ module type PROOF_METHOD = {
   module Context: module type of Context(Term, Judgment)
   type t<'a>
   let keywords: array<string>
+  let substitute: (t<'a>, Term.subst) => t<'a>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
   let apply: (Context.t, Judgment.t, Term.gen, (Rule.t => 'a)) => Dict.t<(t<'a>, Term.subst)>
-  let uncheck: (t<'a>, 'a => 'b) => t<'b>
+  let map: (t<'a>, 'a => 'b) => t<'b>
   let parse: (
     string,
     ~keyword: string,
@@ -41,11 +42,18 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     instantiation: array<Term.t>,
     subgoals: array<'a>,
   }
-  let uncheck = (it: t<'a>, f) => {
+  let map = (it: t<'a>, f) => {
     {
       ruleName: it.ruleName,
       instantiation: it.instantiation,
       subgoals: it.subgoals->Array.map(f),
+    }
+  }
+  let substitute = (it: t<'a>, subst: Term.subst) => {
+    {
+      ruleName: it.ruleName,
+      instantiation: it.instantiation->Array.map(t => t->Term.substitute(subst)),
+      subgoals: it.subgoals
     }
   }
   exception InternalParseError(string)
@@ -184,11 +192,18 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     proof: 'a,
     show: 'a,
   }
-  let uncheck = (it: t<'a>, f) => {
+  let map = (it: t<'a>, f) => {
     {
       rule: it.rule,
       proof: f(it.proof),
       show: f(it.show),
+    }
+  }
+  let substitute = (it: t<'a>, subst: Term.subst) => {
+    {
+      rule: it.rule->Rule.substitute(subst),
+      proof: it.proof,
+      show: it.show
     }
   }
   let keywords = ["have"]
@@ -238,10 +253,15 @@ module Combine = (
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
   type t<'a> = First(Method1.t<'a>) | Second(Method2.t<'a>)
-  let uncheck = (it, f) =>
+  let map = (it, f) =>
     switch it {
-    | First(m) => First(Method1.uncheck(m, f))
-    | Second(m) => Second(Method2.uncheck(m, f))
+    | First(m) => First(Method1.map(m, f))
+    | Second(m) => Second(Method2.map(m, f))
+    }
+  let substitute = (it, subst) =>
+    switch it {
+    | First(m) => First(Method1.substitute(m, subst))
+    | Second(m) => Second(Method2.substitute(m, subst))
     }
   let keywords = Array.concat(Method1.keywords, Method2.keywords)
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
