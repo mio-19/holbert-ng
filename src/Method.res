@@ -16,6 +16,7 @@ module type PROOF_METHOD = {
   type t<'a>
   let keywords: array<string>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
+  let apply: (Context.t, Judgment.t, Term.gen, (Rule.t => 'a)) => Dict.t<(t<'a>, Term.subst)>
   let uncheck: (t<'a>, 'a => 'b) => t<'b>
   let parse: (
     string,
@@ -126,6 +127,24 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
       Error("Expected (")
     }
   }
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+    let ret = Dict.make()
+    ctx.facts->Dict.forEachWithKey((rule, key) => {
+      let insts = rule.vars
+        ->Array.map(m => Term.place(gen->Term.fresh(~replacing=m),~scope=ctx.fixes))
+      let res = rule->Rule.instantiate(insts)
+      let substs = Judgment.unify(res.conclusion,j,~gen)
+      substs->Array.forEach(subst => {
+        let new = {
+          ruleName: key,
+          instantiation: insts,
+          subgoals: res.premises->Array.map(f)
+        }
+        ret->Dict.set("intro " ++ key, (new, subst))
+      })
+    })
+    ret
+  }
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     switch ctx.facts->Dict.get(it.ruleName) {
     | None => Error("Cannot find rule '"->String.concat(it.ruleName)->String.concat("'"))
@@ -201,6 +220,9 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     | Error(e) => Error(e)
     }
   }
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+    Dict.make()
+  }
   let check = (it: t<'a>, _ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     let first = f(it.proof, it.rule)
     let second = f(it.show, {vars: [], premises: [it.rule], conclusion: j})
@@ -222,7 +244,11 @@ module Combine = (
     | Second(m) => Second(Method2.uncheck(m, f))
     }
   let keywords = Array.concat(Method1.keywords, Method2.keywords)
-
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+    let d1 = Method1.apply(ctx,j,gen,f)->Dict.mapValues(((m,s)) => (First(m),s))
+    let d2 = Method2.apply(ctx,j,gen,f)->Dict.mapValues(((m,s)) => (Second(m),s))
+    d1->Dict.assign(d2)
+  }
   let check = (it, ctx, j, f) =>
     switch it {
     | First(m) => m->Method1.check(ctx, j, f)->Result.map(x => First(x))

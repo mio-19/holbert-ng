@@ -20,6 +20,9 @@ let substGet = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.get(s
 let mapSubst = (m: subst, f: t => t): subst => {
   m->Belt.Map.Int.map(f)
 }
+let makeSubst = () => {
+  Belt.Map.Int.empty
+}
 let rec equivalent = (a: t, b: t) => {
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) => na == nb

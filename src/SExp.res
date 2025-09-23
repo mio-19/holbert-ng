@@ -18,6 +18,9 @@ let mapSubst = (m: subst, f: t => t): subst => {
   })
   nu
 }
+let makeSubst = () => {
+  Map.make()
+}
 let equivalent = (a: t, b: t) => {
   a == b
 }
