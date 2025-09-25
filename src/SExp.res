@@ -14,6 +14,10 @@ type subst = Map.t<schematic, t>
 type substVal = t
 let mapSubst = Util.mapMapValues
 let substEqual = Util.mapEqual
+let mapSubst = Util.mapMapValues
+let makeSubst = () => {
+  Map.make()
+}
 let equivalent = (a: t, b: t) => {
   a == b
 }
@@ -45,6 +49,7 @@ let rec substitute = (term: t, subst: subst) =>
     }
   | _ => term
   }
+let substituteSubstVal: (substVal, subst) => substVal = substitute
 
 let combineSubst = (s: subst, t: subst) => {
   let nu = Map.make()
@@ -165,6 +170,8 @@ let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
 })
+let placeSubstVal: (schematic, ~scope: array<meta>) => substVal = place
+
 type gen = ref<int>
 let seen = (g: gen, s: int) => {
   if s >= g.contents {

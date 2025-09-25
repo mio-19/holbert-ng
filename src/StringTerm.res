@@ -13,6 +13,7 @@ type schematic = int
 type subst = Map.t<schematic, t>
 let mapSubst = Util.mapMapValues
 let substEqual = Util.mapEqual
+let makeSubst = () => Map.make()
 
 let substitute = (term: t, subst: subst) =>
   Array.flatMap(term, piece => {

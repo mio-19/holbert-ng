@@ -9,6 +9,7 @@ module type TERM = {
   let prettyPrintSubst: (subst, ~scope: array<meta>) => string
   let substitute: (t, subst) => t
   let unify: (t, t, ~gen: gen=?) => Seq.t<subst>
+  let makeSubst: unit => subst
   // law: unify(a,b) == [{}] iff equivalent(a,b)
   let equivalent: (t, t) => bool
   let substDeBruijn: (t, array<t>, ~from: int=?) => t
@@ -28,13 +29,18 @@ module type JUDGMENT = {
   type t
   type subst
   type substVal
+  type schematic = Term.schematic
+  type meta = Term.meta
+  type gen = Term.gen
   let mapSubst: (subst, substVal => substVal) => subst
   let substitute: (t, subst) => t
+  let substituteSubstVal: (substVal, subst) => substVal
   let equivalent: (t, t) => bool
   let unify: (t, t, ~gen: Term.gen=?) => Seq.t<subst>
   let substDeBruijn: (t, array<substVal>, ~from: int=?) => t
   let upshift: (t, int, ~from: int=?) => t
   let upshiftSubstVal: (substVal, int, ~from: int=?) => substVal
+  let placeSubstVal: (schematic, ~scope: array<meta>) => substVal
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
   let parseSubstVal: (
     string,

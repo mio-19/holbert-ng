@@ -1,5 +1,6 @@
 open Signatures
 open Zora
+open Util
 
 let stringifyExn = (t: 'a) => JSON.stringifyAny(t, ~space=2)->Option.getExn
 
@@ -55,6 +56,41 @@ module MakeTerm = (Term: TERM) => {
         t->equal(result, expected, ~msg="prettyPrint output matches expected")
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
+    }
+  }
+  let parse = (t: Zora.t, input: string): Term.t => {
+    let res = Term.parse(input, ~scope=[], ~gen=Term.makeGen())
+    switch res {
+    | Ok((term, "")) => term
+    | Ok((_, rest)) => {
+        t->fail(~msg="parse incomplete: " ++ rest)
+        raise(Unreachable(""))
+      }
+    | Error(msg) => {
+        t->fail(~msg="parse failed: " ++ msg)
+        raise(Unreachable(""))
+      }
+    }
+  }
+  let testUnify1 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
+    let gen = Term.makeGen()
+    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+    let res = Term.unify(a, b, ~gen)
+    if res->Seq.length == 0 {
+      t->fail(~msg="unification failed: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
+    } else {
+      switch subst {
+      | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
+      | Some(subst) => {
+          t->equal(res->Seq.length, 1)
+          t->equal(
+            res->Seq.head->Option.getExn,
+            subst,
+            ~msg=msg->Option.getOr("unification succeeded with substitution"),
+          )
+        }
+      }
     }
   }
 

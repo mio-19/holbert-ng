@@ -35,8 +35,8 @@ module Make = (
           <div className="proof-show">
             <JudgmentView judgment={rule.conclusion} scope />
             {switch method {
-            | None => React.null
-            | Some(method) =>
+            | Goal(options) => <button onClick={_ => Console.log(options(Term.makeGen()))}> {React.string("Test")} </button>
+            | Do(method) =>
               React.createElement(
                 MethodView.make(p =>
                   make({proof: p["proof"], scope: p["scope"], ruleStyle: p["ruleStyle"]})

@@ -1,6 +1,10 @@
 type t = (StringTerm.t, SExp.t)
 type substVal = StringV(StringTerm.t) | SExpV(SExp.t)
 type subst = Map.t<int, substVal>
+type schematic = int
+type meta = string
+type gen = StringTerm.gen
+
 let mapSubst = Util.mapMapValues
 let splitSub: subst => (StringTerm.subst, SExp.subst) = s => {
   let stringSub = Map.make()
@@ -16,6 +20,14 @@ let splitSub: subst => (StringTerm.subst, SExp.subst) = s => {
 let substitute = ((term, judge): t, sub) => {
   let (stringSub, judgeSub) = splitSub(sub)
   (StringTerm.substitute(term, stringSub), SExp.substitute(judge, judgeSub))
+}
+
+let substituteSubstVal = (s: substVal, subst: subst) => {
+  let (stringSub, judgeSub) = splitSub(subst)
+  switch s {
+  | StringV(t) => StringV(StringTerm.substitute(t, stringSub))
+  | SExpV(t) => SExpV(SExp.substitute(t, judgeSub))
+  }
 }
 let equivalent = ((t1, j1): t, (t2, j2): t) =>
   StringTerm.equivalent(t1, t2) && SExp.equivalent(j1, j2)
@@ -62,6 +74,11 @@ let parse = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
     SExp.parse(str, ~scope)->Result.map(((j, str)) => ((t, j), str))
   )
 }
+
+// NOTE: this does work due to the hacky string-sexp conversion we have inplace with substitutions,
+// but a different solution would be preferable
+let placeSubstVal = (x: int, ~scope: array<string>) => StringV(StringTerm.place(x, ~scope))
+
 // TODO: figure out correct gen type
 let parseSubstVal = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
   switch StringTerm.parse(str, ~scope, ~gen?) {

@@ -16,8 +16,10 @@ module type PROOF_METHOD = {
   module Context: module type of Context(Term, Judgment)
   type t<'a>
   let keywords: array<string>
+  let substitute: (t<'a>, Judgment.subst) => t<'a>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
-  let uncheck: (t<'a>, 'a => 'b) => t<'b>
+  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Dict.t<(t<'a>, Judgment.subst)>
+  let map: (t<'a>, 'a => 'b) => t<'b>
   let parse: (
     string,
     ~keyword: string,
@@ -41,11 +43,18 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     instantiation: array<Judgment.substVal>,
     subgoals: array<'a>,
   }
-  let uncheck = (it: t<'a>, f) => {
+  let map = (it: t<'a>, f) => {
     {
       ruleName: it.ruleName,
       instantiation: it.instantiation,
       subgoals: it.subgoals->Array.map(f),
+    }
+  }
+  let substitute = (it: t<'a>, subst: Judgment.subst) => {
+    {
+      ruleName: it.ruleName,
+      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstVal(subst)),
+      subgoals: it.subgoals,
     }
   }
   exception InternalParseError(string)
@@ -127,6 +136,26 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
       Error("Expected (")
     }
   }
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+    let ret = Dict.make()
+    ctx.facts->Dict.forEachWithKey((rule, key) => {
+      let insts =
+        rule.vars->Array.map(m =>
+          Judgment.placeSubstVal(gen->Term.fresh(~replacing=m), ~scope=ctx.fixes)
+        )
+      let res = rule->Rule.instantiate(insts)
+      let substs = Judgment.unify(res.conclusion, j, ~gen)
+      substs->Seq.forEach(subst => {
+        let new = {
+          ruleName: key,
+          instantiation: insts,
+          subgoals: res.premises->Array.map(f),
+        }
+        ret->Dict.set("intro " ++ key, (new, subst))
+      })
+    })
+    ret
+  }
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     switch ctx.facts->Dict.get(it.ruleName) {
     | None => Error("Cannot find rule '"->String.concat(it.ruleName)->String.concat("'"))
@@ -166,13 +195,6 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     ruleName: string,
     elimName: string,
     subgoals: array<'a>,
-  }
-  let uncheck = (it: t<'a>, f) => {
-    {
-      ruleName: it.ruleName,
-      elimName: it.elimName,
-      subgoals: it.subgoals->Array.map(f),
-    }
   }
   exception InternalParseError(string)
   let keywords = ["elim"]
@@ -290,11 +312,18 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     proof: 'a,
     show: 'a,
   }
-  let uncheck = (it: t<'a>, f) => {
+  let map = (it: t<'a>, f) => {
     {
       rule: it.rule,
       proof: f(it.proof),
       show: f(it.show),
+    }
+  }
+  let substitute = (it: t<'a>, subst: Judgment.subst) => {
+    {
+      rule: it.rule->Rule.substitute(subst),
+      proof: it.proof,
+      show: it.show,
     }
   }
   let keywords = ["have"]
@@ -326,6 +355,9 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     | Error(e) => Error(e)
     }
   }
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+    Dict.make()
+  }
   let check = (it: t<'a>, _ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     let first = f(it.proof, it.rule)
     let second = f(it.show, {vars: [], premises: [it.rule], conclusion: j})
@@ -341,13 +373,22 @@ module Combine = (
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
   type t<'a> = First(Method1.t<'a>) | Second(Method2.t<'a>)
-  let uncheck = (it, f) =>
+  let map = (it, f) =>
     switch it {
-    | First(m) => First(Method1.uncheck(m, f))
-    | Second(m) => Second(Method2.uncheck(m, f))
+    | First(m) => First(Method1.map(m, f))
+    | Second(m) => Second(Method2.map(m, f))
+    }
+  let substitute = (it, subst) =>
+    switch it {
+    | First(m) => First(Method1.substitute(m, subst))
+    | Second(m) => Second(Method2.substitute(m, subst))
     }
   let keywords = Array.concat(Method1.keywords, Method2.keywords)
-
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+    let d1 = Method1.apply(ctx, j, gen, f)->Dict.mapValues(((m, s)) => (First(m), s))
+    let d2 = Method2.apply(ctx, j, gen, f)->Dict.mapValues(((m, s)) => (Second(m), s))
+    d1->Dict.assign(d2)
+  }
   let check = (it, ctx, j, f) =>
     switch it {
     | First(m) => m->Method1.check(ctx, j, f)->Result.map(x => First(x))

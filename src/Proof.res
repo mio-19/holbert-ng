@@ -13,18 +13,29 @@ module Make = (
     assumptions: array<string>,
     method: option<Method.t<t>>,
   }
+
   type rec checked =
     | Checked({
         fixes: array<Term.meta>,
         assumptions: array<string>,
-        method: option<Method.t<checked>>,
+        method: checked_option_method,
         rule: Rule.t,
       })
     | ProofError({raw: t, rule: Rule.t, msg: string})
+  and checked_option_method =
+    | Do(Method.t<checked>)
+    | Goal(Term.gen => Dict.t<(Method.t<checked>, Judgment.subst)>)
   let parseKeyword = input => {
     Method.keywords
     ->Array.concat(["?"])
     ->Array.find(kw => String.trim(input)->String.startsWith(kw))
+  }
+  let rec substitute = (prf: t, subst: Judgment.subst) => {
+    fixes: prf.fixes,
+    assumptions: prf.assumptions,
+    method: prf.method->Option.map(m =>
+      m->Method.substitute(subst)->Method.map(m => m->substitute(subst))
+    ),
   }
   let rec prettyPrint = (prf: t, ~scope, ~indentation=0) => {
     let mtd = switch prf.method {
@@ -127,12 +138,14 @@ module Make = (
     | Checked({fixes, assumptions, method, rule: _}) => {
         fixes,
         assumptions,
-        method: method->Option.map(xs => xs->Method.uncheck(uncheck)),
+        method: switch method {
+        | Do(m) => Some(m->Method.map(uncheck))
+        | Goal(_) => None
+        },
       }
     }
   let rec check = (ctx: Context.t, prf: t, rule: Rule.t) => {
     let ruleStr = Rule.prettyPrintInline(rule, ~scope=[])
-    Console.log(("CHECK", ctx, prf, ruleStr))
     switch enter(ctx, prf, rule) {
     | Ok(ctx') =>
       switch prf.method {
@@ -143,7 +156,7 @@ module Make = (
             rule,
             fixes: prf.fixes,
             assumptions: prf.assumptions,
-            method: Some(m'),
+            method: Do(m'),
           })
         | Error(e) => ProofError({raw: prf, rule, msg: e})
         }
@@ -152,12 +165,37 @@ module Make = (
           rule,
           fixes: prf.fixes,
           assumptions: prf.assumptions,
-          method: None,
+          method: Goal(
+            gen => {
+              Method.apply(ctx', rule.conclusion, gen, rl => {
+                check(
+                  ctx',
+                  {
+                    fixes: rl.vars,
+                    method: None,
+                    assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
+                      Int.toString(i)
+                    ),
+                  },
+                  rl,
+                )
+              })
+            },
+          ),
         })
       }
     | Error(e) => ProofError({raw: prf, rule, msg: e})
     }
   } // result<checked,string>
+
+  let substituteChecked = (prf: checked, ctx: Context.t, subst: Judgment.subst) => {
+    switch prf {
+    | Checked(prf) =>
+      check(ctx, Checked(prf)->uncheck->substitute(subst), prf.rule->Rule.substitute(subst))
+    | ProofError({raw, rule, msg}) =>
+      ProofError({raw: raw->substitute(subst), rule: rule->Rule.substitute(subst), msg})
+    }
+  }
 }
 
 /*
