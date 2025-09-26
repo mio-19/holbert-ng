@@ -14,13 +14,17 @@ module Ports = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     {facts, ruleStyle}
   }
 }
+
 module type COMPONENT = {
   module Ports: PORTS
+  type state
   type props = {
-    content: string,
+    content: state,
     imports: Ports.t,
-    onLoad: (~exports: Ports.t, ~string: string=?) => unit,
-    onChange: (string, ~exports: Ports.t) => unit,
+    /* onLoad: (~exports: Ports.t, ~string: string=?) => unit, */
+    onChange: (state, ~exports: Ports.t) => unit,
   }
+  let serialise: state => string
+  let deserialise: (string, ~imports: Ports.t) => result<(state,Ports.t),string>
   let make: props => React.element
 }

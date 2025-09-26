@@ -8,14 +8,17 @@ module Make = (
   module Rule = Rule.Make(Term, Judgment)
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
+  type state = dict<Rule.t>
   type props = {
-    content: string,
+    content: state,
     imports: Ports.t,
-    onLoad: (~exports: Ports.t, ~string: string=?) => unit,
-    onChange: (string, ~exports: Ports.t) => unit,
+    onChange: (state, ~exports: Ports.t) => unit,
   }
 
-  let deserialise = (str: string) => {
+  let serialise = (state: state) => {
+    state->Dict.toArray->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))->Array.join("\n")
+  }
+  let deserialise = (str: string, ~imports: Ports.t) => {
     let cur = ref(str)
     let go = ref(true)
     let results = Dict.make()
@@ -41,44 +44,25 @@ module Make = (
         }
       }
     }
-    ret.contents
+    ret.contents->Result.map(state => (state, {Ports.facts: state, ruleStyle: None}))
   }
 
-  let make = props => {
-    switch deserialise(props.content) {
-    | Ok(s) => {
-        React.useEffect(() => {
-          // Run effects
-          props.onLoad(~exports={Ports.facts: s, ruleStyle: None})
-          None // or Some(() => {})
-        }, [])
-
-        <div
-          className={"axiom-set axiom-set-"->String.concat(
-            String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-          )}>
-          {Dict.toArray(s)
-          ->Array.mapWithIndex(((n, r), i) =>
-            <RuleView
-              rule={r}
-              scope={[]}
-              key={String.make(i)}
-              style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
-              {React.string(n)}
-              //<Name content={n} onChange={(_) => Error("BLAH!")} />
-            </RuleView>
-          )
-          ->React.array}
-        </div>
-      }
-    | Error(e) => {
-        React.useEffect(() => {
-          // Run effects
-          props.onLoad(~exports={Ports.facts: Dict.make(), ruleStyle: None})
-          None // or Some(() => {})
-        }, [])
-        <div className="error"> {React.string(e)} </div>
-      }
-    }
+  let make = props => {    
+    <div
+      className={"axiom-set axiom-set-"->String.concat(
+        String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
+      )}>
+      {Dict.toArray(props.content)
+      ->Array.mapWithIndex(((n, r), i) =>
+        <RuleView
+          rule={r}
+          scope={[]}
+          key={String.make(i)}
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          {React.string(n)}
+        </RuleView>
+      )
+      ->React.array}
+    </div>
   }
 }

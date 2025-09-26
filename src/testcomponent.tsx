@@ -17,9 +17,9 @@ function HolComp(RComp : any) {
 		exports : Record<string,any>;
 		loaded: boolean;
 		root : ReactDOM.Root;
-		stringRep:string;
+		state: any;
 		toString() {
-			return this.stringRep
+			return RComp.serialise(this.state)
 		}
 		gatherImports() {
 			let ret = RComp.Ports.empty
@@ -28,37 +28,23 @@ function HolComp(RComp : any) {
 					ret = RComp.Ports.combine(ret,this.deps[x]["exports"])
 				}
 			}
-			console.log("EXPORTS",ret)
 			return ret
 		}
-		render(signal : (msg: any) => void,loaded : (msg: any) => void) {
+		render(signal : (msg: any) => void) {
 			let Tag = RComp.make			
 			this.root.render(
-				<Tag content={this.stringRep} imports={this.gatherImports()} 
-					onChange={ (str, exports) => {
+				<Tag content={this.state} imports={this.gatherImports()} 
+					onChange={ (state, exports) => {
 						this.exports = exports
-						this.stringRep = str;
+						this.state = state;
 						signal(null)
-						this.render(signal, loaded)
-					}} 
-					onLoad={ (exports,str) => {				
-						this.exports = exports
-						if (str) {
-							this.stringRep = str;
-						}
-						if (!this.loaded) {
-							this.loaded = true;
-							loaded(null)
-						} else {
-							signal(null)
-						}
-					}}
+						this.render(signal)
+					}} 				
 				/>
 			)
 		}
 		constructor(str: string,deps : Record<string,Component>, signal : (msg: any) => void, loaded : (msg: any) => void, view? : HTMLElement) {
 			this.deps = deps
-			this.stringRep = str
 			this.loaded = false
 			if (view != null) { 
 				const newDiv = document.createElement("div");	
@@ -66,10 +52,20 @@ function HolComp(RComp : any) {
 				view.appendChild(newDiv);
 				this.root = ReactDOM.createRoot(newDiv); 
 			}
-			this.render(signal,loaded)
-			this.dependencyChanged = (_depName, _comp) => {
-				this.render(signal, loaded)
-			};
+			const imports = this.gatherImports();
+			var foo = RComp.deserialise(str,imports)			
+			if (foo.TAG == "Ok") {
+				this.exports = foo._0[1]
+				this.state = foo._0[0]
+				this.dependencyChanged = (_depName, _comp) => {
+					this.render(signal)
+				};
+				loaded(null)
+				this.loaded = true;
+				this.render(signal)
+			} else {
+				view.innerHTML = foo._0
+			}
 		}
 	}
 	
@@ -80,4 +76,4 @@ ComponentGraph.setup({
 	"hol-comp": HolComp(AxiomS),
 	"hol-config":HolComp(ConfS),
 	"hol-proof": HolComp(TheoremS)
-});//"hol-config": ConfigComponent, "hol-proof":ProofComponent});
+});
