@@ -261,7 +261,7 @@ module Combine = (
   let substitute = (it, subst) =>
     switch it {
     | First(m) => First(Method1.substitute(m, subst))
-    | Second(m) => Second(Method2.substitute(m, f))
+    | Second(m) => Second(Method2.substitute(m, subst))
     }
   let keywords = Array.concat(Method1.keywords, Method2.keywords)
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
