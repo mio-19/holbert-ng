@@ -5,31 +5,37 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Ports = Ports(Term, Judgment)
   open RuleView
   type props = {
-    content: string,
+    content: style,
     imports: Ports.t,
-    onLoad: (~exports: Ports.t) => unit,
-    onChange: (string, ~exports: Ports.t) => unit,
+    onChange: (style, ~exports: Ports.t) => unit,
   }
   let deserialise = str =>
     switch str {
-    | "Gentzen" => Gentzen
-    | "Linear" => Linear
-    | "Hybrid" => Hybrid
-    | _ => Hybrid
+    | "Gentzen" => Ok((Gentzen, Ports.empty))
+    | "Linear" => Ok((Linear, Ports.empty))
+    | "Hybrid" => Ok((Hybrid, Ports.empty))
+    | _ => Error("unknown rule style")
     }
+  let serialise = style => switch style {
+  | Gentzen => "Gentzen"
+  | Linear => "Linear"
+  | Hybrid => "Hybrid"
+  }
+  
+  
   let make = props => {
-    let (style, setStyle) = React.useState(_ => deserialise(props.content))
-    React.useEffect(() => {
-      props.onLoad(~exports={Ports.facts: Dict.make(), ruleStyle: Some(style)})
-      None
-    }, [])
+    let (style, setStyle) = React.useState(_ => props.content)
     let onChange = e => {
       let target = JsxEvent.Form.target(e)
       let value: string = target["value"]
-      let sty = deserialise(value)
-      setStyle(_ => sty)
-
-      props.onChange(value, ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty)})
+      switch deserialise(value) {
+      | Ok((sty,_)) => {
+        setStyle(_ => sty)
+        props.onChange(sty, ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty)})  
+      }
+      | Error(_) => ()
+      }
+      
     }
     [Gentzen, Linear, Hybrid]
     ->Array.map(n =>

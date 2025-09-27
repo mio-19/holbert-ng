@@ -8,11 +8,15 @@ module JudgmentView = StringTermJView
 module Rule = Rule.Make(Term, Judgment)
 module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
 module Ports = Ports(Term, Judgment)
+type state = {
+  raw: dict<Rule.t>,
+  derived: dict<Rule.t>,
+}
+
 type props = {
-  content: string,
+  content: state,
   imports: Ports.t,
-  onLoad: (~exports: Ports.t, ~string: string=?) => unit,
-  onChange: (string, ~exports: Ports.t) => unit,
+  onChange: (state, ~exports: Ports.t) => unit,
 }
 
 module Set = Belt.Set.String
@@ -70,8 +74,7 @@ let derive = (name: string, rules: array<Rule.t>): Rule.t => {
   }
 }
 
-type axioms = {raw: dict<Rule.t>, derived: dict<Rule.t>}
-let deserialise = (str: string) => {
+let deserialise = (str: string, ~imports: Ports.t) => {
   let getBase = (str: string) => {
     let cur = ref(str)
     let go = ref(true)
@@ -100,9 +103,9 @@ let deserialise = (str: string) => {
     }
     ret.contents
   }
-  getBase(str)->Result.map(parsed => {
+  getBase(str)->Result.map(raw => {
     let grouped: dict<array<Rule.t>> = Dict.make()
-    parsed->Dict.forEach(rule =>
+    raw->Dict.forEach(rule =>
       switch rule.conclusion->snd {
       | Symbol({name: a}) =>
         switch grouped->Dict.get(a) {
@@ -117,66 +120,39 @@ let deserialise = (str: string) => {
       // NOTE: this can clash with other names. is this an issue?
       derived->Dict.set(`${name}_induct`, derive(name, rules))
     })
-    {raw: parsed, derived}
+    ({raw, derived}, {Ports.facts: raw->Dict.copy->Dict.assign(derived), ruleStyle: None})
   })
 }
 
-let make = props => {
-  switch deserialise(props.content) {
-  | Ok(s) => {
-      React.useEffect(() => {
-        // Run effects
-        props.onLoad(
-          ~exports={Ports.facts: Dict.assign(s.raw->Dict.copy, s.derived), ruleStyle: None},
-        )
-        None // or Some(() => {})
-      }, [])
+let serialise = (state: state) => {
+  state.raw
+  ->Dict.toArray
+  ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))
+  ->Array.join("\n")
+}
 
-      <div>
-        <div
-          className={"axiom-set axiom-set-"->String.concat(
-            String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-          )}>
-          {Dict.toArray(s.raw)
-          ->Array.mapWithIndex(((n, r), i) =>
-            <RuleView
-              rule={r}
-              scope={[]}
-              key={String.make(i)}
-              style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
-              {React.string(n)}
-              //<Name content={n} onChange={(_) => Error("BLAH!")} />
-            </RuleView>
-          )
-          ->React.array}
-        </div>
-        <p> {React.string("derived")} </p>
-        <div
-          className={"axiom-set axiom-set-"->String.concat(
-            String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-          )}>
-          {Dict.toArray(s.derived)
-          ->Array.mapWithIndex(((n, r), i) =>
-            <RuleView
-              rule={r}
-              scope={[]}
-              key={String.make(i)}
-              style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
-              {React.string(n)}
-              //<Name content={n} onChange={(_) => Error("BLAH!")} />
-            </RuleView>
-          )
-          ->React.array}
-        </div>
-      </div>
-    }
-  | Error(e) => {
-      React.useEffect(() => {
-        // Run effects
-        props.onLoad(~exports={Ports.facts: Dict.make(), ruleStyle: None})
-        None // or Some(() => {})
-      }, [])
-      <div className="error"> {React.string(e)} </div>
-    }
-  }
+let make = props => {
+  let makeRules = content =>
+    <div
+      className={"axiom-set axiom-set-"->String.concat(
+        String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
+      )}>
+      {content
+      ->Dict.toArray
+      ->Array.mapWithIndex(((n, r), i) =>
+        <RuleView
+          rule={r}
+          scope={[]}
+          key={String.make(i)}
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          {React.string(n)}
+        </RuleView>
+      )
+      ->React.array}
+    </div>
+  <div>
+    {makeRules(props.content.raw)}
+    <p> {React.string("derived")} </p>
+    {makeRules(props.content.derived)}
+  </div>
 }

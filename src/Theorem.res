@@ -14,53 +14,43 @@ module Make = (
   open RuleView
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
+  type state = {name: string, rule: Rule.t, proof: Proof.t}
   type props = {
-    content: string,
+    content: state,
     imports: Ports.t,
-    onLoad: (~exports: Ports.t, ~string: string=?) => unit,
-    onChange: (string, ~exports: Ports.t) => unit,
+    onChange: (state, ~exports: Ports.t) => unit,
   }
-  type state = {name: string, rule: Rule.t, proof: Proof.checked}
-  let deserialise = (facts: Dict.t<Rule.t>, gen: Term.gen, str: string): result<state, string> => {
+  let serialise = (state: state) => {
+    state.rule->Rule.prettyPrintTopLevel(~name=state.name)
+      ->String.concat(Proof.prettyPrint(state.proof,~scope=[]))
+  }
+  let deserialise = (str: string, ~imports: Ports.t) => {
+    let facts = imports.facts
+    let gen = Term.makeGen()
     let cur = ref(str)
     switch Rule.parseTopLevel(cur.contents, ~scope=[], ~gen) {
     | Error(e) => Error(e)
-    | Ok(((r, n), s)) =>
+    | Ok(((rule, name), s)) =>
       switch Proof.parse(s, ~scope=[], ~gen) {
       | Error(e) => Error(e)
       | Ok((_, s')) if String.length(String.trim(s')) > 0 =>
         Error("Trailing input: "->String.concat(s'))
-      | Ok((prf, _)) => {
-          let ctx: Context.t = {fixes: [], facts}
-          Ok({name: n, rule: r, proof: Proof.check(ctx, prf, r)})
+      | Ok((proof, _)) => {
+          Ok(({name, rule, proof}, {Ports.facts: Dict.fromArray([(name,rule)]), ruleStyle: None}))
         }
       }
     }
   }
   let make = props => {
-    let gen = Term.makeGen()
-    switch deserialise(props.imports.facts, gen, props.content) {
-    | Ok(state) => {
-        React.useEffect(() => {
-          let export = Dict.fromArray([(state.name, state.rule)])
-          props.onLoad(~exports={Ports.facts: export, ruleStyle: None})
-          None
-        }, [])
-        let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
-        <>
-          <RuleView rule={state.rule} scope={[]} style={ruleStyle}>
-            {React.string(state.name)}
-          </RuleView>
-          <ProofView ruleStyle={ruleStyle} scope={[]} proof=state.proof />
-        </>
-      }
-    | Error(err) => {
-        React.useEffect(() => {
-          props.onLoad(~exports={Ports.facts: Dict.make(), ruleStyle: None})
-          None
-        }, [])
-        <div className="error"> {React.string(err)} </div>
-      }
-    }
+    Console.log(props.imports)    
+    let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
+    let ctx: Context.t = {fixes: [], facts: props.imports.facts}
+    let checked = Proof.check(ctx, props.content.proof, props.content.rule)
+    <>
+      <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
+        {React.string(props.content.name)}
+      </RuleView>
+      <ProofView ruleStyle={ruleStyle} scope={[]} proof=checked />
+    </>    
   }
 }
