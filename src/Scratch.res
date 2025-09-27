@@ -15,6 +15,12 @@ module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
   MethodView.DerivationView(StringTerm, StringTermJudgment),
   MethodView.LemmaView(StringTerm, StringTermJudgment, StringTermJView),
 )
+module DLEStrView = MethodView.CombineMethodView(
+  StringTerm,
+  StringTermJudgment,
+  DerivationsOrLemmasStrView,
+  MethodView.EliminationView(StringTerm, StringTermJudgment),
+)
 module TheoremStr = Editable.TextArea(
   Theorem.Make(StringTerm, StringTermJudgment, StringTermJView, DerivationsOrLemmasStrView),
 )

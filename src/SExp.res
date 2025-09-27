@@ -171,6 +171,7 @@ let place = (x: int, ~scope: array<string>) => Schematic({
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
 })
 let placeSubstVal: (schematic, ~scope: array<meta>) => substVal = place
+let mergeSubsts = Util.mapUnion
 
 type gen = ref<int>
 let seen = (g: gen, s: int) => {

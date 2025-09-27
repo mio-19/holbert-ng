@@ -6,6 +6,7 @@ type meta = string
 type gen = StringTerm.gen
 
 let mapSubst = Util.mapMapValues
+let mergeSubsts: (subst, subst) => subst = Util.mapUnion
 let splitSub: subst => (StringTerm.subst, SExp.subst) = s => {
   let stringSub = Map.make()
   let judgeSub = Map.make()

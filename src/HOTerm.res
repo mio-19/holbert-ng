@@ -25,6 +25,13 @@ let substEqual = (m1, m2) => m1 == m2
 let makeSubst = () => {
   Belt.Map.Int.empty
 }
+let mergeSubsts = (m1: subst, m2: subst) =>
+  Belt.Map.Int.merge(m1, m2, (_, o1, o2) =>
+    switch (o1, o2) {
+    | (Some(v), _) | (_, Some(v)) => Some(v)
+    | (None, None) => None
+    }
+  )
 let rec equivalent = (a: t, b: t) => {
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) => na == nb

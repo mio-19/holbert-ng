@@ -17,3 +17,4 @@ let prettyPrintSubstVal: (substVal, ~scope: array<meta>) => string
 let parseSubstVal: (string, ~scope: array<meta>, ~gen: gen=?) => result<(substVal, string), string>
 let substituteSubstVal: (substVal, subst) => substVal
 let placeSubstVal: (schematic, ~scope: array<meta>) => substVal
+let mergeSubsts: (subst, subst) => subst

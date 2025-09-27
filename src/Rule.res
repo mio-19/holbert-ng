@@ -33,6 +33,12 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
   type bare = {premises: array<t>, conclusion: Judgment.t}
+  let substituteBare = (rule: bare, subst: Judgment.subst) => {
+    {
+      premises: rule.premises->Array.map(premise => premise->substitute(subst)),
+      conclusion: rule.conclusion->Judgment.substitute(subst),
+    }
+  }
   let instantiate = (rule: t, terms: array<Judgment.substVal>) => {
     assert(Array.length(terms) == Array.length(rule.vars))
     let terms' = [...terms]
@@ -41,6 +47,9 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       premises: rule.premises->Array.map(r => r->substDeBruijn(terms')),
       conclusion: rule.conclusion->Judgment.substDeBruijn(terms'),
     }
+  }
+  let schematise = (rule: t, gen: Term.gen, ~scope: array<Judgment.meta>) => {
+    rule.vars->Array.map(m => Judgment.placeSubstVal(gen->Term.fresh(~replacing=m), ~scope))
   }
   let parseRuleName = str => {
     let re = RegExp.fromStringWithFlags(ruleNamePattern, ~flags="y")

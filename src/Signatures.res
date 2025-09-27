@@ -33,6 +33,7 @@ module type JUDGMENT = {
   type meta = Term.meta
   type gen = Term.gen
   let mapSubst: (subst, substVal => substVal) => subst
+  let mergeSubsts: (subst, subst) => subst
   let substitute: (t, subst) => t
   let substituteSubstVal: (substVal, subst) => substVal
   let equivalent: (t, t) => bool

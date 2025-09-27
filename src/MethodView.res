@@ -34,6 +34,30 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
   }
 }
 
+module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
+  module Method = Elimination(Term, Judgment)
+  type props<'a> = {method: Method.t<'a>, scope: array<Term.meta>, ruleStyle: RuleView.style}
+  type srProps<'a> = {"proof": 'a, "scope": array<Term.meta>, "ruleStyle": RuleView.style}
+  let make = (subRender: srProps<'a> => React.element) => props => {
+    <div>
+      <b> {React.string("by ")} </b>
+      {React.string(props.method.ruleName)}
+      <ul>
+        {props.method.subgoals
+        ->Array.mapWithIndex((sg, i) => {
+          <li key={String.make(i)}>
+            {React.createElement(
+              subRender,
+              {"proof": sg, "scope": props.scope, "ruleStyle": props.ruleStyle},
+            )}
+          </li>
+        })
+        ->React.array}
+      </ul>
+    </div>
+  }
+}
+
 module LemmaView = (
   Term: TERM,
   Judgment: JUDGMENT with module Term := Term,
