@@ -17,7 +17,7 @@ module type PROOF_METHOD = {
   let keywords: array<string>
   let substitute: (t<'a>, Term.subst) => t<'a>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
-  let apply: (Context.t, Judgment.t, Term.gen, (Rule.t => 'a)) => Dict.t<(t<'a>, Term.subst)>
+  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Dict.t<(t<'a>, Term.subst)>
   let map: (t<'a>, 'a => 'b) => t<'b>
   let parse: (
     string,
@@ -53,7 +53,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     {
       ruleName: it.ruleName,
       instantiation: it.instantiation->Array.map(t => t->Term.substitute(subst)),
-      subgoals: it.subgoals
+      subgoals: it.subgoals,
     }
   }
   exception InternalParseError(string)
@@ -138,15 +138,15 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
     ctx.facts->Dict.forEachWithKey((rule, key) => {
-      let insts = rule.vars
-        ->Array.map(m => Term.place(gen->Term.fresh(~replacing=m),~scope=ctx.fixes))
+      let insts =
+        rule.vars->Array.map(m => Term.place(gen->Term.fresh(~replacing=m), ~scope=ctx.fixes))
       let res = rule->Rule.instantiate(insts)
-      let substs = Judgment.unify(res.conclusion,j,~gen)
+      let substs = Judgment.unify(res.conclusion, j, ~gen)
       substs->Array.forEach(subst => {
         let new = {
           ruleName: key,
           instantiation: insts,
-          subgoals: res.premises->Array.map(f)
+          subgoals: res.premises->Array.map(f),
         }
         ret->Dict.set("intro " ++ key, (new, subst))
       })
@@ -203,7 +203,7 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     {
       rule: it.rule->Rule.substitute(subst),
       proof: it.proof,
-      show: it.show
+      show: it.show,
     }
   }
   let keywords = ["have"]
@@ -235,7 +235,7 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     | Error(e) => Error(e)
     }
   }
-  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+  let apply = (_ctx: Context.t, _j: Judgment.t, _gen: Term.gen, _f: Rule.t => 'a) => {
     Dict.make()
   }
   let check = (it: t<'a>, _ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
@@ -265,8 +265,8 @@ module Combine = (
     }
   let keywords = Array.concat(Method1.keywords, Method2.keywords)
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
-    let d1 = Method1.apply(ctx,j,gen,f)->Dict.mapValues(((m,s)) => (First(m),s))
-    let d2 = Method2.apply(ctx,j,gen,f)->Dict.mapValues(((m,s)) => (Second(m),s))
+    let d1 = Method1.apply(ctx, j, gen, f)->Dict.mapValues(((m, s)) => (First(m), s))
+    let d2 = Method2.apply(ctx, j, gen, f)->Dict.mapValues(((m, s)) => (Second(m), s))
     d1->Dict.assign(d2)
   }
   let check = (it, ctx, j, f) =>

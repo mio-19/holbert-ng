@@ -1,5 +1,4 @@
 open Signatures
-open Method
 open MethodView
 
 module Make = (
@@ -35,7 +34,10 @@ module Make = (
           <div className="proof-show">
             <JudgmentView judgment={rule.conclusion} scope />
             {switch method {
-            | Goal(options) => <button onClick={_ => Console.log(options(Term.makeGen()))}> {React.string("Test")} </button>
+            | Goal(options) =>
+              <button onClick={_ => Console.log(options(Term.makeGen()))}>
+                {React.string("Test")}
+              </button>
             | Do(method) =>
               React.createElement(
                 MethodView.make(p =>

@@ -1,4 +1,3 @@
-open Util
 open Signatures
 open Method
 module type METHOD_VIEW = {

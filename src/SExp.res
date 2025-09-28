@@ -110,7 +110,7 @@ and unifyArray = (a: array<(t, t)>) => {
     }
   }
 }
-let unify = (a: t, b: t, ~gen=?) => {
+let unify = (a: t, b: t, ~gen as _=?) => {
   switch unifyTerm(a, b) {
   | None => []
   | Some(s) => [s]
