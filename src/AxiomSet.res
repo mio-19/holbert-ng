@@ -12,7 +12,7 @@ module Make = (
   type props = {
     content: state,
     imports: Ports.t,
-    onChange: (state, ~exports: Ports.t) => unit,
+    onChange: (state, ~exports: Ports.t=?) => unit,
   }
 
   let serialise = (state: state) => {

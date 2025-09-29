@@ -35,9 +35,11 @@ function HolComp(RComp : any) {
 			this.root.render(
 				<Tag content={this.state} imports={this.gatherImports()} 
 					onChange={ (state, exports) => {
-						this.exports = exports
+						if (exports) {
+							this.exports = exports
+							signal(null)							
+						}
 						this.state = state;
-						signal(null)
 						this.render(signal)
 					}} 				
 				/>

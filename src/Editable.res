@@ -5,7 +5,7 @@ module TextArea = (Underlying: COMPONENT) => {
   type props = {
     content: result<Underlying.state,(string, string)>,
     imports: Ports.t,
-    onChange: (result<Underlying.state, (string,string)>, ~exports: Ports.t) => unit,
+    onChange: (result<Underlying.state, (string,string)>, ~exports: Ports.t=?) => unit,
   }
   type state = result<Underlying.state,(string,string)>
   
@@ -54,8 +54,8 @@ module TextArea = (Underlying: COMPONENT) => {
               imports={props.imports}
               /* onLoad={(~exports, ~string=?) => 
                 props.onLoad(~exports, ~string=string->Option.getOr(Underlying.serialise(us)))} */
-              onChange={(state, ~exports) => {                
-                props.onChange(Ok(state), ~exports)
+              onChange={(state, ~exports=?) => {                
+                props.onChange(Ok(state), ~exports=?exports)
               }}
             />
             <div className="editor-controls">
