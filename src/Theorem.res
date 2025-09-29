@@ -22,7 +22,7 @@ module Make = (
   }
   let serialise = (state: state) => {
     state.rule
-    ->Rule.prettyPrintTopLevel(~name=state.name)
+    ->Rule.prettyPrintTopLevel(~name=state.name)->String.concat("\n\n")
     ->String.concat(Proof.prettyPrint(state.proof, ~scope=[]))
   }
   let deserialise = (str: string, ~imports: Ports.t) => {
@@ -53,9 +53,11 @@ module Make = (
         ~exports={Ports.facts: Dict.fromArray([(props.content.name,props.content.rule)]), ruleStyle: None})
     }
     <>
+    <h3>{React.string("Theorem")}</h3>
       <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
         {React.string(props.content.name)}
       </RuleView>
+      <h4>{React.string("Proof")}</h4>
       <ProofView ruleStyle={ruleStyle} scope={[]} proof=checked gen={props.content.gen} onChange=proofChanged/>
     </>
   }

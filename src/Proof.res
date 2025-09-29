@@ -48,8 +48,10 @@ module Make = (
         ~subprinter=prettyPrint,
       )
     }
+    let displayFixes = [...prf.fixes]
+    Array.reverse(displayFixes)
     String.padStart("", indentation, " ")
-    ->String.concat(prf.fixes->Array.map(Term.prettyPrintMeta)->Array.join(""))
+    ->String.concat(displayFixes->Array.map(Term.prettyPrintMeta)->Array.join(""))
     ->String.concat(
       prf.assumptions
       ->Array.map(s => String.concat(" ", s))
