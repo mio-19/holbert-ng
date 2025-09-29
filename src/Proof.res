@@ -13,7 +13,7 @@ module Make = (
     assumptions: array<string>,
     method: option<Method.t<t>>,
   }
-    
+
   type rec checked =
     | Checked({
         fixes: array<Term.meta>,
@@ -24,18 +24,18 @@ module Make = (
     | ProofError({raw: t, rule: Rule.t, msg: string})
   and checked_option_method =
     | Do(Method.t<checked>)
-    | Goal(Term.gen => Dict.t<(Method.t<checked>,Term.subst)>)
+    | Goal(Term.gen => Dict.t<(Method.t<checked>, Term.subst)>)
   let parseKeyword = input => {
     Method.keywords
     ->Array.concat(["?"])
     ->Array.find(kw => String.trim(input)->String.startsWith(kw))
   }
   let rec substitute = (prf: t, subst: Term.subst) => {
-    fixes: prf.fixes, 
-    assumptions: prf.assumptions, 
-    method: prf.method->Option.map(m => 
+    fixes: prf.fixes,
+    assumptions: prf.assumptions,
+    method: prf.method->Option.map(m =>
       m->Method.substitute(subst)->Method.map(m => m->substitute(subst))
-    )
+    ),
   }
   let rec prettyPrint = (prf: t, ~scope, ~indentation=0) => {
     let mtd = switch prf.method {
@@ -131,11 +131,11 @@ module Make = (
         method: switch method {
         | Do(m) => Some(m->Method.map(uncheck))
         | Goal(_) => None
-        } 
+        },
       }
     }
   let rec check = (ctx: Context.t, prf: t, rule: Rule.t) => {
-    let ruleStr = Rule.prettyPrintInline(rule, ~scope=[])
+    let _ruleStr = Rule.prettyPrintInline(rule, ~scope=[])
     switch enter(ctx, prf, rule) {
     | Ok(ctx') =>
       switch prf.method {
@@ -155,32 +155,36 @@ module Make = (
           rule,
           fixes: prf.fixes,
           assumptions: prf.assumptions,
-          method: Goal(gen => {
-            Method.apply(ctx',rule.conclusion,gen, rl => {
-              check(ctx',{
-                fixes:rl.vars,
-                method: None,
-                assumptions:Array.fromInitializer(
-                  ~length=rl.premises->Array.length,
-                  i => Int.toString(i)
+          method: Goal(
+            gen => {
+              Method.apply(ctx', rule.conclusion, gen, rl => {
+                check(
+                  ctx',
+                  {
+                    fixes: rl.vars,
+                    method: None,
+                    assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
+                      Int.toString(i)
+                    ),
+                  },
+                  rl,
                 )
-              },rl)
-            })
-          }),
+              })
+            },
+          ),
         })
       }
     | Error(e) => ProofError({raw: prf, rule, msg: e})
     }
   } // result<checked,string>
-  
-  let substituteChecked = (prf: checked,ctx: Context.t, subst: Term.subst) => {
+
+  let substituteChecked = (prf: checked, ctx: Context.t, subst: Term.subst) => {
     switch prf {
     | Checked(prf) =>
-      check(ctx,Checked(prf)->uncheck->substitute(subst),prf.rule->Rule.substitute(subst))
+      check(ctx, Checked(prf)->uncheck->substitute(subst), prf.rule->Rule.substitute(subst))
     | ProofError({raw, rule, msg}) =>
       ProofError({raw: raw->substitute(subst), rule: rule->Rule.substitute(subst), msg})
     }
-    
   }
 }
 

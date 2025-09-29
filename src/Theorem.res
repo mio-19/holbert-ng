@@ -21,11 +21,12 @@ module Make = (
     onChange: (state, ~exports: Ports.t=?) => unit,
   }
   let serialise = (state: state) => {
-    state.rule->Rule.prettyPrintTopLevel(~name=state.name)
-      ->String.concat(Proof.prettyPrint(state.proof,~scope=[]))
+    state.rule
+    ->Rule.prettyPrintTopLevel(~name=state.name)
+    ->String.concat(Proof.prettyPrint(state.proof, ~scope=[]))
   }
   let deserialise = (str: string, ~imports: Ports.t) => {
-    let facts = imports.facts
+    let _facts = imports.facts
     let gen = Term.makeGen()
     let cur = ref(str)
     switch Rule.parseTopLevel(cur.contents, ~scope=[], ~gen) {
@@ -35,14 +36,15 @@ module Make = (
       | Error(e) => Error(e)
       | Ok((_, s')) if String.length(String.trim(s')) > 0 =>
         Error("Trailing input: "->String.concat(s'))
-      | Ok((proof, _)) => {
-          Ok(({name, rule, proof, gen}, {Ports.facts: Dict.fromArray([(name,rule)]), ruleStyle: None}))
-        }
+      | Ok((proof, _)) => Ok((
+          {name, rule, proof, gen},
+          {Ports.facts: Dict.fromArray([(name, rule)]), ruleStyle: None},
+        ))
       }
     }
   }
   let make = props => {
-    Console.log(props.imports)    
+    Console.log(props.imports)
     let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
     let ctx: Context.t = {fixes: [], facts: props.imports.facts}
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
@@ -55,6 +57,6 @@ module Make = (
         {React.string(props.content.name)}
       </RuleView>
       <ProofView ruleStyle={ruleStyle} scope={[]} proof=checked gen={props.content.gen} onChange=proofChanged/>
-    </>    
+    </>
   }
 }

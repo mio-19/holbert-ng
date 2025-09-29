@@ -1,5 +1,4 @@
 open Signatures
-open Method
 open MethodView
 
 module Make = (
