@@ -14,11 +14,11 @@ module Make = (
   open RuleView
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
-  type state = {name: string, rule: Rule.t, proof: Proof.t}
+  type state = {name: string, rule: Rule.t, proof: Proof.t, gen: Term.gen}
   type props = {
     content: state,
     imports: Ports.t,
-    onChange: (state, ~exports: Ports.t) => unit,
+    onChange: (state, ~exports: Ports.t=?) => unit,
   }
   let serialise = (state: state) => {
     state.rule
@@ -37,7 +37,7 @@ module Make = (
       | Ok((_, s')) if String.length(String.trim(s')) > 0 =>
         Error("Trailing input: "->String.concat(s'))
       | Ok((proof, _)) => Ok((
-          {name, rule, proof},
+          {name, rule, proof, gen},
           {Ports.facts: Dict.fromArray([(name, rule)]), ruleStyle: None},
         ))
       }
@@ -48,11 +48,15 @@ module Make = (
     let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
     let ctx: Context.t = {fixes: [], facts: props.imports.facts}
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
+    let proofChanged = (proof, subst) => {
+      props.onChange({...props.content,proof:Proof.uncheck(proof)->Proof.substitute(subst)}, 
+        ~exports={Ports.facts: Dict.fromArray([(props.content.name,props.content.rule)]), ruleStyle: None})
+    }
     <>
       <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
         {React.string(props.content.name)}
       </RuleView>
-      <ProofView ruleStyle={ruleStyle} scope={[]} proof=checked />
+      <ProofView ruleStyle={ruleStyle} scope={[]} proof=checked gen={props.content.gen} onChange=proofChanged/>
     </>
   }
 }

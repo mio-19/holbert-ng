@@ -22,7 +22,7 @@ module type COMPONENT = {
     content: state,
     imports: Ports.t,
     /* onLoad: (~exports: Ports.t, ~string: string=?) => unit, */
-    onChange: (state, ~exports: Ports.t) => unit,
+    onChange: (state, ~exports: Ports.t=?) => unit,
   }
   let serialise: state => string
   let deserialise: (string, ~imports: Ports.t) => result<(state,Ports.t),string>
