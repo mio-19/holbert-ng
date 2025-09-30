@@ -12,13 +12,16 @@ module Make = (
   type props = {
     content: state,
     imports: Ports.t,
-    onChange: (state, ~exports: Ports.t) => unit,
+    onChange: (state, ~exports: Ports.t=?) => unit,
   }
 
   let serialise = (state: state) => {
-    state->Dict.toArray->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))->Array.join("\n")
+    state
+    ->Dict.toArray
+    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))
+    ->Array.join("\n")
   }
-  let deserialise = (str: string, ~imports: Ports.t) => {
+  let deserialise = (str: string, ~imports as _: Ports.t) => {
     let cur = ref(str)
     let go = ref(true)
     let results = Dict.make()
@@ -47,7 +50,7 @@ module Make = (
     ret.contents->Result.map(state => (state, {Ports.facts: state, ruleStyle: None}))
   }
 
-  let make = props => {    
+  let make = props => {
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),

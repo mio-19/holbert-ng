@@ -275,14 +275,14 @@ let idx1' = (is: array<t>, j: t): t => {
   | Some(idx) => Var({idx: idx})
   }
 }
-let idx1 = (is: array<t>, j: int): t => idx1'(is, Var({idx: j}))
+let _idx1 = (is: array<t>, j: int): t => idx1'(is, Var({idx: j}))
 let idx2' = (is: array<t>, j: t): result<int, int => t> => {
   switch idx(is, j) {
   | None => Error(_ => Unallowed)
   | Some(idx) => Ok(idx)
   }
 }
-let idx2 = (is: array<t>, j: int) => idx2'(is, Var({idx: j}))
+let _idx2 = (is: array<t>, j: int) => idx2'(is, Var({idx: j}))
 let rec app = (term: t, args: array<t>): t => {
   if args->Array.length == 0 {
     term
@@ -338,8 +338,8 @@ let rec proj_allowed = (subst: subst, term: t): bool => {
 // this function is called proj in Nipkow 1993 and it is called pruning in FCU paper
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
-  | (Lam({name, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
-  | (Unallowed, args) => raise(UnifyFail("unallowed"))
+  | (Lam({name: _, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
+  | (Unallowed, _args) => raise(UnifyFail("unallowed"))
   | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
   | (Schematic({schematic}), args) => {
       assert(!substHas(subst, schematic))
@@ -475,7 +475,7 @@ let unify = (a: t, b: t, ~gen=?) =>
     | UnifyFail(_) => []
     },
   )
-let place = (x: int, ~scope: array<string>) => Schematic({
+let place = (x: int, ~scope as _: array<string>) => Schematic({
   schematic: x,
 })
 let placeSubstVal: (schematic, ~scope: array<meta>) => substVal = place

@@ -108,7 +108,7 @@ and unifyArray = (a: array<(t, t)>) => {
     }
   }
 }
-let unify = (a: t, b: t, ~gen=?) => {
+let unify = (a: t, b: t, ~gen as _=?) => {
   Seq.fromArray(
     switch unifyTerm(a, b) {
     | None => []
@@ -187,7 +187,7 @@ let fresh = (g: gen, ~replacing as _=?) => {
 let prettyPrintVar = (idx: int, scope: array<string>) => {
   Console.log(("ppVar", "idx", idx, "scope[idx]", scope[idx], "scope", scope))
   switch scope[idx] {
-  | Some(n) if Array.indexOf(scope, n) == idx && false => n
+  | Some(n) if Array.indexOf(scope, n) == idx => n
   | _ => "\\"->String.concat(String.make(idx))
   }
 }

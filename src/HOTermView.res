@@ -65,4 +65,5 @@ let rec make = ({term, scope}) =>
         {React.createElement(make, {term: body, scope: newScope})}
       </span>
     }
+  | Unallowed => <p> {React.string("Internal error: unallowed")} </p>
   }

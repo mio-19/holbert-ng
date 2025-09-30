@@ -14,18 +14,19 @@ module Make = (
   open RuleView
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
-  type state = {name: string, rule: Rule.t, proof: Proof.t}
+  type state = {name: string, rule: Rule.t, proof: Proof.t, gen: Term.gen}
   type props = {
     content: state,
     imports: Ports.t,
-    onChange: (state, ~exports: Ports.t) => unit,
+    onChange: (state, ~exports: Ports.t=?) => unit,
   }
   let serialise = (state: state) => {
-    state.rule->Rule.prettyPrintTopLevel(~name=state.name)
-      ->String.concat(Proof.prettyPrint(state.proof,~scope=[]))
+    state.rule
+    ->Rule.prettyPrintTopLevel(~name=state.name)->String.concat("\n\n")
+    ->String.concat(Proof.prettyPrint(state.proof, ~scope=[]))
   }
   let deserialise = (str: string, ~imports: Ports.t) => {
-    let facts = imports.facts
+    let _facts = imports.facts
     let gen = Term.makeGen()
     let cur = ref(str)
     switch Rule.parseTopLevel(cur.contents, ~scope=[], ~gen) {
@@ -35,22 +36,29 @@ module Make = (
       | Error(e) => Error(e)
       | Ok((_, s')) if String.length(String.trim(s')) > 0 =>
         Error("Trailing input: "->String.concat(s'))
-      | Ok((proof, _)) => {
-          Ok(({name, rule, proof}, {Ports.facts: Dict.fromArray([(name,rule)]), ruleStyle: None}))
-        }
+      | Ok((proof, _)) => Ok((
+          {name, rule, proof, gen},
+          {Ports.facts: Dict.fromArray([(name, rule)]), ruleStyle: None},
+        ))
       }
     }
   }
   let make = props => {
-    Console.log(props.imports)    
+    Console.log(props.imports)
     let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
     let ctx: Context.t = {fixes: [], facts: props.imports.facts}
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
+    let proofChanged = (proof, subst) => {
+      props.onChange({...props.content,proof:Proof.uncheck(proof)->Proof.substitute(subst)}, 
+        ~exports={Ports.facts: Dict.fromArray([(props.content.name,props.content.rule)]), ruleStyle: None})
+    }
     <>
+    <h3>{React.string("Theorem")}</h3>
       <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
         {React.string(props.content.name)}
       </RuleView>
-      <ProofView ruleStyle={ruleStyle} scope={[]} proof=checked />
-    </>    
+      <h4>{React.string("Proof")}</h4>
+      <ProofView ruleStyle={ruleStyle} scope={[]} proof=checked gen={props.content.gen} onChange=proofChanged/>
+    </>
   }
 }

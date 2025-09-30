@@ -67,7 +67,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   ) => {
     let args = it.instantiation->Array.map(t => Judgment.prettyPrintSubstVal(t, ~scope))
     "by ("
-    ->String.concat(Array.join([it.ruleName, ...args], " "))
+    ->String.concat(Array.join([it.ruleName]->Array.concat(args), " "))
     ->String.concat(") {")
     ->String.concat(
       if Array.length(it.subgoals) > 0 {
@@ -182,6 +182,11 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
       }
     | _ => Error("Incorrect number of binders")
     }
+  }
+  let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
+    let newsgs = it.subgoals->Array.copy
+    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
+    {...it, subgoals: newsgs}
   }
 }
 
@@ -325,6 +330,12 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     }
   }
 
+  let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
+    let newsgs = it.subgoals->Array.copy
+    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
+    {...it, subgoals: newsgs}
+  }
+
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
     let possibleRules =
@@ -414,7 +425,7 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     | Error(e) => Error(e)
     }
   }
-  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+  let apply = (_ctx: Context.t, _j: Judgment.t, _gen: Term.gen, _f: Rule.t => 'a) => {
     Dict.make()
   }
   let check = (it: t<'a>, _ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {

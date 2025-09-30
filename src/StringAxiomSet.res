@@ -16,7 +16,7 @@ type state = {
 type props = {
   content: state,
   imports: Ports.t,
-  onChange: (state, ~exports: Ports.t) => unit,
+  onChange: (state, ~exports: Ports.t=?) => unit,
 }
 
 module Set = Belt.Set.String
