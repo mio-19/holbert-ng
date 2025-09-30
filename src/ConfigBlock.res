@@ -16,26 +16,25 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     | "Hybrid" => Ok((Hybrid, Ports.empty))
     | _ => Error("unknown rule style")
     }
-  let serialise = style => switch style {
-  | Gentzen => "Gentzen"
-  | Linear => "Linear"
-  | Hybrid => "Hybrid"
-  }
-  
-  
+  let serialise = style =>
+    switch style {
+    | Gentzen => "Gentzen"
+    | Linear => "Linear"
+    | Hybrid => "Hybrid"
+    }
+
   let make = props => {
     let (style, setStyle) = React.useState(_ => props.content)
     let onChange = e => {
       let target = JsxEvent.Form.target(e)
       let value: string = target["value"]
       switch deserialise(value) {
-      | Ok((sty,_)) => {
-        setStyle(_ => sty)
-        props.onChange(sty, ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty)})  
-      }
+      | Ok((sty, _)) => {
+          setStyle(_ => sty)
+          props.onChange(sty, ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty)})
+        }
       | Error(_) => ()
       }
-      
     }
     [Gentzen, Linear, Hybrid]
     ->Array.map(n =>

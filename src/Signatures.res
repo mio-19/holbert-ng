@@ -6,7 +6,7 @@ module type TERM = {
   let mapSubst: (subst, t => t) => subst
   type gen
   let substitute: (t, subst) => t
-  let makeSubst: () => subst
+  let makeSubst: unit => subst
   let unify: (t, t, ~gen: gen=?) => array<subst>
   // law: unify(a,b) == [{}] iff equivalent(a,b)
   let equivalent: (t, t) => bool
