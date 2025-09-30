@@ -15,7 +15,6 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Belt.Map.Int.t<t>
-type substVal = t
 let substHas = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.has(schematic)
 let substGet = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.get(schematic)
 let mapSubst = (m: subst, f: t => t): subst => {
@@ -130,7 +129,6 @@ let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =
   }
 let mapbind = (term: t, f: int => int, ~from: int=0): t => mapbind0(term, idx => Ok(f(idx)), ~from)
 let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
-let upshiftSubstVal = upshift
 let downshift = (term: t, amount: int, ~from: int=1) => {
   if amount > from {
     raise(Err("downshift amount must be less than from"))
@@ -189,7 +187,6 @@ let rec substitute = (term: t, subst: subst) =>
     })
   | Var(_) | Unallowed | Symbol(_) => term
   }
-let substituteSubstVal: (substVal, subst) => substVal = substitute
 
 // TODO: check how will this interact with meta variables (schematics) and check if it is needed to have a subst parameter - it should not be needed for subst produced by pattern unification
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
@@ -478,7 +475,6 @@ let unify = (a: t, b: t, ~gen=?) =>
 let place = (x: int, ~scope as _: array<string>) => Schematic({
   schematic: x,
 })
-let placeSubstVal: (schematic, ~scope: array<meta>) => substVal = place
 
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
@@ -519,7 +515,6 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(")")
   | Unallowed => ""
   }
-let prettyPrintSubstVal = prettyPrint
 let prettyPrintSubst = (sub: subst, ~scope: array<string>) =>
   Util.prettyPrintIntMap(sub, ~showV=t => prettyPrint(t, ~scope))
 let symbolRegexpString = "^([^\\s()]+)"
@@ -706,4 +701,3 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   | ParseError(msg) => Error(msg)
   }
 }
-let parseSubstVal = parse

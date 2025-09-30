@@ -14,6 +14,7 @@ type subst = Map.t<schematic, t>
 let mapSubst = Util.mapMapValues
 let substEqual = Util.mapEqual
 let makeSubst = () => Map.make()
+let mergeSubsts = Util.mapUnion
 
 let substitute = (term: t, subst: subst) =>
   Array.flatMap(term, piece => {
@@ -361,8 +362,7 @@ let parseMeta = (str: string) => {
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   "$" ++
   switch scope[idx] {
-  // TODO: why false here?
-  | Some(n) if Array.indexOf(scope, n) == idx && false => n
+  | Some(n) if Array.indexOf(scope, n) == idx => n
   | _ => "\\"->String.concat(String.make(idx))
   }
 let prettyPrint = (term: t, ~scope: array<string>) =>

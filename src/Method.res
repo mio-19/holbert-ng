@@ -2,8 +2,7 @@ open Signatures
 open Util
 module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
-  // TODO: why is this recursive?
-  type rec t = {
+  type t = {
     fixes: array<Term.meta>,
     facts: Dict.t<Rule.t>,
   }

@@ -76,11 +76,10 @@ let parse = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
   )
 }
 
-// NOTE: this does work due to the hacky string-sexp conversion we have inplace with substitutions,
+// HACK: this does work due to the hacky string-sexp conversion we have inplace with substitutions,
 // but a different solution would be preferable
 let placeSubstVal = (x: int, ~scope: array<string>) => StringV(StringTerm.place(x, ~scope))
 
-// TODO: figure out correct gen type
 let parseSubstVal = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
   switch StringTerm.parse(str, ~scope, ~gen?) {
   | Ok(t, str) => Ok(StringV(t), str)

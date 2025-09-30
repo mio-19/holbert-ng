@@ -11,8 +11,6 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
-type substVal = t
-let mapSubst = Util.mapMapValues
 let substEqual = Util.mapEqual
 let mapSubst = Util.mapMapValues
 let makeSubst = () => {
@@ -49,7 +47,6 @@ let rec substitute = (term: t, subst: subst) =>
     }
   | _ => term
   }
-let substituteSubstVal: (substVal, subst) => substVal = substitute
 
 let combineSubst = (s: subst, t: subst) => {
   let nu = Map.make()
@@ -165,12 +162,10 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
       ),
     })
   }
-let upshiftSubstVal = upshift
 let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
 })
-let placeSubstVal: (schematic, ~scope: array<meta>) => substVal = place
 let mergeSubsts = Util.mapUnion
 
 type gen = ref<int>
@@ -209,7 +204,6 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
     ->String.concat(")")
   }
-let prettyPrintSubstVal: (substVal, ~scope: array<meta>) => string = prettyPrint
 
 let prettyPrintSubst = (sub, ~scope) => Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
 let symbolRegexpString = `^([^\\s()\\[\\]]+)`
@@ -361,5 +355,3 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   | Some(e) => Ok((e, cur.contents))
   }
 }
-
-let parseSubstVal = parse

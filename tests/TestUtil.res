@@ -106,8 +106,6 @@ module MakeTerm = (Term: TERM) => {
     //     ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
     //     ->Seq.join(",")}\n`,
     // )
-    // TODO: present string judgements as in textual form
-    // TODO: prove M expressions are all N expressions w induction
     let noMatches =
       expect
       ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)

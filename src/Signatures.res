@@ -5,6 +5,7 @@ module type TERM = {
   type subst
   type gen
   let mapSubst: (subst, t => t) => subst
+  let mergeSubsts: (subst, subst) => subst
   let substEqual: (subst, subst) => bool
   let prettyPrintSubst: (subst, ~scope: array<meta>) => string
   let substitute: (t, subst) => t
@@ -31,7 +32,6 @@ module type JUDGMENT = {
   type substVal
   type schematic = Term.schematic
   type meta = Term.meta
-  type gen = Term.gen
   let mapSubst: (subst, substVal => substVal) => subst
   let mergeSubsts: (subst, subst) => subst
   let substitute: (t, subst) => t
