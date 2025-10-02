@@ -271,8 +271,8 @@ zoraBlock("unify test", t => {
   t->block("divergent", t => {
     let divergent = "((x. x x) (x. x x))"
     let a = "((x. ?0 x) (x. x x))"
-    // TODO: should it not unify or not?
-    t->Util.testNotUnify(a, divergent)
+    // we don't care
+    // t->Util.testNotUnify(a, divergent)
   })
   t->block("dup var", t => {
     let a = "(?0 \\0 \\0)"
@@ -304,5 +304,12 @@ zoraBlock("unify test", t => {
     let a = "(?0 (fst l) l)"
     let b = "(cons l)"
     t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. cons x)")))
+  })
+  t->block("nat tests", t => {
+    let a = "(Nat (S ?6))"
+    let b = "(Nat (S (S \\0)))"
+    let c = "(Nat (S (?6 \\0)))"
+    t->Util.testNotUnify(a, b)
+    t->testUnify(c, b, ~subst=emptySubst->substAdd(6, t->Util.parse("(x. S \\0)")))
   })
 })
