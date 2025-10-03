@@ -1,13 +1,15 @@
-module SExpJ = JudgmentFunctor.SExpJ
-module AxiomS = Editable.TextArea(AxiomSet.Make(SExp, SExpJ, SExpJView))
+module HOTermJ = JudgmentFunctor.HOTermJ
+module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTermJ, HOTermJView))
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
-  SExp,
-  SExpJ,
-  MethodView.DerivationView(SExp, SExpJ),
-  MethodView.LemmaView(SExp, SExpJ, SExpJView),
+  HOTerm,
+  HOTermJ,
+  MethodView.DerivationView(HOTerm, HOTermJ),
+  MethodView.LemmaView(HOTerm, HOTermJ, HOTermJView),
 )
-module TheoremS = Editable.TextArea(Theorem.Make(SExp, SExpJ, SExpJView, DerivationsOrLemmasView))
-module ConfS = ConfigBlock.Make(SExp, SExpJ)
+module TheoremS = Editable.TextArea(
+  Theorem.Make(HOTerm, HOTermJ, HOTermJView, DerivationsOrLemmasView),
+)
+module ConfS = ConfigBlock.Make(HOTerm, HOTermJ)
 
 module AxiomStr = Editable.TextArea(StringAxiomSet)
 module DerivationsOrLemmasStrView = MethodView.CombineMethodView(

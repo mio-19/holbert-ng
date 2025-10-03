@@ -262,35 +262,59 @@
   <body>
     <h1>SExp</h1>
     <hol-comp id="index.html/baz" deps="index.html/myconfig">
-      x.y. 
+    x.y.
       (/\ x y)
-      ---- AE1
+      -------- AE1
       x
       
-      x.y. 
+    x.y.
       (/\ x y)
-      ---- AE2
+      -------- AE2
       y
       
-      x.y. 
-      x  y
+    x.y.
+      x
+      y
       ---- AI
       (/\ x y)
-    </hol-comp>
+    
+      ---- Z
+      (Nat 0)
+      
+    n.
+      (Nat n)
+      ------- S
+      (Nat (S n))
+      
+    P.n.
+      (Nat n)
+      (P 0)
+      [k. (P k) |- (P (S k))]
+      ----------------------- ind
+      (P n)
+    
+      ---- e-z
+      (Even 0)
+      
+    n.
+      (Even n)
+      -------- e-SS
+      (Even (S (S n)))
+      
+    P.n.
+      (Even n)
+      (P 0)
+      [k. (P k) |- (P (S (S k)))]
+      --------------------------- E-ind
+      (P n)    </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
     <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz">
-      a.b.
-        (/\ b a)
-        -------- theorem
-        (/\ a b)
-      x.y. ayx |- have x 
-        |- by (AE2 y x) {
-          |- by (ayx) {} }
-      asm |- by (AI x y) {
-        |- by (asm) {}
-        |- by (AE1 y x) {
-          |- by (ayx) {} } 
-      }
+    a.
+      (Nat a)
+      ------- 
+      (Nat (S (S a)))
+    
+    a. asm |- ?
     </hol-proof>
     <h1>String</h1>
     <h2>Basic</h2>
