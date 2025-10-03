@@ -447,21 +447,13 @@
       s1.s2. "$s1" L "$s2" L
       --------------------- lexp-juxt
       "$s1 $s2" L
-      s1. s2. s1L s2L |- by (L_induct "" "$s1" "$s2" L) {
-        |- by (s1L) {}
-        |- by (s2L) {}
-        s11. s12. s11N s12L IHs12 |- by (L-Juxtapose "$s11" "$s12 $s2") {
-          |- by (s11N) {}
-          |- by (IHs12) {}
-        }
-      }
+      s1. s2. s1L s2L |- ?
     </hol-string-proof>
     <hol-string-proof id="index.html/mexp-lexp" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp index.html/lexp-juxt index.html/lexp-n">
       s. "$s" M
       ----------- mexp-lexp
       "$s" L
-      s. sM |- by (M_induct "" "$s" "" L) {
-        |- by (sM) {}
+      s. sM |- elim (M_induct sM "" "$s" "" L) {
         |- by (L-Empty) {}
         s1. s1M IHs1 |- by (N-L "($s1)") {
           |- by (N-Surr "$s1") {

@@ -497,15 +497,18 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
 }
 
-let toSExp = t => SExp.Compound({
-  subexps: t->Array.map(p =>
+let toSExp = t => {
+  let convertPiece = p =>
     switch p {
     | String(s) => SExp.Symbol({name: s})
     | Var({idx}) => SExp.Var({idx: idx})
     | Schematic({schematic, allowed}) => SExp.Schematic({schematic, allowed})
     }
-  ),
-})
+  switch Array.length(t) {
+  | 1 => convertPiece(t[0]->Option.getExn)
+  | _ => SExp.Compound({subexps: Array.map(t, convertPiece)})
+  }
+}
 
 let rec fromSExp = (t: SExp.t) =>
   switch t {

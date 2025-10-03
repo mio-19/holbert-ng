@@ -25,5 +25,5 @@ module DLEStrView = MethodView.CombineMethodView(
   MethodView.EliminationView(StringTerm, StringTermJudgment),
 )
 module TheoremStr = Editable.TextArea(
-  Theorem.Make(StringTerm, StringTermJudgment, StringTermJView, DerivationsOrLemmasStrView),
+  Theorem.Make(StringTerm, StringTermJudgment, StringTermJView, DLEStrView),
 )

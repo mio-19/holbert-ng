@@ -82,8 +82,8 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
   }
   let make = (subRender: srProps<'a> => React.element) => props => {
     <div>
-      <b> {React.string("by ")} </b>
-      {React.string(props.method.ruleName)}
+      <b> {React.string("elim ")} </b>
+      {React.string(`${props.method.ruleName} ${props.method.elimName}`)}
       <ul>
         {props.method.subgoals
         ->Array.mapWithIndex((sg, i) => {

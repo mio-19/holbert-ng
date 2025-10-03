@@ -244,7 +244,8 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
         rest,
       )) => {
         cur := rest
-        Rule.parseRuleName(cur.contents)->Result.flatMap(((elimName, _rest)) => {
+        Rule.parseRuleName(cur.contents)->Result.flatMap(((elimName, rest)) => {
+          cur := rest
           let instantiation = []
           let it = ref(Error(""))
           while {
@@ -272,7 +273,9 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
                 }
                 if cur.contents->String.get(0) == Some("}") {
                   cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
-                  Ok(({ruleName, elimName, instantiation, subgoals}, cur.contents))
+                  let res = {ruleName, elimName, instantiation, subgoals}
+                  Console.log(("parsed elim", res))
+                  Ok((res, cur.contents))
                 } else {
                   Error("} or subgoal proof expected")
                 }
@@ -321,7 +324,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
             ruleName: it.ruleName,
             elimName: it.elimName,
             instantiation: it.instantiation,
-            subgoals: Belt.Array.zipBy(it.subgoals, premises, f),
+            subgoals: Belt.Array.zipBy(it.subgoals, remainingPremises, f),
           })
         }
       }
@@ -350,7 +353,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
         let ruleInsts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
         let elimInsts = elim->Rule.schematise(gen, ~scope=ctx.fixes)
         let (rule', elim) = (rule->Rule.instantiate(ruleInsts), elim->Rule.instantiate(elimInsts))
-        Judgment.unify((rule.premises[0]->Option.getExn).conclusion, elim.conclusion)->Seq.forEach(
+        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)->Seq.forEach(
           elimSub => {
             let rule'' = rule'->Rule.substituteBare(elimSub)
             Judgment.unify(rule''.conclusion, j, ~gen)->Seq.forEach(
