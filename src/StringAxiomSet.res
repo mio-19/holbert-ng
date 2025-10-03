@@ -1,4 +1,3 @@
-open Signatures
 open Component
 
 module Term = StringTerm
@@ -20,7 +19,7 @@ type props = {
 }
 
 module Set = Belt.Set.String
-let rec varsInRule = (rule: Rule.t) => {
+let varsInRule = (rule: Rule.t) => {
   rule.premises->Array.reduce(Set.fromArray(rule.vars), (s, r) =>
     s->Set.union(Set.fromArray(r.vars))
   )
@@ -74,7 +73,7 @@ let derive = (name: string, rules: array<Rule.t>): Rule.t => {
   }
 }
 
-let deserialise = (str: string, ~imports: Ports.t) => {
+let deserialise = (str: string, ~imports as _: Ports.t) => {
   let getBase = (str: string) => {
     let cur = ref(str)
     let go = ref(true)

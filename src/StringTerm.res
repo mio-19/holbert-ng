@@ -82,7 +82,7 @@ let uncons = (xs: array<'a>): ('a, array<'a>) => {
 }
 
 type graphSub = Eps | PieceLitSub(piece) | SchemaSub(int, array<int>)
-let unify = (s: array<piece>, t: array<piece>, ~gen=?): Seq.t<subst> => {
+let unify = (s: array<piece>, t: array<piece>, ~gen as _=?): Seq.t<subst> => {
   let match = (p1: piece, p2: piece) => {
     switch (p1, p2) {
     | (String(na), String(nb)) if na == nb => true
@@ -388,7 +388,7 @@ type ident = string
 let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), errorMessage> = (
   str: string,
   ~scope: array<ident>,
-  ~gen=?,
+  ~gen as _=?,
 ) => {
   let pos = ref(0)
   let seenCloseString = ref(false)

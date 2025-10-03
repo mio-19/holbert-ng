@@ -3,7 +3,6 @@ type substCodom = StringV(StringTerm.t) | SExpV(SExp.t)
 type subst = Map.t<int, substCodom>
 type schematic = int
 type meta = string
-type gen = StringTerm.gen
 
 let mapSubst = Util.mapMapValues
 let mergeSubsts: (subst, subst) => subst = Util.mapUnion
@@ -32,7 +31,7 @@ let substituteSubstVal = (s: substCodom, subst: subst) => {
 }
 let equivalent = ((t1, j1): t, (t2, j2): t) =>
   StringTerm.equivalent(t1, t2) && SExp.equivalent(j1, j2)
-let unify = ((t1, j1): t, (t2, j2): t, ~gen=?) => {
+let unify = ((t1, j1): t, (t2, j2): t, ~gen as _=?) => {
   // cartesian prod of possible unifications
   let judgeSubs = SExp.unify(j1, j2)->Seq.map(s => s->Util.mapMapValues(t => SExpV(t)))
   let stringSubs = StringTerm.unify(t1, t2)->Seq.map(s => s->Util.mapMapValues(t => StringV(t)))

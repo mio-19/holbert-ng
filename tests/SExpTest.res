@@ -45,7 +45,6 @@ let parse = (input: string) => SExp.parse(input, ~scope=[], ~gen=SExp.makeGen())
 zoraBlock("unify var", t => {
   let x = parse("x")
   let y = parse("y")
-  let a = parse("a")
   let comp1 = parse("(x y z)")
   let comp2 = parse("(x a y)")
   let schema1 = parse("?1()")

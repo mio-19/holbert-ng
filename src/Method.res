@@ -244,7 +244,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
         rest,
       )) => {
         cur := rest
-        Rule.parseRuleName(cur.contents)->Result.flatMap(((elimName, rest)) => {
+        Rule.parseRuleName(cur.contents)->Result.flatMap(((elimName, _rest)) => {
           let instantiation = []
           let it = ref(Error(""))
           while {

@@ -34,7 +34,7 @@ module MakeTerm = (Term: TERM) => {
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
-  let testParseFail = (t: Zora.t, input: string, ~scope=[], ~msg=?) => {
+  let testParseFail = (t: Zora.t, input: string, ~scope=[]) => {
     let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok((p, remaining)) =>
