@@ -15,6 +15,9 @@ module Make = (
     onChange: (state, ~exports: Ports.t=?) => unit,
   }
 
+  let derived = (state: state): state => {
+    Dict.make()
+  }
   let serialise = (state: state) => {
     state
     ->Dict.toArray
@@ -55,7 +58,7 @@ module Make = (
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
       )}>
-      {Dict.toArray(props.content)
+      {Dict.toArray(props.content->Dict.copy->Dict.assign(derived(props.content)))
       ->Array.mapWithIndex(((n, r), i) =>
         <RuleView
           rule={r}
