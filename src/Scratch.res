@@ -5,5 +5,7 @@ module DerivationsOrLemmasView = MethodView.CombineMethodView(
   MethodView.DerivationView(HOTerm, HOTerm),
   MethodView.LemmaView(HOTerm, HOTerm, HOTermJView),
 )
-module TheoremS = Editable.TextArea(Theorem.Make(HOTerm, HOTerm, HOTermJView, DerivationsOrLemmasView))
+module TheoremS = Editable.TextArea(
+  Theorem.Make(HOTerm, HOTerm, HOTermJView, DerivationsOrLemmasView),
+)
 module ConfS = ConfigBlock.Make(HOTerm, HOTerm)

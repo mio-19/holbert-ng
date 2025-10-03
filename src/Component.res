@@ -25,6 +25,6 @@ module type COMPONENT = {
     onChange: (state, ~exports: Ports.t=?) => unit,
   }
   let serialise: state => string
-  let deserialise: (string, ~imports: Ports.t) => result<(state,Ports.t),string>
+  let deserialise: (string, ~imports: Ports.t) => result<(state, Ports.t), string>
   let make: props => React.element
 }

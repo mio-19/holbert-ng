@@ -185,7 +185,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   }
   let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
     let newsgs = [...it.subgoals]
-    newsgs->Array.set(key,f(newsgs[key]->Option.getExn))
+    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
     {...it, subgoals: newsgs}
   }
 }
