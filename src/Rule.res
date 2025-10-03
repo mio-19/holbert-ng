@@ -13,7 +13,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       conclusion: rule.conclusion->Judgment.substitute(subst'),
     }
   }
-  let rec substDeBruijn = (rule: t, substs: array<Judgment.substVal>, ~from: int=0) => {
+  let rec substDeBruijn = (rule: t, substs: array<Judgment.substCodom>, ~from: int=0) => {
     let len = Array.length(rule.vars)
     let substs' = substs->Array.map(v => v->Judgment.upshiftSubstVal(len, ~from))
     {
@@ -39,7 +39,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       conclusion: rule.conclusion->Judgment.substitute(subst),
     }
   }
-  let instantiate = (rule: t, terms: array<Judgment.substVal>) => {
+  let instantiate = (rule: t, terms: array<Judgment.substCodom>) => {
     assert(Array.length(terms) == Array.length(rule.vars))
     let terms' = [...terms]
     Array.reverse(terms')

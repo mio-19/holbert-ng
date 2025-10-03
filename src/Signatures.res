@@ -29,27 +29,27 @@ module type JUDGMENT = {
   module Term: TERM
   type t
   type subst
-  type substVal
+  type substCodom
   type schematic = Term.schematic
   type meta = Term.meta
-  let mapSubst: (subst, substVal => substVal) => subst
+  let mapSubst: (subst, substCodom => substCodom) => subst
   let mergeSubsts: (subst, subst) => subst
   let substitute: (t, subst) => t
-  let substituteSubstVal: (substVal, subst) => substVal
+  let substituteSubstVal: (substCodom, subst) => substCodom
   let equivalent: (t, t) => bool
   let unify: (t, t, ~gen: Term.gen=?) => Seq.t<subst>
-  let substDeBruijn: (t, array<substVal>, ~from: int=?) => t
+  let substDeBruijn: (t, array<substCodom>, ~from: int=?) => t
   let upshift: (t, int, ~from: int=?) => t
-  let upshiftSubstVal: (substVal, int, ~from: int=?) => substVal
-  let placeSubstVal: (schematic, ~scope: array<meta>) => substVal
+  let upshiftSubstVal: (substCodom, int, ~from: int=?) => substCodom
+  let placeSubstVal: (schematic, ~scope: array<meta>) => substCodom
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
   let parseSubstVal: (
     string,
     ~scope: array<Term.meta>,
     ~gen: Term.gen=?,
-  ) => result<(substVal, string), string>
+  ) => result<(substCodom, string), string>
   let prettyPrint: (t, ~scope: array<Term.meta>) => string
-  let prettyPrintSubstVal: (substVal, ~scope: array<Term.meta>) => string
+  let prettyPrintSubstVal: (substCodom, ~scope: array<Term.meta>) => string
 }
 
 module type TERM_VIEW = {

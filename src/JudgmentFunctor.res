@@ -1,12 +1,8 @@
 open Signatures
-module type JFunctor = (Term: TERM) =>
-{
-  type t = Term.t
-}
 
 module Make = (Term: TERM): (JUDGMENT with module Term := Term and type t := Term.t) => {
   include Term
-  type substVal = Term.t
+  type substCodom = Term.t
   let prettyPrintSubstVal = Term.prettyPrint
   let parseSubstVal = Term.parse
   let placeSubstVal = Term.place

@@ -1,6 +1,6 @@
 type t = (StringTerm.t, SExp.t)
-type substVal = StringV(StringTerm.t) | SExpV(SExp.t)
-type subst = Map.t<int, substVal>
+type substCodom = StringV(StringTerm.t) | SExpV(SExp.t)
+type subst = Map.t<int, substCodom>
 type schematic = int
 type meta = string
 type gen = StringTerm.gen
@@ -23,7 +23,7 @@ let substitute = ((term, judge): t, sub) => {
   (StringTerm.substitute(term, stringSub), SExp.substitute(judge, judgeSub))
 }
 
-let substituteSubstVal = (s: substVal, subst: subst) => {
+let substituteSubstVal = (s: substCodom, subst: subst) => {
   let (stringSub, judgeSub) = splitSub(subst)
   switch s {
   | StringV(t) => StringV(StringTerm.substitute(t, stringSub))
@@ -42,7 +42,7 @@ let unify = ((t1, j1): t, (t2, j2): t, ~gen=?) => {
     stringSubs->Seq.map(stringSub => Util.mapUnion(stringSub, judgeSub))
   )
 }
-let substDeBruijn = ((t, j): t, scope: array<substVal>, ~from: int=0) => {
+let substDeBruijn = ((t, j): t, scope: array<substCodom>, ~from: int=0) => {
   // NOTE: implicit type coercion here. if we unify and expect a string but get an sexp,
   // perform naive flattening of compound to substitute. likewise in opposite direction.
   let stringScope = scope->Array.map(v =>
@@ -64,7 +64,7 @@ let upshift = ((t, j): t, amount: int, ~from: int=0) => (
   SExp.upshift(j, amount, ~from),
 )
 
-let upshiftSubstVal = (v: substVal, amount: int, ~from: int=0) =>
+let upshiftSubstVal = (v: substCodom, amount: int, ~from: int=0) =>
   switch v {
   | StringV(t) => StringV(StringTerm.upshift(t, amount, ~from))
   | SExpV(j) => SExpV(SExp.upshift(j, amount, ~from))
@@ -96,7 +96,7 @@ let parseSubstVal = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
 
 let prettyPrint = ((t, j): t, ~scope: array<StringTerm.meta>) =>
   `${StringTerm.prettyPrint(t, ~scope)} ${SExp.prettyPrint(j, ~scope)}`
-let prettyPrintSubstVal = (v: substVal, ~scope: array<StringTerm.meta>) =>
+let prettyPrintSubstVal = (v: substCodom, ~scope: array<StringTerm.meta>) =>
   switch v {
   | StringV(t) => StringTerm.prettyPrint(t, ~scope)
   | SExpV(t) => SExp.prettyPrint(t, ~scope)

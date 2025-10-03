@@ -39,7 +39,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   module Context = Context(Term, Judgment)
   type t<'a> = {
     ruleName: string,
-    instantiation: array<Judgment.substVal>,
+    instantiation: array<Judgment.substCodom>,
     subgoals: array<'a>,
   }
   let map = (it: t<'a>, f) => {
@@ -195,7 +195,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
   type t<'a> = {
     ruleName: string,
     elimName: string,
-    instantiation: array<Judgment.substVal>,
+    instantiation: array<Judgment.substCodom>,
     subgoals: array<'a>,
   }
   exception InternalParseError(string)
