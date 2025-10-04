@@ -1,9 +1,10 @@
 open Signatures
 open Component
+open Util
 
 // InductiveSet is specific to HOTerm to allow pattern matching on term structure
 module Make = (
-  Term: TERM with type t = HOTerm.t,
+  Term: TERM with type t = HOTerm.t and type meta = string,
   Judgment: JUDGMENT with module Term := Term and type t = HOTerm.t,
   JudgmentView: JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment,
 ) => {
@@ -17,60 +18,109 @@ module Make = (
     onChange: (state, ~exports: Ports.t=?) => unit,
   }
 
-  let isIntroduction = (rule: Rule.t): bool => {
-    let (head, _args) = HOTerm.strip(rule.conclusion)
-
-    switch head {
-    | Symbol(_) => true
-    | _ => false
-    }
+  type constructorGroup = {
+    name: string,
+    arity: int,
+    rules: array<(string, Rule.t)>,
   }
 
-  let introRoot = (rule: Rule.t): option<(string, int)> => {
+  let extractConstructorSignature = (rule: Rule.t): option<(string, int)> => {
     let (head, args) = HOTerm.strip(rule.conclusion)
-
     switch head {
     | Symbol({name}) => Some((name, Array.length(args)))
     | _ => None
     }
   }
 
-  type constructorKey = (string, int)
-  let groupByConstructor = (rules: dict<Rule.t>): dict<array<(string, Rule.t)>> => {
-    // filter to only introduction rules and extract their roots
-    let introRules =
-      Dict.toArray(rules)
-      ->Array.map(((name, rule)) => (name, rule, introRoot(rule)))
-      ->Array.filter(((_, _, root)) => root->Option.isSome)
-      ->Array.map(((name, rule, root)) => (name, rule, root->Option.getUnsafe))
-
-    let grouped = Dict.make()
-    Array.forEach(introRules, ((name, rule, (constructorName, arity))) => {
-      let key = constructorName ++ "§" ++ Int.toString(arity)
-      switch Dict.get(grouped, key) {
-      | None => Dict.set(grouped, key, [(name, rule)])
-      | Some(existing) => Dict.set(grouped, key, Array.concat(existing, [(name, rule)]))
-      }
+  let groupByConstructor = (rules: dict<Rule.t>): array<constructorGroup> => {
+    Dict.toArray(rules)
+    ->Array.filterMap(((name, rule)) =>
+      extractConstructorSignature(rule)->Option.map(((cname, arity)) => (name, rule, cname, arity))
+    )
+    ->Array.reduce(Dict.make(), (acc, (name, rule, cname, arity)) => {
+      let key = cname ++ "§" ++ Int.toString(arity)
+      Dict.set(acc, key, [(name, rule, cname, arity), ...Dict.get(acc, key)->Option.getOr([])])
+      acc
     })
+    ->Dict.toArray
+    ->Array.map(((_, group)) => {
+      let (_, _, name, arity) = group[0]->Option.getExn
+      {name, arity, rules: Array.map(group, ((n, r, _, _)) => (n, r))}
+    })
+  }
+  let generateInductionRule = (
+    group: constructorGroup,
+    allGroups: array<constructorGroup>,
+  ): Rule.t => {
+    let {name: constructorName, arity, rules: constructors} = group
+    let numFormers = Array.length(allGroups)
+    let myIndex = mustFindIndex(allGroups, g => g.name == constructorName && g.arity == arity)
 
-    grouped
+    let targetVars = Array.fromInitializer(~length=arity, i => "§" ++ Int.toString(i))
+    let predicateVars = Array.fromInitializer(~length=numFormers, i => "§P" ++ Int.toString(i))
+    let allVars = Array.concat(targetVars, predicateVars)
+
+    let makeVar = idx => HOTerm.Var({idx: idx})
+    let makeArgs = n => Array.fromInitializer(~length=n, i => makeVar(n - i - 1))
+
+    let elimAssumption = {
+      Rule.vars: [],
+      premises: [],
+      conclusion: HOTerm.app(HOTerm.Symbol({name: constructorName}), makeArgs(arity)),
+    }
+
+    let findFormerIndex = (name, arity) =>
+      mustFindIndex(allGroups, g => g.name == name && g.arity == arity)
+
+    let makeSubgoal = (constructorRule: Rule.t): Rule.t => {
+      let offset = Array.length(constructorRule.vars)
+
+      let inductiveHypotheses = Array.filterMap(constructorRule.premises, premise => {
+        let (head, args) = HOTerm.strip(premise.conclusion)
+        switch head {
+        | Symbol({name: n}) => {
+            let formerIndex = findFormerIndex(n, Array.length(args))
+            if formerIndex >= 0 {
+              let predicateIdx =
+                offset + Array.length(premise.vars) + arity + numFormers - formerIndex - 1
+              Some({
+                Rule.vars: premise.vars,
+                premises: premise.premises,
+                conclusion: HOTerm.app(makeVar(predicateIdx), args),
+              })
+            } else {
+              None
+            }
+          }
+        | _ => None
+        }
+      })
+
+      let predicateIdx = offset + arity + numFormers - myIndex - 1
+      let subgoalConclusion = HOTerm.app(makeVar(predicateIdx), [constructorRule.conclusion])
+
+      {
+        Rule.vars: constructorRule.vars,
+        premises: Array.concat(inductiveHypotheses, constructorRule.premises),
+        conclusion: subgoalConclusion,
+      }
+    }
+
+    let subgoals = Array.map(constructors, ((_, rule)) => makeSubgoal(rule))
+    let conclusion = HOTerm.app(makeVar(arity + numFormers - myIndex - 1), makeArgs(arity))
+
+    {Rule.vars: allVars, premises: [elimAssumption, ...subgoals], conclusion}
   }
 
   let derived = (state: state): state => {
     let groups = groupByConstructor(state)
-
-    Console.log("=== Inductive Set Grouping ===")
-    Dict.toArray(groups)->Array.forEach(((key, rules)) => {
-      Console.log2("Group", key)
-      Array.forEach(rules, ((name, rule)) => {
-        let root = introRoot(rule)
-        Console.log2(name, root)
-      })
+    groups
+    ->Array.map(group => {
+      let name = "§induction-" ++ group.name ++ "§" ++ Int.toString(group.arity)
+      let rule = generateInductionRule(group, groups)
+      (name, rule)
     })
-    Console.log("=== End Grouping ===")
-
-    // For now, just return empty - we'll generate induction rules here later
-    Dict.make()
+    ->Dict.fromArray
   }
   let serialise = (state: state) => {
     state
