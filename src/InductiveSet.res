@@ -59,9 +59,6 @@ module Make = (
     let numFormers = Array.length(allGroups)
     let groupIndex = mustFindIndex(allGroups, g => g.name == str && g.arity == i)
 
-    let makeVar = idx => HOTerm.Var({idx: idx})
-    let makeTargetArgs = n => Array.fromInitializer(~length=n, i => makeVar(n - i - 1))
-
     let findFormerIndex = (name, arity) =>
       mustFindIndex(allGroups, g => g.name == name && g.arity == arity)
 
@@ -70,16 +67,14 @@ module Make = (
       switch head {
       | Symbol({name}) =>
         let formerIndex = findFormerIndex(name, Array.length(args))
-        formerIndex >= 0
-          ? Some({
-              Rule.vars: premise.vars,
-              premises: premise.premises,
-              conclusion: HOTerm.app(
-                makeVar(offset + Array.length(premise.vars) + i + formerIndex),
-                args,
-              ),
-            })
-          : None
+        Some({
+          Rule.vars: premise.vars,
+          premises: premise.premises,
+          conclusion: HOTerm.app(
+            HOTerm.Var({idx: offset + Array.length(premise.vars) + i + formerIndex}),
+            args,
+          ),
+        })
       | _ => None
       }
     }
@@ -100,7 +95,7 @@ module Make = (
       {
         Rule.vars: constructorRule.vars,
         premises: Array.concat(constructorRule.premises, inductiveHypotheses),
-        conclusion: HOTerm.app(makeVar(offset + i + typeIndex), conclusionArgs),
+        conclusion: HOTerm.app(HOTerm.Var({idx: offset + i + typeIndex}), conclusionArgs),
       }
     }
 
@@ -116,11 +111,11 @@ module Make = (
         {
           Rule.vars: [],
           premises: [],
-          conclusion: HOTerm.app(HOTerm.Symbol({name: str}), makeTargetArgs(i)),
+          conclusion: HOTerm.app(HOTerm.Symbol({name: str}), HOTerm.mkvars(i)),
         },
         ...subgoals,
       ],
-      conclusion: HOTerm.app(makeVar(i + groupIndex), makeTargetArgs(i)),
+      conclusion: HOTerm.app(HOTerm.Var({idx: i + groupIndex}), HOTerm.mkvars(i)),
     }
   }
 
