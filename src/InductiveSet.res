@@ -24,6 +24,8 @@ module Make = (
     rules: array<(string, Rule.t)>,
   }
 
+  let makeKey = (name, arity) => name ++ "§" ++ Int.toString(arity)
+
   let extractConstructorSignature = (rule: Rule.t): option<(string, int)> => {
     let (head, args) = HOTerm.strip(rule.conclusion)
     switch head {
@@ -32,102 +34,168 @@ module Make = (
     }
   }
 
-  let groupByConstructor = (rules: dict<Rule.t>): array<constructorGroup> => {
-    Dict.toArray(rules)
+  let groupByConstructor = (rules: dict<Rule.t>): array<constructorGroup> =>
+    rules
+    ->Dict.toArray
     ->Array.filterMap(((name, rule)) =>
-      extractConstructorSignature(rule)->Option.map(((cname, arity)) => (name, rule, cname, arity))
+      extractConstructorSignature(rule)->Option.map(sig => (name, rule, sig))
     )
-    ->Array.reduce(Dict.make(), (acc, (name, rule, cname, arity)) => {
-      let key = cname ++ "§" ++ Int.toString(arity)
-      Dict.set(acc, key, [(name, rule, cname, arity), ...Dict.get(acc, key)->Option.getOr([])])
+    ->Array.reduce(Dict.make(), (acc, (name, rule, (cname, arity))) => {
+      let key = makeKey(cname, arity)
+      Dict.set(acc, key, [(name, rule), ...Dict.get(acc, key)->Option.getOr([])])
       acc
     })
-    ->Dict.toArray
-    ->Array.map(((_, group)) => {
-      let (_, _, name, arity) = group[0]->Option.getExn
-      {name, arity, rules: Array.map(group, ((n, r, _, _)) => (n, r))}
+    ->Dict.valuesToArray
+    ->Array.map(constructors => {
+      let (_, firstRule) = constructors[0]->Option.getExn
+      let (name, arity) = extractConstructorSignature(firstRule)->Option.getExn
+      {name, arity, rules: constructors}
     })
-  }
   let generateInductionRule = (
     group: constructorGroup,
     allGroups: array<constructorGroup>,
   ): Rule.t => {
-    let {name: constructorName, arity, rules: constructors} = group
+    let {name: str, arity: i} = group
     let numFormers = Array.length(allGroups)
-    let myIndex = mustFindIndex(allGroups, g => g.name == constructorName && g.arity == arity)
-
-    let targetVars = Array.fromInitializer(~length=arity, i => "§" ++ Int.toString(i))
-    let predicateVars = Array.fromInitializer(~length=numFormers, i => "§P" ++ Int.toString(i))
-    let allVars = Array.concat(targetVars, predicateVars)
+    let groupIndex = mustFindIndex(allGroups, g => g.name == str && g.arity == i)
 
     let makeVar = idx => HOTerm.Var({idx: idx})
-    let makeArgs = n => Array.fromInitializer(~length=n, i => makeVar(n - i - 1))
-
-    let elimAssumption = {
-      Rule.vars: [],
-      premises: [],
-      conclusion: HOTerm.app(HOTerm.Symbol({name: constructorName}), makeArgs(arity)),
-    }
+    let makeTargetArgs = n => Array.fromInitializer(~length=n, i => makeVar(n - i - 1))
 
     let findFormerIndex = (name, arity) =>
       mustFindIndex(allGroups, g => g.name == name && g.arity == arity)
 
-    let makeSubgoal = (constructorRule: Rule.t): Rule.t => {
-      let offset = Array.length(constructorRule.vars)
-
-      let inductiveHypotheses = Array.filterMap(constructorRule.premises, premise => {
-        let (head, args) = HOTerm.strip(premise.conclusion)
-        switch head {
-        | Symbol({name: n}) => {
-            let formerIndex = findFormerIndex(n, Array.length(args))
-            if formerIndex >= 0 {
-              let predicateIdx =
-                offset + Array.length(premise.vars) + arity + numFormers - formerIndex - 1
-              Some({
-                Rule.vars: premise.vars,
-                premises: premise.premises,
-                conclusion: HOTerm.app(makeVar(predicateIdx), args),
-              })
-            } else {
-              None
-            }
-          }
-        | _ => None
-        }
-      })
-
-      let predicateIdx = offset + arity + numFormers - myIndex - 1
-      let subgoalConclusion = HOTerm.app(makeVar(predicateIdx), [constructorRule.conclusion])
-
-      {
-        Rule.vars: constructorRule.vars,
-        premises: Array.concat(inductiveHypotheses, constructorRule.premises),
-        conclusion: subgoalConclusion,
+    let generateInductiveHypothesis = (premise: Rule.t, offset: int): option<Rule.t> => {
+      let (head, args) = HOTerm.strip(premise.conclusion)
+      switch head {
+      | Symbol({name}) =>
+        let formerIndex = findFormerIndex(name, Array.length(args))
+        formerIndex >= 0
+          ? Some({
+              Rule.vars: premise.vars,
+              premises: premise.premises,
+              conclusion: HOTerm.app(
+                makeVar(offset + Array.length(premise.vars) + i + formerIndex),
+                args,
+              ),
+            })
+          : None
+      | _ => None
       }
     }
 
-    let subgoals = Array.map(constructors, ((_, rule)) => makeSubgoal(rule))
-    let conclusion = HOTerm.app(makeVar(arity + numFormers - myIndex - 1), makeArgs(arity))
+    let caseSubgoal = (constructorRule: Rule.t): Rule.t => {
+      let offset = Array.length(constructorRule.vars)
+      let inductiveHypotheses =
+        constructorRule.premises->Array.filterMap(premise =>
+          generateInductiveHypothesis(premise, offset)
+        )
 
-    {Rule.vars: allVars, premises: [elimAssumption, ...subgoals], conclusion}
+      let (conclusionHead, conclusionArgs) = HOTerm.strip(constructorRule.conclusion)
+      let typeIndex = switch conclusionHead {
+      | Symbol({name}) => findFormerIndex(name, Array.length(conclusionArgs))
+      | _ => raise(Unreachable("Constructor conclusion must have a Symbol head"))
+      }
+
+      {
+        Rule.vars: constructorRule.vars,
+        premises: Array.concat(constructorRule.premises, inductiveHypotheses),
+        conclusion: HOTerm.app(makeVar(offset + i + typeIndex), conclusionArgs),
+      }
+    }
+
+    let allConstructors = Array.flatMap(allGroups, g => g.rules)
+    let subgoals = Array.map(allConstructors, ((_, rule)) => caseSubgoal(rule))
+
+    {
+      Rule.vars: Array.concat(
+        Array.fromInitializer(~length=i, i => "§" ++ Int.toString(i)),
+        Array.fromInitializer(~length=numFormers, i => "§P" ++ Int.toString(i)),
+      ),
+      premises: [
+        {
+          Rule.vars: [],
+          premises: [],
+          conclusion: HOTerm.app(HOTerm.Symbol({name: str}), makeTargetArgs(i)),
+        },
+        ...subgoals,
+      ],
+      conclusion: HOTerm.app(makeVar(i + groupIndex), makeTargetArgs(i)),
+    }
   }
 
-  let derived = (state: state): state => {
-    let groups = groupByConstructor(state)
-    groups
+  module StringCmp = Belt.Id.MakeComparable({
+    type t = string
+    let cmp = Pervasives.compare
+  })
+
+  let extractInductiveType = (premise: Rule.t): option<(string, int)> => {
+    let (head, args) = HOTerm.strip(premise.conclusion)
+    switch head {
+    | Symbol({name}) => Some((name, Array.length(args)))
+    | _ => None
+    }
+  }
+
+  let isSelfReference = (group: constructorGroup, (name, arity)): bool =>
+    name == group.name && arity == group.arity
+
+  let findDependencies = (group: constructorGroup): array<(string, int)> =>
+    group.rules
+    ->Array.flatMap(((_name, rule)) => rule.premises->Array.filterMap(extractInductiveType))
+    ->Array.filter(dep => !isSelfReference(group, dep))
+
+  let rec collectReachable = (
+    toVisit: array<(string, int)>,
+    visited: Belt.Set.t<string, StringCmp.identity>,
+    allGroups: array<constructorGroup>,
+  ): Belt.Set.t<string, StringCmp.identity> =>
+    switch toVisit {
+    | [] => visited
+    | _ =>
+      let (name, arity) = toVisit[0]->Option.getExn
+      let rest = Array.sliceToEnd(toVisit, ~start=1)
+      let key = makeKey(name, arity)
+
+      if Belt.Set.has(visited, key) {
+        collectReachable(rest, visited, allGroups)
+      } else {
+        let visited = Belt.Set.add(visited, key)
+        let newDeps =
+          allGroups
+          ->Array.find(g => g.name == name && g.arity == arity)
+          ->Option.map(findDependencies)
+          ->Option.getOr([])
+        collectReachable(Array.concat(rest, newDeps), visited, allGroups)
+      }
+    }
+
+  let findMutuallyInductiveComponent = (
+    targetGroup: constructorGroup,
+    allGroups: array<constructorGroup>,
+  ): array<constructorGroup> => {
+    let reachableKeys = collectReachable(
+      [(targetGroup.name, targetGroup.arity)],
+      Belt.Set.make(~id=module(StringCmp)),
+      allGroups,
+    )
+    allGroups->Array.filter(g => Belt.Set.has(reachableKeys, makeKey(g.name, g.arity)))
+  }
+
+  let derived = (state: state): state =>
+    state
+    ->groupByConstructor
     ->Array.map(group => {
-      let name = "§induction-" ++ group.name ++ "§" ++ Int.toString(group.arity)
-      let rule = generateInductionRule(group, groups)
-      (name, rule)
+      let mutualComponent = findMutuallyInductiveComponent(group, groupByConstructor(state))
+      let rule = generateInductionRule(group, mutualComponent)
+      ("§induction-" ++ makeKey(group.name, group.arity), rule)
     })
     ->Dict.fromArray
-  }
-  let serialise = (state: state) => {
+  let serialise = (state: state) =>
     state
     ->Dict.toArray
     ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))
     ->Array.join("\n")
-  }
   let deserialise = (str: string, ~imports as _: Ports.t) => {
     let cur = ref(str)
     let go = ref(true)
