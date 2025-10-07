@@ -257,6 +257,33 @@
   </style>
   </head>
   <body>
+    <hol-inductive id="index.html/nat" deps="index.html/myconfig">
+      ---- Z
+      (Nat 0)
+      
+    n.
+      (Nat n)
+      ------- S
+      (Nat (S n))
+
+      ---- even-0
+      (Even 0)
+    n.
+      (Even n)
+      -------- odd
+      (Odd (S n))
+    n.
+      (Odd n)
+      ------- even
+      (Even (S n))
+
+      ---- Unit
+      (Data U)
+    a. b.
+      (Data a) (Data b)
+      ---- Pair
+      (Data (A a b))
+    </hol-inductive>
     <hol-comp id="index.html/baz" deps="index.html/myconfig">
     x.y.
       (/\ x y)
