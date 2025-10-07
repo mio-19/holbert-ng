@@ -14,6 +14,7 @@ module type TERM = {
   // law: unify(a,b) == [{}] iff equivalent(a,b)
   let equivalent: (t, t) => bool
   let substDeBruijn: (t, array<t>, ~from: int=?) => t
+  let reduce: t => t
   let upshift: (t, int, ~from: int=?) => t
   let fresh: (gen, ~replacing: meta=?) => schematic
   let seen: (gen, schematic) => unit
@@ -39,6 +40,7 @@ module type JUDGMENT = {
   let equivalent: (t, t) => bool
   let unify: (t, t, ~gen: Term.gen=?) => Seq.t<subst>
   let substDeBruijn: (t, array<substCodom>, ~from: int=?) => t
+  let reduce: t => t
   let upshift: (t, int, ~from: int=?) => t
   let upshiftSubstCodom: (substCodom, int, ~from: int=?) => substCodom
   let placeSubstCodom: (schematic, ~scope: array<meta>) => substCodom

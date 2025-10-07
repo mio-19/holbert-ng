@@ -42,6 +42,7 @@ let schematicsCountsIn: t => Belt.Map.Int.t<int> = (term: t) =>
 let maxSchematicCount = (term: t) => {
   schematicsCountsIn(term)->Belt.Map.Int.maximum->Option.map(snd)->Option.getOr(0)
 }
+let reduce = t => t
 let freeVarsIn = (term: t): Belt.Set.t<int, IntCmp.identity> =>
   Array.map(term, piece => {
     switch piece {

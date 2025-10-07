@@ -21,7 +21,9 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       premises: rule.premises->Array.map(premise =>
         premise->substDeBruijn(substs', ~from=from + len)
       ),
-      conclusion: rule.conclusion->Judgment.substDeBruijn(substs', ~from=from + len),
+      conclusion: rule.conclusion
+      ->Judgment.substDeBruijn(substs', ~from=from + len)
+      ->Judgment.reduce,
     }
   }
   let rec upshift = (rule: t, amount: int, ~from: int=0) => {
@@ -45,7 +47,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     Array.reverse(terms')
     {
       premises: rule.premises->Array.map(r => r->substDeBruijn(terms')),
-      conclusion: rule.conclusion->Judgment.substDeBruijn(terms'),
+      conclusion: rule.conclusion->Judgment.substDeBruijn(terms')->Judgment.reduce,
     }
   }
   let schematise = (rule: t, gen: Term.gen, ~scope: array<Judgment.meta>) => {

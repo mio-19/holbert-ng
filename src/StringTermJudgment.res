@@ -37,6 +37,7 @@ let substituteSubstCodom = (s: substCodom, subst: subst) => {
 }
 let equivalent = ((t1, j1): t, (t2, j2): t) =>
   StringTerm.equivalent(t1, t2) && SExp.equivalent(j1, j2)
+let reduce = t => t
 let unify = ((t1, j1): t, (t2, j2): t, ~gen as _=?) => {
   // cartesian prod of possible unifications
   let judgeSubs = SExp.unify(j1, j2)->Seq.map(s => s->Util.mapMapValues(t => SExpV(t)))
