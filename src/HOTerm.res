@@ -472,9 +472,13 @@ let unify = (a: t, b: t, ~gen=?) =>
     | UnifyFail(_) => []
     },
   )
-let place = (x: int, ~scope as _: array<string>) => Schematic({
-  schematic: x,
-})
+let place = (x: int, ~scope: array<string>) =>
+  app(
+    Schematic({
+      schematic: x,
+    }),
+    Array.fromInitializer(~length=Array.length(scope), i => Var({idx: i})),
+  )
 
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {

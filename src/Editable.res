@@ -54,7 +54,7 @@ module TextArea = (Underlying: COMPONENT) => {
             /* onLoad={(~exports, ~string=?) =>
              props.onLoad(~exports, ~string=string->Option.getOr(Underlying.serialise(us)))} */
             onChange={(state, ~exports=?) => {
-              props.onChange(Ok(state), ~exports=?exports)
+              props.onChange(Ok(state), ~exports?)
             }}
           />
           <div className="editor-controls">
