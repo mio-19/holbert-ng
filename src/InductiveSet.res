@@ -217,7 +217,7 @@ module Make = (
         }
       }
     }
-    ret.contents->Result.map(state => (state, {Ports.facts: state, ruleStyle: None}))
+    ret.contents->Result.map(state => (state, {Ports.facts: state->Dict.copy->Dict.assign(derived(state)), ruleStyle: None}))
   }
 
   let make = props => {
