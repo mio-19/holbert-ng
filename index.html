@@ -453,18 +453,7 @@
       s. "$s" M
       ----------- mexp-lexp
       "$s" L
-      s. sM |- elim (M_induct sM "" "$s" "" L) {
-        |- by (L-Empty) {}
-        s1. s1M IHs1 |- by (N-L "($s1)") {
-          |- by (N-Surr "$s1") {
-            |- by (IHs1) {}
-          }
-        }
-        s1. s2. s1M s2M IHs1 IHs2 |- by (lexp-juxt "$s1" "$s2") {
-          |- by (IHs1) {}
-          |- by (IHs2) {}
-        }
-      }
+      s. sM |- ?
     </hol-string-proof>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>

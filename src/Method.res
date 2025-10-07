@@ -211,11 +211,15 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     } else {
       ""
     }
+    let instantiation = Array.join(
+      it.instantiation->Array.map(t => Judgment.prettyPrintSubstCodom(t, ~scope)),
+      " ",
+    )
     let subgoalsStr =
       it.subgoals
       ->Array.map(s => subprinter(s, ~scope, ~indentation=indentation + 2))
       ->Array.join(newline)
-    `elim (${it.ruleName} ${it.elimName}) {${subgoalsSpacer}${subgoalsStr}}`
+    `elim (${it.ruleName} ${it.elimName} ${instantiation}) {${subgoalsSpacer}${subgoalsStr}}`
   }
 
   let map = (it: t<'a>, f) => {
@@ -358,13 +362,13 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
             let rule'' = rule'->Rule.substituteBare(elimSub)
             Judgment.unify(rule''.conclusion, j, ~gen)->Seq.forEach(
               ruleSub => {
-                let subst = Judgment.mergeSubsts(elimSub, ruleSub)
                 let new = {
                   ruleName,
                   elimName,
                   instantiation: ruleInsts,
-                  subgoals: rule.premises->Array.map(f),
+                  subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
                 }
+                let subst = Judgment.mergeSubsts(elimSub, ruleSub)
                 ret->Dict.set(`elim ${ruleName} with ${elimName}`, (new, subst))
               },
             )

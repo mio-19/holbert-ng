@@ -11,8 +11,14 @@ let splitSub: subst => (StringTerm.subst, SExp.subst) = s => {
   let judgeSub = Map.make()
   s->Map.forEachWithKey((v, k) => {
     switch v {
-    | StringV(t) => stringSub->Map.set(k, t)
-    | SExpV(t) => judgeSub->Map.set(k, t)
+    | StringV(t) => {
+        stringSub->Map.set(k, t)
+        judgeSub->Map.set(k, t->StringTerm.toSExp)
+      }
+    | SExpV(t) => {
+        stringSub->Map.set(k, t->StringTerm.fromSExp)
+        judgeSub->Map.set(k, t)
+      }
     }
   })
   (stringSub, judgeSub)
