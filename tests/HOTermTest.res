@@ -136,16 +136,16 @@ zoraBlock("unify test", t => {
     let x = "x"
     let y = "y"
     t->testUnify(x, x)
-    t->Util.testNotUnify(y, x)
-    t->Util.testNotUnify(x, y)
+    t->Util.testUnifyFail(y, x)
+    t->Util.testUnifyFail(x, y)
   })
   t->block("applications", t => {
     let ab = "(a b)"
     let cd = "(c d)"
     t->testUnify(ab, ab)
     t->testUnify(cd, cd)
-    t->Util.testNotUnify(ab, cd)
-    t->Util.testNotUnify(cd, ab)
+    t->Util.testUnifyFail(ab, cd)
+    t->Util.testUnifyFail(cd, ab)
   })
   t->block("flex-rigid", t => {
     let x = "?0"
@@ -175,7 +175,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid", t => {
     let x = "(?0 \\10)"
     let y = "(r (fst \\10))"
-    t->Util.testUnify(
+    t->Util.testUnify1(
       x,
       y,
       ~subst=emptySubst->substAdd(
@@ -193,7 +193,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid-fcu-2", t => {
     let x = "(?0 (fst \\10))"
     let y = "(r (fst (fst \\10)))"
-    t->Util.testUnify(
+    t->Util.testUnify1(
       x,
       y,
       ~subst=emptySubst->substAdd(
@@ -205,7 +205,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid-fcu-3", t => {
     let x = "(?1 (fst \\10) (snd \\1))"
     let y = "(r (q (snd \\1) (fst \\10)))"
-    t->Util.testUnify(
+    t->Util.testUnify1(
       x,
       y,
       ~subst=emptySubst->substAdd(
@@ -217,7 +217,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid-fcu-4", t => {
     let x = "(?1 (fst \\10) \\1)"
     let y = "(r (q (snd \\1) (fst \\10)))"
-    t->Util.testUnify(
+    t->Util.testUnify1(
       x,
       y,
       ~subst=emptySubst->substAdd(
@@ -252,13 +252,13 @@ zoraBlock("unify test", t => {
     let a = "(x. ?0 x)"
     let b = "(x. f (?0 x))"
     // ?0 occurs in the rigid term on the right → should not unify
-    t->Util.testNotUnify(a, b)
+    t->Util.testUnifyFail(a, b)
   })
   t->block("no capture", t => {
     let a = "(x. ?0)"
     let b = "(x. x)"
     // Should fail: it cannot capture the bound variable.
-    t->Util.testNotUnify(a, b)
+    t->Util.testUnifyFail(a, b)
   })
   t->block("eta", t => {
     t->testUnify(
@@ -309,7 +309,7 @@ zoraBlock("unify test", t => {
     let a = "(Nat (S ?6))"
     let b = "(Nat (S (S \\0)))"
     let c = "(Nat (S (?6 \\0)))"
-    t->Util.testNotUnify(a, b)
+    t->Util.testUnifyFail(a, b)
     t->testUnify(c, b, ~subst=emptySubst->substAdd(6, t->Util.parse("(x. S \\0)")))
   })
   t->block("tests from induction examples", t => {

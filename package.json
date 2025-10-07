@@ -17,6 +17,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@jmagaram/rescript-seq": "^4.4.1",
     "@rescript/react": "^0.13.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

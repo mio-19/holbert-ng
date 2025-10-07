@@ -16,7 +16,7 @@ module Make = (
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Proof.checked, Term.subst) => unit,
+    onChange: (Proof.checked, Judgment.subst) => unit,
   }
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   @react.componentWithProps
