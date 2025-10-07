@@ -1,8 +1,7 @@
 open Signatures
 
-module Make = (Term: TERM): (JUDGMENT with module Term = Term and type t = Term.t) => {
+module Make = (Term: TERM): (JUDGMENT with module Term := Term and type t = Term.t) => {
   include Term
-  module Term = Term
   type substCodom = Term.t
   let prettyPrintSubstCodom = Term.prettyPrint
   let parseSubstCodom = Term.parse
