@@ -1,5 +1,5 @@
 import * as ComponentGraph from "./componentgraph";
-import { AxiomS, ConfS, TheoremS, AxiomStr, TheoremStr } from "./Scratch.mjs";
+import { AxiomS, ConfS, TheoremS, InductiveS, AxiomStr, TheoremStr } from "./Scratch.mjs";
 import ReactDOM from "react-dom/client";
 import React from "react";
 
@@ -73,6 +73,7 @@ function HolComp(RComp : any) {
 window.localStorage.clear()
 ComponentGraph.setup({
   "hol-comp": HolComp(AxiomS),
+	"hol-inductive": HolComp(InductiveS),
   "hol-config": HolComp(ConfS),
   "hol-proof": HolComp(TheoremS),
   "hol-string": HolComp(AxiomStr),

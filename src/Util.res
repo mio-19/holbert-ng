@@ -111,3 +111,9 @@ let intersperse = (a: array<'a>, ~with: 'a) =>
 
 exception Unreachable(string)
 exception Err(string)
+let mustFindIndex = (arr, f) => {
+  switch Array.findIndex(arr, f) {
+  | -1 => raise(Unreachable("Element not found"))
+  | i => i
+  }
+}

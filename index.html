@@ -257,7 +257,33 @@
   </style>
   </head>
   <body>
-    <h1>SExp</h1>
+    <hol-inductive id="index.html/nat" deps="index.html/myconfig">
+      ---- Z
+      (Nat 0)
+      
+    n.
+      (Nat n)
+      ------- S
+      (Nat (S n))
+
+      ---- even-0
+      (Even 0)
+    n.
+      (Even n)
+      -------- odd
+      (Odd (S n))
+    n.
+      (Odd n)
+      ------- even
+      (Even (S n))
+
+      ---- Unit
+      (Data U)
+    a. b.
+      (Data a) (Data b)
+      ---- Pair
+      (Data (A a b))
+    </hol-inductive>
     <hol-comp id="index.html/baz" deps="index.html/myconfig">
     x.y.
       (/\ x y)
@@ -305,7 +331,7 @@
       --------------------------- E-ind
       (P n)    </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
-    <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz">
+    <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
     a.
       (Nat a)
       ------- 
