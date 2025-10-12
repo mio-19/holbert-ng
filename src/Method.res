@@ -34,6 +34,8 @@ module type PROOF_METHOD = {
   ) => string
 }
 
+let seqSizeLimit = 100
+
 module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
@@ -141,7 +143,9 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
       let insts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
       let substs = Judgment.unify(res.conclusion, j, ~gen)
-      substs->Seq.forEach(subst => {
+      substs
+      ->Seq.take(seqSizeLimit)
+      ->Seq.forEach(subst => {
         let new = {
           ruleName: key,
           instantiation: insts,
@@ -361,10 +365,14 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       possibleElims->Array.forEach(((elimName, elim)) => {
         let ruleInsts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
         let rule' = rule->Rule.instantiate(ruleInsts)
-        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)->Seq.forEach(
+        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)
+        ->Seq.take(seqSizeLimit)
+        ->Seq.forEach(
           elimSub => {
             let rule'' = rule'->Rule.substituteBare(elimSub)
-            Judgment.unify(rule''.conclusion, j, ~gen)->Seq.forEach(
+            Judgment.unify(rule''.conclusion, j, ~gen)
+            ->Seq.take(seqSizeLimit)
+            ->Seq.forEach(
               ruleSub => {
                 let new = {
                   ruleName,
