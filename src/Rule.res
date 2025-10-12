@@ -6,7 +6,8 @@ let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s
 module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   type rec t = {vars: array<Term.meta>, premises: array<t>, conclusion: Judgment.t}
   let rec substitute = (rule: t, subst: Judgment.subst) => {
-    let subst' = subst->Judgment.mapSubst(v => v->Judgment.upshiftSubstCodom(Array.length(rule.vars)))
+    let subst' =
+      subst->Judgment.mapSubst(v => v->Judgment.upshiftSubstCodom(Array.length(rule.vars)))
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),
@@ -50,7 +51,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       conclusion: rule.conclusion->Judgment.substDeBruijn(terms')->Judgment.reduce,
     }
   }
-  let schematise = (rule: t, gen: Term.gen, ~scope: array<Judgment.meta>) => {
+  let genSchemaInsts = (rule: t, gen: Term.gen, ~scope: array<Judgment.meta>) => {
     rule.vars->Array.map(m => Judgment.placeSubstCodom(gen->Term.fresh(~replacing=m), ~scope))
   }
   let parseRuleName = str => {

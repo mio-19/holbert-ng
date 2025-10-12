@@ -140,7 +140,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
     ctx.facts->Dict.forEachWithKey((rule, key) => {
-      let insts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
+      let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
       let substs = Judgment.unify(res.conclusion, j, ~gen)
       substs
@@ -363,7 +363,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       ->Array.filter(((_, r)) => r.premises->Array.length == 0 && r.vars->Array.length == 0)
     possibleRules->Array.forEach(((ruleName, rule)) => {
       possibleElims->Array.forEach(((elimName, elim)) => {
-        let ruleInsts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
+        let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
         let rule' = rule->Rule.instantiate(ruleInsts)
         Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)
         ->Seq.take(seqSizeLimit)
