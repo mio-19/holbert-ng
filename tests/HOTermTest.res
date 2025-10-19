@@ -313,8 +313,8 @@ zoraBlock("unify test", t => {
     t->testUnify(c, b, ~subst=emptySubst->substAdd(6, t->Util.parse("(x. S \\0)")))
   })
   t->block("tests from induction examples", t => {
-    let r = ("((?0 \\0) (?1 \\0))")
-    let g = ("(f \\0)")
+    let r = "((?0 \\0) (?1 \\0))"
+    let g = "(f \\0)"
     // what it's currently doing:
     //   0 := (x. y. f x)
     //   1 := doesn't matter
