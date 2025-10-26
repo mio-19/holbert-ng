@@ -46,6 +46,12 @@ let rec make = ({term, scope}) =>
     </span>
   | App(_) =>
     switch HOTerm.strip(term) {
+    | (Symbol({name: "="}), args) if Array.length(args) == 2 =>
+      <span className="term-equality">
+        {React.createElement(make, {term: args->Array.getUnsafe(0), scope})}
+        {React.string("=")}
+        {React.createElement(make, {term: args->Array.getUnsafe(1), scope})}
+      </span>
     | (func, args) =>
       <span className="term-app">
         {React.createElement(make, {term: func, scope})}
