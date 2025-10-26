@@ -342,6 +342,15 @@
     </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
     <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
+    a.
+      (Nat a)
+      ------- 
+      (Nat (S (S a)))
+
+    a. asm |- ?
+    </hol-proof>
+
+    <hol-proof id="index.html/prooftest2" deps="index.html/myconfig index.html/baz index.html/nat">
     a. b. f.
       (= a b)
       ------- 
