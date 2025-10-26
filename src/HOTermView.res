@@ -1,4 +1,3 @@
-type props = {term: HOTerm.t, scope: array<string>}
 open Util
 type idx_props = {idx: int, scope: array<string>}
 let viewVar = (props: idx_props) =>
@@ -33,9 +32,9 @@ let intersperse = a =>
       [React.string(" "), e]
     }
   )
-
+type props1 = {term: HOTerm.t, scope: array<string>, brackets: bool}
 @react.componentWithProps
-let rec make = ({term, scope}) =>
+let rec make1 = ({term, scope, brackets}) =>
   switch term {
   | Var({idx}) => viewVar({idx, scope})
   | Symbol({name: s}) => <span className="term-const"> {React.string(s)} </span>
@@ -48,28 +47,36 @@ let rec make = ({term, scope}) =>
     switch HOTerm.strip(term) {
     | (Symbol({name: "="}), args) if Array.length(args) == 2 =>
       <span className="term-equality">
-        {React.createElement(make, {term: args->Array.getUnsafe(0), scope})}
+        {React.createElement(make1, {term: args->Array.getUnsafe(0), scope, brackets: true})}
         {React.string("=")}
-        {React.createElement(make, {term: args->Array.getUnsafe(1), scope})}
+        {React.createElement(make1, {term: args->Array.getUnsafe(1), scope, brackets: true})}
       </span>
     | (func, args) =>
-      <span className="term-app">
-        {React.createElement(make, {term: func, scope})}
-        <span className="term-app-telescope">
-          {args
-          ->Array.mapWithIndex((t, i) => React.createElement(make, withKey({term: t, scope}, i)))
+      let xs = Array.concat([func], args)
+      let a =
+        <span className="term-app">
+          {xs
+          ->Array.mapWithIndex((t, i) =>
+            React.createElement(make1, withKey({term: t, scope, brackets: true}, i))
+          )
           ->intersperse
-          ->parenthesise
           ->React.array}
         </span>
-      </span>
+      if brackets {
+        [a]->parenthesise->React.array
+      } else {
+        a
+      }
     }
   | Lam({name, body}) => {
       let newScope = Array.concat([name], scope)
       <span className="term-lambda">
         {React.string(name)}
-        {React.createElement(make, {term: body, scope: newScope})}
+        {React.createElement(make1, {term: body, scope: newScope, brackets: false})}
       </span>
     }
   | Unallowed => <p> {React.string("Internal error: unallowed")} </p>
   }
+type props = {term: HOTerm.t, scope: array<string>}
+@react.componentWithProps
+let make = ({term, scope}) => make1({term, scope, brackets: false})
