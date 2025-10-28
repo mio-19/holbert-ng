@@ -489,3 +489,183 @@ module Combine = (
     }
   }
 }
+
+module MakeRewriteHOTerm = (
+  Judgment: JUDGMENT with module Term := HOTerm,
+  Config: {
+    let keyword: string
+    let reversed: bool
+  },
+) => {
+  module Term = HOTerm
+  module Rule = Rule.Make(HOTerm, Judgment)
+  module Context = Context(HOTerm, Judgment)
+
+  let isEqualityRule = (rule: Rule.t): bool => {
+    Array.length(rule.vars) == 0 && Array.length(rule.premises) == 0
+  }
+
+  let extractEqualityTerms = (judgment: Judgment.t): option<(HOTerm.t, HOTerm.t)> => {
+    let term: HOTerm.t = Obj.magic(judgment)
+    switch HOTerm.strip(term) {
+    | (HOTerm.Symbol({name: "="}), args) if Array.length(args) == 2 =>
+      Some((args->Array.getUnsafe(0), args->Array.getUnsafe(1)))
+    | _ => None
+    }
+  }
+
+  type t<'a> = {
+    equalityName: string,
+    subgoal: 'a,
+  }
+
+  let keywords = [Config.keyword]
+
+  let map = (it: t<'a>, f) => {
+    {
+      equalityName: it.equalityName,
+      subgoal: f(it.subgoal),
+    }
+  }
+
+  let substitute = (it: t<'a>, _subst: Judgment.subst) => {
+    // Rewrite method itself doesn't contain terms that need substitution
+    it
+  }
+
+  let prettyPrint = (
+    it: t<'a>,
+    ~scope,
+    ~indentation=0,
+    ~subprinter: ('a, ~scope: array<HOTerm.meta>, ~indentation: int=?) => string,
+  ) => {
+    let ind = String.repeat(" ", indentation)
+    `${ind}${Config.keyword} ${it.equalityName} {\n`
+    ->String.concat(subprinter(it.subgoal, ~scope, ~indentation=indentation + 2))
+    ->String.concat("\n")
+    ->String.concat(ind)
+    ->String.concat("}")
+  }
+
+  exception InternalParseError(string)
+
+  let parse = (input, ~keyword as _, ~scope, ~gen, ~subparser) => {
+    let cur = ref(String.trim(input))
+
+    switch Rule.parseRuleName(cur.contents) {
+    | Error(e) => Error(e)
+    | Ok((equalityName, rest)) => {
+        cur := String.trim(rest)
+
+        if cur.contents->String.get(0) == Some("{") {
+          cur := String.trim(String.sliceToEnd(cur.contents, ~start=1))
+
+          try {
+            switch subparser(cur.contents, ~scope, ~gen) {
+            | Error(e) => raise(InternalParseError(e))
+            | Ok((subgoal, rest2)) => {
+                cur := String.trim(rest2)
+
+                if cur.contents->String.get(0) == Some("}") {
+                  cur := String.trim(String.sliceToEnd(cur.contents, ~start=1))
+                  Ok(({equalityName, subgoal}, cur.contents))
+                } else {
+                  Error("Expected } after subgoal")
+                }
+              }
+            }
+          } catch {
+          | InternalParseError(e) => Error(e)
+          }
+        } else {
+          Error("Expected { after equality name")
+        }
+      }
+    }
+  }
+
+  let rewriteJudgmentTerms = (judgment: Judgment.t, from: HOTerm.t, to: HOTerm.t): Judgment.t => {
+    Judgment.mapTerms(judgment, term => HOTerm.discharge([(from, to)], term, ~prune=false))
+  }
+
+  let apply = (ctx: Context.t, j: Judgment.t, _gen: HOTerm.gen, f: Rule.t => 'a) => {
+    let ret = Dict.make()
+    // For HOTermJ, Judgment.subst is the same as HOTerm.subst
+    let emptySubst: Judgment.subst = Obj.magic(HOTerm.makeSubst())
+
+    ctx.facts->Dict.forEachWithKey((eqRule, name) => {
+      if isEqualityRule(eqRule) {
+        switch extractEqualityTerms(eqRule.conclusion) {
+        | Some((lhs, rhs)) => {
+            let (from, to) = if Config.reversed {
+              (rhs, lhs)
+            } else {
+              (lhs, rhs)
+            }
+
+            let rewrittenGoal = rewriteJudgmentTerms(j, from, to)
+            if !Judgment.equivalent(j, rewrittenGoal) {
+              let method = {
+                equalityName: name,
+                subgoal: f(eqRule),
+              }
+              ret->Dict.set(`${Config.keyword} ${name}`, (method, emptySubst))
+            }
+          }
+        | None => ()
+        }
+      }
+    })
+
+    ret
+  }
+
+  let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, f: ('a, Rule.t) => 'b) => {
+    switch ctx.facts->Dict.get(it.equalityName) {
+    | None => Error(`Cannot find equality '${it.equalityName}'`)
+    | Some(eqRule) if !isEqualityRule(eqRule) =>
+      Error(`'${it.equalityName}' is not a valid equality (has variables or premises)`)
+    | Some(eqRule) =>
+      switch extractEqualityTerms(eqRule.conclusion) {
+      | None =>
+        Error(`Cannot extract equality from '${it.equalityName}' - not in expected equality form`)
+      | Some((lhs, rhs)) => {
+          let (from, to) = if Config.reversed {
+            (rhs, lhs)
+          } else {
+            (lhs, rhs)
+          }
+
+          let rewrittenGoal = rewriteJudgmentTerms(goal, from, to)
+
+          let rewrittenRule: Rule.t = {
+            vars: [],
+            premises: [],
+            conclusion: rewrittenGoal,
+          }
+
+          Ok({
+            equalityName: it.equalityName,
+            subgoal: f(it.subgoal, rewrittenRule),
+          })
+        }
+      }
+    }
+  }
+}
+
+module Rewrite = (Judgment: JUDGMENT with module Term := HOTerm) => MakeRewriteHOTerm(
+  Judgment,
+  {
+    let keyword = "rewrite"
+    let reversed = false
+  },
+)
+
+module RewriteReverse = (Judgment: JUDGMENT with module Term := HOTerm) => MakeRewriteHOTerm(
+  Judgment,
+  {
+    let keyword = "rewrite_reverse"
+    let reversed = true
+  },
+)
