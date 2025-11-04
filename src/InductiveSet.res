@@ -177,13 +177,55 @@ module Make = (
     allGroups->Array.filter(g => Belt.Set.has(reachableKeys, makeKey(g.name, g.arity)))
   }
 
+  let generateCasesRule = (group: constructorGroup): Rule.t => {
+    let {name: str, arity: _i} = group
+
+    let caseSubgoal = ((_constructorName: string, constructorRule: Rule.t)): Rule.t => {
+      let offset = Array.length(constructorRule.vars)
+
+      let equalityPremise = {
+        Rule.vars: [],
+        premises: [],
+        conclusion: HOTerm.app(
+          HOTerm.Symbol({name: "="}),
+          [HOTerm.Var({idx: offset}), constructorRule.conclusion],
+        ),
+      }
+
+      {
+        Rule.vars: constructorRule.vars,
+        premises: Array.concat([equalityPremise], constructorRule.premises),
+        conclusion: HOTerm.Var({idx: offset + 1}),
+      }
+    }
+
+    let subgoals = Array.map(group.rules, ((name, rule)) => caseSubgoal((name, rule)))
+
+    {
+      Rule.vars: Array.concat(["§0"], ["§P"]),
+      premises: [
+        {
+          Rule.vars: [],
+          premises: [],
+          conclusion: HOTerm.app(HOTerm.Symbol({name: str}), [HOTerm.Var({idx: 0})]),
+        },
+        ...subgoals,
+      ],
+      conclusion: HOTerm.Var({idx: 1}),
+    }
+  }
+
   let derived = (state: state): state =>
     state
     ->groupByConstructor
-    ->Array.map(group => {
+    ->Array.flatMap(group => {
       let mutualComponent = findMutuallyInductiveComponent(group, groupByConstructor(state))
-      let rule = generateInductionRule(group, mutualComponent)
-      ("§induction-" ++ makeKey(group.name, group.arity), rule)
+      let inductionRule = generateInductionRule(group, mutualComponent)
+      let casesRule = generateCasesRule(group)
+      [
+        ("§induction-" ++ makeKey(group.name, group.arity), inductionRule),
+        ("§cases-" ++ makeKey(group.name, group.arity), casesRule),
+      ]
     })
     ->Dict.fromArray
   let serialise = (state: state) =>
@@ -217,7 +259,10 @@ module Make = (
         }
       }
     }
-    ret.contents->Result.map(state => (state, {Ports.facts: state->Dict.copy->Dict.assign(derived(state)), ruleStyle: None}))
+    ret.contents->Result.map(state => (
+      state,
+      {Ports.facts: state->Dict.copy->Dict.assign(derived(state)), ruleStyle: None},
+    ))
   }
 
   let make = props => {
