@@ -189,7 +189,6 @@ let rec substitute = (term: t, subst: subst) =>
   | Var(_) | Unallowed | Symbol(_) => term
   }
 
-// TODO: check how will this interact with meta variables (schematics) and check if it is needed to have a subst parameter - it should not be needed for subst produced by pattern unification
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
   | Symbol(_) => term
@@ -470,6 +469,28 @@ let unify = (a: t, b: t, ~gen=?) =>
     | UnifyFail(_) => []
     },
   )
+let rec rewrite = (term: t, from: t, to: t, ~subst: subst, ~gen: option<gen>): (subst, t) => {
+  try {
+    let subst1 = unifyTerm(term, from, subst, ~gen)
+    (subst1, to)
+  } catch {
+  | UnifyFail(_) =>
+    switch term {
+    | Schematic({schematic}) if subst->substHas(schematic) =>
+      rewrite(subst->substGet(schematic)->Option.getExn, from, to, ~subst, ~gen)
+    | Var(_) | Unallowed | Symbol(_) | Schematic(_) => (subst, term)
+    | Lam({name, body}) => {
+        let (subst1, body1) = rewrite(body, from, to, ~subst, ~gen)
+        (subst1, Lam({name, body: body1}))
+      }
+    | App({func, arg}) => {
+        let (subst1, func') = rewrite(func, from, to, ~subst, ~gen)
+        let (subst2, arg') = rewrite(arg, from, to, ~subst=subst1, ~gen)
+        (subst2, App({func: func', arg: arg'}))
+      }
+    }
+  }
+}
 let place = (x: int, ~scope: array<string>) =>
   app(
     Schematic({
