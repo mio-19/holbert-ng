@@ -662,7 +662,14 @@ module MakeRewriteHOTerm = (
             }
 
             let (subst, rewrittenGoal) = rewriteJudgmentTerms(j, from, to, ~gen=Some(gen))
-            if !Judgment.equivalent(j, rewrittenGoal) {
+
+            // If the rewritten one is the same as the original, for example rewriting with reflexivity, skip it
+            if (
+              !Judgment.equivalent(
+                j->Judgment.substitute(subst)->Judgment.reduce,
+                rewrittenGoal->Judgment.substitute(subst)->Judgment.reduce,
+              )
+            ) {
               let rewrittenRule: Rule.t = {
                 vars: [],
                 premises: [],
