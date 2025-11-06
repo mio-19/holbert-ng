@@ -491,7 +491,7 @@ module Combine = (
 }
 
 module MakeRewriteHOTerm = (
-  Judgment: JUDGMENT with module Term := HOTerm,
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst,
   Config: {
     let keyword: string
     let reversed: bool
@@ -596,8 +596,7 @@ module MakeRewriteHOTerm = (
       subst := subst'
       newTerm
     })
-    // For HOTermJ, Judgment.subst is the same as HOTerm.subst
-    (Obj.magic(subst.contents), j)
+    (subst.contents, j)
   }
 
   let apply = (ctx: Context.t, j: Judgment.t, gen: HOTerm.gen, f: Rule.t => 'a) => {
