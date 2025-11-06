@@ -584,14 +584,24 @@ module MakeRewriteHOTerm = (
     }
   }
 
-  let rewriteJudgmentTerms = (judgment: Judgment.t, from: HOTerm.t, to: HOTerm.t): Judgment.t => {
-    Judgment.mapTerms(judgment, term => HOTerm.discharge([(from, to)], term, ~prune=false))
+  let rewriteJudgmentTerms = (
+    judgment: Judgment.t,
+    from: HOTerm.t,
+    to: HOTerm.t,
+    ~gen: option<HOTerm.gen>,
+  ): (Judgment.subst, Judgment.t) => {
+    let subst: ref<HOTerm.subst> = ref(HOTerm.makeSubst())
+    let j = Judgment.mapTerms(judgment, term => {
+      let (subst', newTerm) = HOTerm.rewrite(term, from, to, ~subst=subst.contents, ~gen)
+      subst := subst'
+      newTerm
+    })
+    // For HOTermJ, Judgment.subst is the same as HOTerm.subst
+    (Obj.magic(subst.contents), j)
   }
 
-  let apply = (ctx: Context.t, j: Judgment.t, _gen: HOTerm.gen, f: Rule.t => 'a) => {
+  let apply = (ctx: Context.t, j: Judgment.t, gen: HOTerm.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
-    // For HOTermJ, Judgment.subst is the same as HOTerm.subst
-    let emptySubst: Judgment.subst = Obj.magic(HOTerm.makeSubst())
 
     ctx.facts->Dict.forEachWithKey((eqRule, name) => {
       if isEqualityRule(eqRule) {
@@ -603,13 +613,13 @@ module MakeRewriteHOTerm = (
               (lhs, rhs)
             }
 
-            let rewrittenGoal = rewriteJudgmentTerms(j, from, to)
+            let (subst, rewrittenGoal) = rewriteJudgmentTerms(j, from, to, ~gen=Some(gen))
             if !Judgment.equivalent(j, rewrittenGoal) {
               let method = {
                 equalityName: name,
                 subgoal: f(eqRule),
               }
-              ret->Dict.set(`${Config.keyword} ${name}`, (method, emptySubst))
+              ret->Dict.set(`${Config.keyword} ${name}`, (method, subst))
             }
           }
         | None => ()
@@ -636,7 +646,8 @@ module MakeRewriteHOTerm = (
             (lhs, rhs)
           }
 
-          let rewrittenGoal = rewriteJudgmentTerms(goal, from, to)
+          // TODO: what gen to use?
+          let (_, rewrittenGoal) = rewriteJudgmentTerms(goal, from, to, ~gen=None)
 
           let rewrittenRule: Rule.t = {
             vars: [],

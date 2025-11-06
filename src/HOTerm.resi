@@ -22,6 +22,4 @@ exception UnifyFail(string)
 let substAdd: (subst, schematic, t) => subst
 let unifyTerm: (t, t, subst, ~gen: option<gen>) => subst
 let reduceSubst: subst => subst
-let discharge: (array<(t, t)>, t, ~prune: bool) => t
-let upshift_tt: (array<(t, t)>, ~amount: int=?) => array<(t, t)>
 let rewrite: (t, t, t, ~subst: subst, ~gen: option<gen>) => (subst, t)

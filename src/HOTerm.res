@@ -155,7 +155,7 @@ let rec discharge = (subst: array<(t, t)>, term: t, ~prune: bool): t => {
     switch term {
     | App({func, arg}) =>
       App({func: discharge(subst, func, ~prune), arg: discharge(subst, arg, ~prune)})
-    // Lam case is not actually needed by FCU but needed by rewriting
+    // Lam case is not actually needed by FCU
     | Lam({name, body}) => Lam({name, body: discharge(upshift_tt(subst), body, ~prune)})
     | Var(_) if prune => Unallowed
     | Var(_) | Schematic(_) | Symbol(_) | Unallowed => term
