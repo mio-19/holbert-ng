@@ -662,7 +662,7 @@ module MakeRewriteHOTerm = (
 
     ctx.facts->Dict.forEachWithKey((eqRule, name) => {
       if isEqualityRule(eqRule) {
-        let insts = eqRule->Rule.schematise(gen, ~scope=ctx.fixes)
+        let insts = eqRule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
         let instantiatedRule = eqRule->Rule.instantiate(insts)
 
         switch extractEqualityTermsFromBare(instantiatedRule) {
