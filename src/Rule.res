@@ -11,7 +11,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),
-      conclusion: rule.conclusion->Judgment.substitute(subst'),
+      conclusion: rule.conclusion->Judgment.substitute(subst')->Judgment.reduce,
     }
   }
   let rec substDeBruijn = (rule: t, substs: array<Judgment.substCodom>, ~from: int=0) => {
@@ -39,7 +39,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   let substituteBare = (rule: bare, subst: Judgment.subst) => {
     {
       premises: rule.premises->Array.map(premise => premise->substitute(subst)),
-      conclusion: rule.conclusion->Judgment.substitute(subst),
+      conclusion: rule.conclusion->Judgment.substitute(subst)->Judgment.reduce,
     }
   }
   let instantiate = (rule: t, terms: array<Judgment.substCodom>) => {
@@ -51,7 +51,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       conclusion: rule.conclusion->Judgment.substDeBruijn(terms')->Judgment.reduce,
     }
   }
-  let schematise = (rule: t, gen: Term.gen, ~scope: array<Judgment.meta>) => {
+  let genSchemaInsts = (rule: t, gen: Term.gen, ~scope: array<Judgment.meta>) => {
     rule.vars->Array.map(m => Judgment.placeSubstCodom(gen->Term.fresh(~replacing=m), ~scope))
   }
   let parseRuleName = str => {
