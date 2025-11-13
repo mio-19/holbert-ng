@@ -158,7 +158,9 @@ module LemmaView = (
   }
 }
 
-module RewriteView = (Judgment: JUDGMENT with module Term := HOTerm) => {
+module RewriteView = (
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+) => {
   module Method = Rewrite(Judgment)
   type props<'a> = {
     method: Method.t<'a>,
@@ -197,7 +199,9 @@ module RewriteView = (Judgment: JUDGMENT with module Term := HOTerm) => {
   }
 }
 
-module RewriteReverseView = (Judgment: JUDGMENT with module Term := HOTerm) => {
+module RewriteReverseView = (
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+) => {
   module Method = RewriteReverse(Judgment)
   type props<'a> = {
     method: Method.t<'a>,

@@ -339,6 +339,10 @@
       (= a b) (f a)
       -------- eq-ap
       (f b)
+
+    a.
+      -------- eqab
+      (= (A a) (B a))
     </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
     <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
@@ -367,6 +371,12 @@
       (= a c)
     
     a. b. c. ab bc |- ?
+    </hol-proof>
+    <hol-proof id="index.html/eq-high" deps="index.html/myconfig index.html/baz index.html/nat">
+      ------- A0B0
+      (= (A 0) (B 0))
+    
+      |- ?
     </hol-proof>
     <h1>String</h1>
     <h2>Basic</h2>
