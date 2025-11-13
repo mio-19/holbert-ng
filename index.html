@@ -378,6 +378,14 @@
     
       |- ?
     </hol-proof>
+    <hol-proof id="index.html/fcu-test" deps="index.html/myconfig">
+      x.
+        [P. (P (fst x))]
+        ---------------- 
+        (r (fst (fst x)))
+      
+      x. asm |- by (asm ((x. x. r (fst x)) x)) {}
+    </hol-proof>
     <h1>String</h1>
     <h2>Basic</h2>
     <hol-string id="index.html/mexp" deps="index.html/myconfig">
