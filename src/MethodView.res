@@ -157,6 +157,89 @@ module LemmaView = (
     </div>
   }
 }
+
+module RewriteView = (
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+) => {
+  module Method = Rewrite(Judgment)
+  type props<'a> = {
+    method: Method.t<'a>,
+    scope: array<HOTerm.meta>,
+    ruleStyle: RuleView.style,
+    gen: HOTerm.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
+  }
+  type srProps<'a> = {
+    "proof": 'a,
+    "scope": array<HOTerm.meta>,
+    "ruleStyle": RuleView.style,
+    "gen": HOTerm.gen,
+    "onChange": ('a, Judgment.subst) => unit,
+  }
+  let make = (subRender: srProps<'a> => React.element) => props => {
+    <div>
+      <b> {React.string("rewrite ")} </b>
+      {React.string(props.method.equalityName)}
+      <ul>
+        <li>
+          {React.createElement(
+            subRender,
+            {
+              "proof": props.method.subgoal,
+              "scope": props.scope,
+              "ruleStyle": props.ruleStyle,
+              "gen": props.gen,
+              "onChange": (subgoal, subst: Judgment.subst) =>
+                props.onChange({...props.method, subgoal}, subst),
+            },
+          )}
+        </li>
+      </ul>
+    </div>
+  }
+}
+
+module RewriteReverseView = (
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+) => {
+  module Method = RewriteReverse(Judgment)
+  type props<'a> = {
+    method: Method.t<'a>,
+    scope: array<HOTerm.meta>,
+    ruleStyle: RuleView.style,
+    gen: HOTerm.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
+  }
+  type srProps<'a> = {
+    "proof": 'a,
+    "scope": array<HOTerm.meta>,
+    "ruleStyle": RuleView.style,
+    "gen": HOTerm.gen,
+    "onChange": ('a, Judgment.subst) => unit,
+  }
+  let make = (subRender: srProps<'a> => React.element) => props => {
+    <div>
+      <b> {React.string("rewrite_reverse ")} </b>
+      {React.string(props.method.equalityName)}
+      <ul>
+        <li>
+          {React.createElement(
+            subRender,
+            {
+              "proof": props.method.subgoal,
+              "scope": props.scope,
+              "ruleStyle": props.ruleStyle,
+              "gen": props.gen,
+              "onChange": (subgoal, subst: Judgment.subst) =>
+                props.onChange({...props.method, subgoal}, subst),
+            },
+          )}
+        </li>
+      </ul>
+    </div>
+  }
+}
+
 module CombineMethodView = (
   Term: TERM,
   Judgment: JUDGMENT with module Term := Term,

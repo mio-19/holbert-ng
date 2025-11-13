@@ -76,6 +76,13 @@ let upshiftSubstCodom = (v: substCodom, amount: int, ~from: int=0) =>
   | SExpV(j) => SExpV(SExp.upshift(j, amount, ~from))
   }
 
+let mapTerms = ((t, j): t, f: StringTerm.t => StringTerm.t): t => {
+  // Apply the function to both the string term and the sexp (converted to/from string term)
+  let newT = f(t)
+  let newJ = j->StringTerm.fromSExp->f->StringTerm.toSExp
+  (newT, newJ)
+}
+
 let parse = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
   StringTerm.parse(str, ~scope, ~gen?)->Result.flatMap(((t, str)) =>
     SExp.parse(str, ~scope)->Result.map(((j, str)) => ((t, j), str))

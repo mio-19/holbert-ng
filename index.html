@@ -329,7 +329,21 @@
       (P 0)
       [k. (P k) |- (P (S (S k)))]
       --------------------------- E-ind
-      (P n)    </hol-comp>
+      (P n)
+
+    a.
+      ---- refl
+      (= a a)
+    
+    a. b. f.
+      (= a b) (f a)
+      -------- eq-ap
+      (f b)
+
+    a.
+      -------- eqab
+      (= (A a) (B a))
+    </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
     <!-- <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat"> -->
     <!-- n. -->
@@ -348,6 +362,50 @@
       x.y. asm |- by (AI ((x. x. \1) y x) ((x. x. x) y x)) {
           |- ?
           |- ?}
+    
+    </hol-proof>
+  
+    <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
+    a.
+      (Nat a)
+      ------- 
+      (Nat (S (S a)))
+
+    a. asm |- ?
+    
+    </hol-proof>
+
+    <hol-proof id="index.html/prooftest2" deps="index.html/myconfig index.html/baz index.html/nat">
+    a. b. f.
+      (= a b)
+      ------- 
+      (= (f a) (f b))
+    
+    a. b. f. asm |- ?
+    </hol-proof>
+
+    <hol-proof id="index.html/eq-trans" deps="index.html/myconfig index.html/baz index.html/nat">
+    a. b. c.
+      (= a b)
+      (= b c)
+      ------- eq-trans
+      (= a c)
+    
+    a. b. c. ab bc |- ?
+    </hol-proof>
+    <hol-proof id="index.html/eq-high" deps="index.html/myconfig index.html/baz index.html/nat">
+      ------- A0B0
+      (= (A 0) (B 0))
+    
+      |- ?
+    </hol-proof>
+    <hol-proof id="index.html/fcu-test" deps="index.html/myconfig">
+      x.
+        [P. (P (fst x))]
+        ---------------- 
+        (r (fst (fst x)))
+      
+      x. asm |- by (asm ((x. x. r (fst x)) x)) {}
     </hol-proof>
     <h1>String</h1>
     <h2>Basic</h2>
