@@ -40,6 +40,8 @@ module Make = (
     ->Array.filterMap(((name, rule)) =>
       extractConstructorSignature(rule)->Option.map(sig => (name, rule, sig))
     )
+    // Only allow type constructors with arity 1
+    ->Array.filter(((_, _, (_cname, arity))) => arity == 1)
     ->Array.reduce(Dict.make(), (acc, (name, rule, (cname, arity))) => {
       let key = makeKey(cname, arity)
       Dict.set(acc, key, [(name, rule), ...Dict.get(acc, key)->Option.getOr([])])
@@ -188,7 +190,7 @@ module Make = (
       let (_head, args) = HOTerm.strip(constructorRule.conclusion)
       let constructorArg = switch args[0] {
       | Some(arg) => arg
-      | None => raise(Unreachable("Constructor conclusion must have at least one argument"))
+      | None => raise(Unreachable("Constructor conclusion must have one argument"))
       }
 
       let equalityPremise = {
@@ -230,10 +232,7 @@ module Make = (
       let mutualComponent = findMutuallyInductiveComponent(group, groupByConstructor(state))
       let inductionRule = generateInductionRule(group, mutualComponent)
       let casesRule = generateCasesRule(group)
-      [
-        ("§induction-" ++ makeKey(group.name, group.arity), inductionRule),
-        ("§cases-" ++ makeKey(group.name, group.arity), casesRule),
-      ]
+      [("§induction-" ++ group.name, inductionRule), ("§cases-" ++ group.name, casesRule)]
     })
     ->Dict.fromArray
   let serialise = (state: state) =>
