@@ -183,12 +183,20 @@ module Make = (
     let caseSubgoal = ((_constructorName: string, constructorRule: Rule.t)): Rule.t => {
       let offset = Array.length(constructorRule.vars)
 
+      // Extract the argument from the constructor conclusion
+      // e.g., from (Nat 0) extract 0, from (Nat (S n)) extract (S n)
+      let (_head, args) = HOTerm.strip(constructorRule.conclusion)
+      let constructorArg = switch args[0] {
+      | Some(arg) => arg
+      | None => raise(Unreachable("Constructor conclusion must have at least one argument"))
+      }
+
       let equalityPremise = {
         Rule.vars: [],
         premises: [],
         conclusion: HOTerm.app(
           HOTerm.Symbol({name: "="}),
-          [HOTerm.Var({idx: offset}), constructorRule.conclusion],
+          [HOTerm.Var({idx: offset}), constructorArg],
         ),
       }
 
