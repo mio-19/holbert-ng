@@ -34,6 +34,8 @@ module type PROOF_METHOD = {
   ) => string
 }
 
+let seqSizeLimit = 100
+
 module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
@@ -138,10 +140,12 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
     ctx.facts->Dict.forEachWithKey((rule, key) => {
-      let insts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
+      let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
       let substs = Judgment.unify(res.conclusion, j, ~gen)
-      substs->Seq.forEach(subst => {
+      substs
+      ->Seq.take(seqSizeLimit)
+      ->Seq.forEach(subst => {
         let new = {
           ruleName: key,
           instantiation: insts,
@@ -348,19 +352,27 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       ctx.facts
       ->Dict.toArray
       ->Array.filter(((_, r)) =>
-        r.premises->Array.length > 0 && (r.premises[0]->Option.getExn).premises->Array.length == 0
+        r.premises->Array.length > 0 && {
+            let fst = r.premises[0]->Option.getExn
+            fst.premises->Array.length == 0 && fst.vars->Array.length == 0
+          }
       )
     let possibleElims =
-      ctx.facts->Dict.toArray->Array.filter(((_, r)) => r.premises->Array.length == 0)
+      ctx.facts
+      ->Dict.toArray
+      ->Array.filter(((_, r)) => r.premises->Array.length == 0 && r.vars->Array.length == 0)
     possibleRules->Array.forEach(((ruleName, rule)) => {
       possibleElims->Array.forEach(((elimName, elim)) => {
-        let ruleInsts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
-        let elimInsts = elim->Rule.schematise(gen, ~scope=ctx.fixes)
-        let (rule', elim) = (rule->Rule.instantiate(ruleInsts), elim->Rule.instantiate(elimInsts))
-        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)->Seq.forEach(
+        let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
+        let rule' = rule->Rule.instantiate(ruleInsts)
+        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)
+        ->Seq.take(seqSizeLimit)
+        ->Seq.forEach(
           elimSub => {
             let rule'' = rule'->Rule.substituteBare(elimSub)
-            Judgment.unify(rule''.conclusion, j, ~gen)->Seq.forEach(
+            Judgment.unify(rule''.conclusion, j, ~gen)
+            ->Seq.take(seqSizeLimit)
+            ->Seq.forEach(
               ruleSub => {
                 let new = {
                   ruleName,
@@ -650,7 +662,7 @@ module MakeRewriteHOTerm = (
 
     ctx.facts->Dict.forEachWithKey((eqRule, name) => {
       if isEqualityRule(eqRule) {
-        let insts = eqRule->Rule.schematise(gen, ~scope=ctx.fixes)
+        let insts = eqRule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
         let instantiatedRule = eqRule->Rule.instantiate(insts)
 
         switch extractEqualityTermsFromBare(instantiatedRule) {

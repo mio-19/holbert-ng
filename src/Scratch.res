@@ -12,8 +12,13 @@ module RewritesView = MethodView.CombineMethodView(
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   HOTerm,
   HOTermJ,
-  MethodView.DerivationView(HOTerm, HOTermJ),
-  MethodView.LemmaView(HOTerm, HOTermJ, HOTermJView),
+  MethodView.CombineMethodView(
+    HOTerm,
+    HOTermJ,
+    MethodView.DerivationView(HOTerm, HOTermJ),
+    MethodView.LemmaView(HOTerm, HOTermJ, HOTermJView),
+  ),
+  MethodView.EliminationView(HOTerm, HOTermJ),
 )
 module DLRView = MethodView.CombineMethodView(
   HOTerm,
