@@ -123,6 +123,9 @@ zoraBlock("parse lambda", t => {
       Lam({name: "x", body: App({func: Var({idx: 0}), arg: Var({idx: 0})})}),
     )
   })
+  t->block("constructor", t => {
+    t->Util.testParse("@cons", Symbol({name: "cons", constructor: true}))
+  })
   // TODO: test if remaining strings are returned correctly
 })
 
@@ -130,6 +133,7 @@ zoraBlock("parse and prettyprint", t => {
   t->block("examples", t => {
     t->Util.testParsePrettyPrint("\\1", "\\1")
     t->Util.testParsePrettyPrint("?1", "?1")
+    t->Util.testParsePrettyPrint("@cons", "@cons")
     t->Util.testParsePrettyPrint("(x. x)", "(x. x)")
     t->Util.testParsePrettyPrint("(x. x. \\0)", "(x. x. x)")
     t->Util.testParsePrettyPrint("(x. x. \\1)", "(x. x. \\1)")
