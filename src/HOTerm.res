@@ -5,7 +5,7 @@ module IntCmp = Belt.Id.MakeComparable({
 })
 
 type rec t =
-  | Symbol({name: string})
+  | Symbol({name: string, constructor: bool})
   | Var({idx: int})
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
@@ -684,7 +684,7 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
       let idx = env->Map.get(name)->Option.getExn
       Var({idx: idx})
     } else {
-      Symbol({name: name})
+      Symbol({name, constructor: false})
     }
   | VarS({idx}) => Var({idx: idx})
   | SchematicS({schematic}) =>

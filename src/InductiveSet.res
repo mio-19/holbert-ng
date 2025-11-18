@@ -113,7 +113,7 @@ module Make = (
         {
           Rule.vars: [],
           premises: [],
-          conclusion: HOTerm.app(HOTerm.Symbol({name: str}), HOTerm.mkvars(i)),
+          conclusion: HOTerm.app(HOTerm.Symbol({name: str, constructor: false}), HOTerm.mkvars(i)),
         },
         ...subgoals,
       ],
@@ -197,7 +197,7 @@ module Make = (
         Rule.vars: [],
         premises: [],
         conclusion: HOTerm.app(
-          HOTerm.Symbol({name: "="}),
+          HOTerm.Symbol({name: "=", constructor: false}),
           [HOTerm.Var({idx: offset}), constructorArg],
         ),
       }
@@ -217,7 +217,10 @@ module Make = (
         {
           Rule.vars: [],
           premises: [],
-          conclusion: HOTerm.app(HOTerm.Symbol({name: str}), [HOTerm.Var({idx: 0})]),
+          conclusion: HOTerm.app(
+            HOTerm.Symbol({name: str, constructor: false}),
+            [HOTerm.Var({idx: 0})],
+          ),
         },
         ...subgoals,
       ],
