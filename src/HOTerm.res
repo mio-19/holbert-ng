@@ -369,12 +369,12 @@ let flexflex = (
   subst: subst,
   ~gen: option<gen>,
 ): subst => {
+  if gen->Option.isNone {
+    raise(UnifyFail("no gen provided"))
+  }
   if sa == sb {
     if xs->Array.length != ys->Array.length {
       raise(UnifyFail("flexible schematics have different number of arguments"))
-    }
-    if gen->Option.isNone {
-      raise(UnifyFail("no gen provided"))
     }
     let len = xs->Array.length
     let h = Schematic({schematic: fresh(Option.getExn(gen))})
