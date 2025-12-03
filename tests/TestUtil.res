@@ -52,7 +52,7 @@ module MakeTerm = (Term: TERM) => {
 
     switch res {
     | Ok(res) => {
-        let result = Term.prettyPrint(res->fst, ~scope)
+        let result = Term.prettyPrint(res->Pair.first, ~scope)
         t->equal(result, expected, ~msg="prettyPrint output matches expected")
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
