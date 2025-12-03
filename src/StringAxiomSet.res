@@ -135,7 +135,8 @@ let make = props => {
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-      )}>
+      )}
+    >
       {content
       ->Dict.toArray
       ->Array.mapWithIndex(((n, r), i) =>
@@ -143,7 +144,8 @@ let make = props => {
           rule={r}
           scope={[]}
           key={String.make(i)}
-          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}
+        >
           {React.string(n)}
         </RuleView>
       )

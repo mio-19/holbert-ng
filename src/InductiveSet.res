@@ -88,7 +88,7 @@ module Make = (
       let (conclusionHead, conclusionArgs) = HOTerm.strip(constructorRule.conclusion)
       let typeIndex = switch conclusionHead {
       | Symbol({name}) => findFormerIndex(name, Array.length(conclusionArgs))
-      | _ => raise(Unreachable("Constructor conclusion must have a Symbol head"))
+      | _ => throw(Unreachable("Constructor conclusion must have a Symbol head"))
       }
 
       {
@@ -187,7 +187,7 @@ module Make = (
       let (_head, args) = HOTerm.strip(predicateRule.conclusion)
       let predicateArg = switch args[0] {
       | Some(arg) => arg
-      | None => raise(Unreachable("Predicate conclusion must have one argument"))
+      | None => throw(Unreachable("Predicate conclusion must have one argument"))
       }
 
       let equalityPremise = {
@@ -276,14 +276,16 @@ module Make = (
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-      )}>
+      )}
+    >
       {Dict.toArray(props.content->Dict.copy->Dict.assign(derived(props.content)))
       ->Array.mapWithIndex(((n, r), i) =>
         <RuleView
           rule={r}
           scope={[]}
           key={String.make(i)}
-          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}
+        >
           {React.string(n)}
         </RuleView>
       )

@@ -64,11 +64,11 @@ module MakeTerm = (Term: TERM) => {
     | Ok((term, "")) => term
     | Ok((_, rest)) => {
         t->fail(~msg="parse incomplete: " ++ rest)
-        raise(Unreachable(""))
+        throw(Unreachable(""))
       }
     | Error(msg) => {
         t->fail(~msg="parse failed: " ++ msg)
-        raise(Unreachable(""))
+        throw(Unreachable(""))
       }
     }
   }
