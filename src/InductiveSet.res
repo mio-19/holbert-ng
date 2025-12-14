@@ -25,6 +25,9 @@ module Make = (
   }
 
   let makeKey = (name, arity) => name ++ "§" ++ Int.toString(arity)
+  let makeVarNames = (arity: int) =>
+    Array.fromInitializer(~length=arity, i => "§" ++ Int.toString(i))
+  let makeVarArgs = (arity: int) => Array.fromInitializer(~length=arity, i => HOTerm.Var({idx: i}))
 
   let extractPredicateSignature = (rule: Rule.t): option<(string, int)> => {
     let (head, args) = HOTerm.strip(rule.conclusion)
@@ -40,8 +43,6 @@ module Make = (
     ->Array.filterMap(((name, rule)) =>
       extractPredicateSignature(rule)->Option.map(sig => (name, rule, sig))
     )
-    // Only allow predicates with arity 1
-    ->Array.filter(((_, _, (_cname, arity))) => arity == 1)
     ->Array.reduce(Dict.make(), (acc, (name, rule, (cname, arity))) => {
       let key = makeKey(cname, arity)
       Dict.set(acc, key, [(name, rule), ...Dict.get(acc, key)->Option.getOr([])])
@@ -103,18 +104,18 @@ module Make = (
 
     {
       Rule.vars: Array.concat(
-        Array.fromInitializer(~length=i, i => "§" ++ Int.toString(i)),
+        makeVarNames(i),
         Array.fromInitializer(~length=numFormers, i => "§P" ++ Int.toString(i)),
       ),
       premises: [
         {
           Rule.vars: [],
           premises: [],
-          conclusion: HOTerm.app(HOTerm.Symbol({name: str, constructor: false}), HOTerm.mkvars(i)),
+          conclusion: HOTerm.app(HOTerm.Symbol({name: str, constructor: false}), makeVarArgs(i)),
         },
         ...subgoals,
       ],
-      conclusion: HOTerm.app(HOTerm.Var({idx: i + groupIndex}), HOTerm.mkvars(i)),
+      conclusion: HOTerm.app(HOTerm.Var({idx: i + groupIndex}), makeVarArgs(i)),
     }
   }
 
@@ -177,7 +178,7 @@ module Make = (
   }
 
   let generateCasesRule = (group: predicateGroup): Rule.t => {
-    let {name: str, arity: _i} = group
+    let {name: str, arity} = group
 
     let caseSubgoal = ((_constructorName: string, predicateRule: Rule.t)): Rule.t => {
       let offset = Array.length(predicateRule.vars)
@@ -185,43 +186,42 @@ module Make = (
       // Extract the argument from the predicate conclusion
       // e.g., from (Nat 0) extract 0, from (Nat (S n)) extract (S n)
       let (_head, args) = HOTerm.strip(predicateRule.conclusion)
-      let predicateArg = switch args[0] {
-      | Some(arg) => arg
-      | None => throw(Unreachable("Predicate conclusion must have one argument"))
-      }
+      assert(Array.length(args) == arity)
 
-      let equalityPremise = {
-        Rule.vars: [],
-        premises: [],
-        conclusion: HOTerm.app(
-          HOTerm.Symbol({name: "=", constructor: false}),
-          [HOTerm.Var({idx: offset}), predicateArg],
-        ),
-      }
+      let equalityPremises = args->Array.mapWithIndex((arg, idx) => {
+        {
+          Rule.vars: [],
+          premises: [],
+          conclusion: HOTerm.app(
+            HOTerm.Symbol({name: "=", constructor: false}),
+            [HOTerm.Var({idx: offset + idx}), arg],
+          ),
+        }
+      })
 
       {
         Rule.vars: predicateRule.vars,
-        premises: Array.concat([equalityPremise], predicateRule.premises),
-        conclusion: HOTerm.Var({idx: offset + 1}),
+        premises: Array.concat(equalityPremises, predicateRule.premises),
+        conclusion: HOTerm.Var({idx: offset + arity}),
       }
     }
 
     let subgoals = Array.map(group.rules, ((name, rule)) => caseSubgoal((name, rule)))
 
     {
-      Rule.vars: Array.concat(["§0"], ["§P"]),
+      Rule.vars: Array.concat(makeVarNames(arity), ["§P"]),
       premises: [
         {
           Rule.vars: [],
           premises: [],
           conclusion: HOTerm.app(
             HOTerm.Symbol({name: str, constructor: false}),
-            [HOTerm.Var({idx: 0})],
+            makeVarArgs(arity),
           ),
         },
         ...subgoals,
       ],
-      conclusion: HOTerm.Var({idx: 1}),
+      conclusion: HOTerm.Var({idx: arity}),
     }
   }
 
