@@ -284,6 +284,15 @@
       ---- Pair
       (Data (A a b))
     </hol-inductive>
+    <hol-inductive id="index.html/natt" deps="index.html/myconfig">
+    x.
+      -------- Znatt
+      (natt x 0)
+    n.x.
+      (natt x n)
+      -------- sucnatt
+      (natt x (S n))
+    </hol-inductive>
     <hol-comp id="index.html/baz" deps="index.html/myconfig">
     x.y.
       (/\ x y)
