@@ -418,6 +418,13 @@
     
       |- ?
     </hol-proof>
+    <hol-proof id="index.html/constructor-neq-test" deps="index.html/myconfig index.html/baz index.html/nat">
+    x. y.
+      -------------------- neq-constructors
+      (not (= (@Z x) (@S y)))
+    
+    x. y. |- ?
+    </hol-proof>
     <hol-proof id="index.html/fcu-test" deps="index.html/myconfig">
       x.
         [P. (P (fst x))]
