@@ -9,11 +9,17 @@ module EqualityViews = MethodView.CombineMethodView(
   MethodView.RewriteView(HOTermJ),
   MethodView.RewriteReverseView(HOTermJ),
 )
-module RewritesView = MethodView.CombineMethodView(
+module ConstructorEqualityViews = MethodView.CombineMethodView(
   HOTerm,
   HOTermJ,
   EqualityViews,
   MethodView.ConstructorNeqView(HOTermJ),
+)
+module RewritesView = MethodView.CombineMethodView(
+  HOTerm,
+  HOTermJ,
+  ConstructorEqualityViews,
+  MethodView.ConstructorInjView(HOTermJ),
 )
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   HOTerm,

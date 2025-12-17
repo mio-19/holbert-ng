@@ -425,6 +425,14 @@
     
     x. y. |- ?
     </hol-proof>
+    <hol-proof id="index.html/constructor-inj-test" deps="index.html/myconfig index.html/baz index.html/nat">
+    x. y.
+      (= (@S x) (@S y))
+      -------------- S-inj
+      (= x y)
+    
+    x. y. eq |- ?
+    </hol-proof>
     <hol-proof id="index.html/fcu-test" deps="index.html/myconfig">
       x.
         [P. (P (fst x))]

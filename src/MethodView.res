@@ -264,9 +264,39 @@ module ConstructorNeqView = (
     "onChange": ('a, Judgment.subst) => unit,
   }
   let make = (_subRender: srProps<'a> => React.element) =>
-    props => {
+    _props => {
       <div>
         <b> {React.string("constructor_neq")} </b>
+      </div>
+    }
+}
+
+module ConstructorInjView = (
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+) => {
+  module Method = Method.ConstructorInj(Judgment)
+  type props<'a> = {
+    method: Method.t<'a>,
+    scope: array<HOTerm.meta>,
+    ruleStyle: RuleView.style,
+    gen: HOTerm.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
+  }
+  type srProps<'a> = {
+    "proof": 'a,
+    "scope": array<HOTerm.meta>,
+    "ruleStyle": RuleView.style,
+    "gen": HOTerm.gen,
+    "onChange": ('a, Judgment.subst) => unit,
+  }
+  let make = (_subRender: srProps<'a> => React.element) =>
+    props => {
+      <div>
+        <b>
+          {React.string(
+            `constructor_inj ${props.method.source} ${Int.toString(props.method.argIndex)}`,
+          )}
+        </b>
       </div>
     }
 }
