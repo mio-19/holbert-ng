@@ -3,11 +3,23 @@ module HOTermJ = TermAsJudgment.HOTermJ
 module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTermJ, HOTermJView))
 module InductiveS = Editable.TextArea(InductiveSet.Make(HOTerm, HOTermJ, HOTermJView))
 
-module RewritesView = MethodView.CombineMethodView(
+module EqualityViews = MethodView.CombineMethodView(
   HOTerm,
   HOTermJ,
   MethodView.RewriteView(HOTermJ),
   MethodView.RewriteReverseView(HOTermJ),
+)
+module ConstructorEqualityViews = MethodView.CombineMethodView(
+  HOTerm,
+  HOTermJ,
+  EqualityViews,
+  MethodView.ConstructorNeqView(HOTermJ),
+)
+module RewritesView = MethodView.CombineMethodView(
+  HOTerm,
+  HOTermJ,
+  ConstructorEqualityViews,
+  MethodView.ConstructorInjView(HOTermJ),
 )
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   HOTerm,

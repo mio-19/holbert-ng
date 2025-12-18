@@ -763,3 +763,212 @@ module RewriteReverse = (
     let reversed = true
   },
 )
+
+module ConstructorNeq = (
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+) => {
+  module Term = HOTerm
+  module Rule = Rule.Make(HOTerm, Judgment)
+  module Context = Context(HOTerm, Judgment)
+
+  type t<'a> = unit
+
+  type constructorHead = {name: string, args: array<HOTerm.t>}
+
+  let constructorHead = (term: HOTerm.t): option<constructorHead> => {
+    let (head, args) = HOTerm.strip(term)
+    switch head {
+    | HOTerm.Symbol({name, constructor: true}) => Some({name, args})
+    | _ => None
+    }
+  }
+
+  type constructorComparison = {lhs: constructorHead, rhs: constructorHead, negated: bool}
+
+  let extractConstructorEqualityFrom = (term: HOTerm.t): option<(
+    constructorHead,
+    constructorHead,
+  )> => {
+    let (head, args) = HOTerm.strip(term)
+    switch head {
+    | HOTerm.Symbol({name: "="}) if Array.length(args) == 2 =>
+      switch (
+        constructorHead(args->Array.getUnsafe(0)),
+        constructorHead(args->Array.getUnsafe(1)),
+      ) {
+      | (Some(lhs), Some(rhs)) => Some((lhs, rhs))
+      | _ => None
+      }
+    | _ => None
+    }
+  }
+
+  let extractConstructorEquality = (judgment: Judgment.t): option<constructorComparison> => {
+    let reduced = judgment->Judgment.reduce
+    switch extractConstructorEqualityFrom(reduced) {
+    | Some((lhs, rhs)) => Some({lhs, rhs, negated: false})
+    | None =>
+      switch HOTerm.strip(reduced) {
+      | (HOTerm.Symbol({name: "not"}), [inner]) =>
+        extractConstructorEqualityFrom(inner)->Option.map(((lhs, rhs)) => {lhs, rhs, negated: true})
+      | _ => None
+      }
+    }
+  }
+
+  let keywords = ["constructor_neq"]
+
+  let map = (it: t<'a>, _f: 'a => 'b): t<'b> => it
+
+  let substitute = (it: t<'a>, _subst: Judgment.subst) => it
+
+  let prettyPrint = (_it: t<'a>, ~scope as _, ~indentation=0, ~subprinter as _) =>
+    String.repeat(" ", indentation)->String.concat("constructor_neq")
+
+  let parse = (input, ~keyword as _, ~scope as _, ~gen as _, ~subparser as _) => Ok((
+    (),
+    String.trim(input),
+  ))
+
+  let apply = (_ctx: Context.t, j: Judgment.t, _gen: HOTerm.gen, _f: Rule.t => 'a) => {
+    let ret = Dict.make()
+    switch extractConstructorEquality(j) {
+    | Some({lhs: {name: lhs}, rhs: {name: rhs}}) if lhs != rhs =>
+      ret->Dict.set(`constructor_neq ${lhs} ${rhs}`, ((), HOTerm.makeSubst()))
+    | _ => ()
+    }
+    ret
+  }
+
+  let check = (_it: t<'a>, _ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) =>
+    switch extractConstructorEquality(goal) {
+    | Some({lhs: {name: lhs}, rhs: {name: rhs}}) =>
+      if lhs == rhs {
+        Error("constructor_neq expects different constructor symbols")
+      } else {
+        Ok()
+      }
+    | None => Error("constructor_neq applies only to equalities between constructors")
+    }
+}
+
+module ConstructorInj = (
+  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+) => {
+  module Rule = Rule.Make(HOTerm, Judgment)
+  module Context = Context(HOTerm, Judgment)
+
+  // we need to define this to workaround a type error for map
+  type inner = {
+    source: string,
+    argIndex: int,
+  }
+  type t<'a> = inner
+
+  let keywords = ["constructor_inj"]
+
+  let map = (it: t<'a>, _f: 'a => 'b): t<'b> => it
+
+  let substitute = (it: t<'a>, _subst: Judgment.subst) => it
+
+  let prettyPrint = (it: t<'a>, ~scope as _, ~indentation=0, ~subprinter as _) =>
+    String.repeat(" ", indentation)->String.concat(
+      `constructor_inj ${it.source} ${Int.toString(it.argIndex)}`,
+    )
+
+  let parseIntPrefix = (input: string): option<(int, string)> => {
+    let cur = input->String.trimStart
+    let re = RegExp.fromStringWithFlags("^(-?[0-9]+)", ~flags="y")
+    switch re->RegExp.exec(cur) {
+    | None => None
+    | Some(res) =>
+      switch RegExp.Result.matches(res) {
+      | [n] =>
+        Some((
+          n->Int.fromString->Option.getExn,
+          cur->String.sliceToEnd(~start=RegExp.lastIndex(re)),
+        ))
+      | _ => None
+      }
+    }
+  }
+
+  let parse = (input, ~keyword as _, ~scope as _, ~gen as _, ~subparser as _) => {
+    let cur = String.trim(input)
+    switch Rule.parseRuleName(cur) {
+    | Error(e) => Error(e)
+    | Ok((source, rest)) =>
+      let rest = String.trim(rest)
+      switch parseIntPrefix(rest) {
+      | Some((argIndex, remainder)) => Ok(({source, argIndex}, remainder->String.trim))
+      | None => Ok(({source, argIndex: 0}, rest))
+      }
+    }
+  }
+
+  let extractConstructorEquality = (term: HOTerm.t): option<(
+    string,
+    array<HOTerm.t>,
+    array<HOTerm.t>,
+  )> => {
+    let (_head, args) = term->HOTerm.strip
+    if Array.length(args) != 2 {
+      None
+    } else {
+      let (lHead, lArgs) = args->Array.getUnsafe(0)->HOTerm.strip
+      let (rHead, rArgs) = args->Array.getUnsafe(1)->HOTerm.strip
+      switch (lHead, rHead) {
+      | (HOTerm.Symbol({name: ln, constructor: true}), HOTerm.Symbol({name: rn, constructor: true}))
+        if ln == rn && lArgs->Array.length == rArgs->Array.length =>
+        Some((ln, lArgs, rArgs))
+      | _ => None
+      }
+    }
+  }
+
+  let apply = (ctx: Context.t, j: Judgment.t, _gen: HOTerm.gen, _f: Rule.t => 'a) => {
+    let ret = Dict.make()
+    switch j->Judgment.reduce->HOTerm.strip {
+    | (HOTerm.Symbol({name: "="}), [lhs, rhs]) =>
+      ctx.facts->Dict.forEachWithKey((fact, name) => {
+        switch extractConstructorEquality(fact.conclusion) {
+        | Some((_cName, lArgs, rArgs)) =>
+          Belt.Array.zip(lArgs, rArgs)->Array.forEachWithIndex(((la, ra), idx) =>
+            if HOTerm.equivalent(la, lhs) && HOTerm.equivalent(ra, rhs) {
+              ret->Dict.set(
+                `constructor_inj ${name} ${Int.toString(idx)}`,
+                ({source: name, argIndex: idx}, HOTerm.makeSubst()),
+              )
+            }
+          )
+        | None => ()
+        }
+      })
+    | _ => ()
+    }
+    ret
+  }
+
+  let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) => {
+    switch (ctx.facts->Dict.get(it.source), goal->Judgment.reduce->HOTerm.strip) {
+    | (None, _) => Error(`Cannot find equality '${it.source}'`)
+    | (Some(fact), (HOTerm.Symbol({name: "="}), [lhs, rhs])) =>
+      switch extractConstructorEquality(fact.conclusion) {
+      | None => Error(`'${it.source}' is not a constructor equality`)
+      | Some((_cName, lArgs, rArgs)) =>
+        if it.argIndex < 0 || it.argIndex >= Array.length(lArgs) {
+          Error("constructor_inj index out of range")
+        } else {
+          let la = lArgs->Array.getUnsafe(it.argIndex)
+          let ra = rArgs->Array.getUnsafe(it.argIndex)
+          if HOTerm.equivalent(la, lhs) && HOTerm.equivalent(ra, rhs) {
+            Ok({source: it.source, argIndex: it.argIndex})
+          } else {
+            Error("constructor_inj target does not match goal")
+          }
+        }
+      }
+    | (_, _) => Error("constructor_inj applies to equality goals")
+    }
+  }
+}
