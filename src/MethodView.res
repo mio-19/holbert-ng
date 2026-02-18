@@ -1,5 +1,6 @@
 open Signatures
 open Method
+open HOTermMethod
 module type METHOD_VIEW = {
   module Term: TERM
   module Judgment: JUDGMENT with module Term := Term
@@ -248,7 +249,7 @@ module RewriteReverseView = (
 module ConstructorNeqView = (
   Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
 ) => {
-  module Method = Method.ConstructorNeq(Judgment)
+  module Method = ConstructorNeq(Judgment)
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<HOTerm.meta>,
@@ -274,7 +275,7 @@ module ConstructorNeqView = (
 module ConstructorInjView = (
   Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
 ) => {
-  module Method = Method.ConstructorInj(Judgment)
+  module Method = ConstructorInj(Judgment)
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<HOTerm.meta>,
