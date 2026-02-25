@@ -44,6 +44,8 @@ module type JUDGMENT = {
   let upshift: (t, int, ~from: int=?) => t
   let upshiftSubstCodom: (substCodom, int, ~from: int=?) => substCodom
   let placeSubstCodom: (schematic, ~scope: array<meta>) => substCodom
+  // Map a function over all terms in the judgment
+  let mapTerms: (t, Term.t => Term.t) => t
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
   let parseSubstCodom: (
     string,

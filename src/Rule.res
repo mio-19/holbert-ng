@@ -11,7 +11,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),
-      conclusion: rule.conclusion->Judgment.substitute(subst'),
+      conclusion: rule.conclusion->Judgment.substitute(subst')->Judgment.reduce,
     }
   }
   let rec substDeBruijn = (rule: t, substs: array<Judgment.substCodom>, ~from: int=0) => {
@@ -39,7 +39,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   let substituteBare = (rule: bare, subst: Judgment.subst) => {
     {
       premises: rule.premises->Array.map(premise => premise->substitute(subst)),
-      conclusion: rule.conclusion->Judgment.substitute(subst),
+      conclusion: rule.conclusion->Judgment.substitute(subst)->Judgment.reduce,
     }
   }
   let instantiate = (rule: t, terms: array<Judgment.substCodom>) => {
@@ -103,7 +103,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
               cur := rest
               premises->Array.push(p)
             }
-          | Error(_) => raise(InternalParseError("expected turnstile or premise"))
+          | Error(_) => throw(InternalParseError("expected turnstile or premise"))
           }
         }
         if cur.contents->String.trim->String.get(0) == Some("]") {
@@ -162,7 +162,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
             cur := rest
             premises->Array.push(p)
           }
-        | Error(e) => raise(InternalParseError(e))
+        | Error(e) => throw(InternalParseError(e))
         }
       }
       let (ruleName, rest) = it.contents->Result.getExn

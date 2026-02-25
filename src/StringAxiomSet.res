@@ -45,7 +45,7 @@ let findMentionedRuleGroups = (group: judgeGroup, allGroups: array<judgeGroup>):
     group.rules
     ->Array.flatMap(r =>
       r.premises
-      ->Array.map(p => p.conclusion->snd->getSExpName)
+      ->Array.map(p => p.conclusion->Pair.second->getSExpName)
       ->Array.keepSome
       ->Array.filter(name => allGroupNames->Array.find(name' => name' == name)->Option.isSome)
     )
@@ -83,14 +83,14 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
     let baseIdx = baseIdx + Array.length(rule.vars)
     let inductionHyps =
       rule.premises
-      ->Array.filter(r => lookupGroup(r.conclusion->snd)->Option.isSome)
+      ->Array.filter(r => lookupGroup(r.conclusion->Pair.second)->Option.isSome)
       ->Array.map(r => replaceJudgeRHS(r, baseIdx))
-    let pIdx = lookupGroup(rule.conclusion->snd)->Option.getExn
+    let pIdx = lookupGroup(rule.conclusion->Pair.second)->Option.getExn
     {
       vars: rule.vars,
       premises: rule.premises->Array.concat(inductionHyps),
       conclusion: (
-        surround(rule.conclusion->fst, aIdx + baseIdx, bIdx + baseIdx),
+        surround(rule.conclusion->Pair.first, aIdx + baseIdx, bIdx + baseIdx),
         Var({idx: pIdx + baseIdx}),
       ),
     }
@@ -143,7 +143,7 @@ let deserialise = (str: string, ~imports as _: Ports.t) => {
   getBase(str)->Result.map(raw => {
     let grouped: dict<array<Rule.t>> = Dict.make()
     raw->Dict.forEach(rule =>
-      switch rule.conclusion->snd {
+      switch rule.conclusion->Pair.second {
       | Symbol({name: a}) =>
         switch grouped->Dict.get(a) {
         | None => grouped->Dict.set(a, [rule])

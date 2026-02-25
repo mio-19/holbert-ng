@@ -1,5 +1,5 @@
 type rec t =
-  | Symbol({name: string})
+  | Symbol({name: string, constructor: bool})
   | Var({idx: int})
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
@@ -22,3 +22,4 @@ exception UnifyFail(string)
 let substAdd: (subst, schematic, t) => subst
 let unifyTerm: (t, t, subst, ~gen: option<gen>) => subst
 let reduceSubst: subst => subst
+let rewrite: (t, t, t, ~subst: subst, ~gen: option<gen>) => (subst, t)

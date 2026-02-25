@@ -112,7 +112,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
                     }
-                  | Error(e) => raise(InternalParseError(e))
+                  | Error(e) => throw(InternalParseError(e))
                   }
                 }
                 if cur.contents->String.get(0) == Some("}") {
@@ -276,7 +276,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
                     }
-                  | Error(e) => raise(InternalParseError(e))
+                  | Error(e) => throw(InternalParseError(e))
                   }
                 }
                 if cur.contents->String.get(0) == Some("}") {
@@ -365,7 +365,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       possibleElims->Array.forEach(((elimName, elim)) => {
         let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
         let rule' = rule->Rule.instantiate(ruleInsts)
-        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)
+        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
         ->Seq.take(seqSizeLimit)
         ->Seq.forEach(
           elimSub => {
