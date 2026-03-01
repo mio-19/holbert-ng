@@ -98,32 +98,46 @@ module MakeTerm = (Term: TERM) => {
     ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
   }
 
-  let testUnify = (t: Zora.t, t1: Term.t, t2: Term.t, expect: array<Term.subst>, ~msg=?) => {
-    let expect = Seq.fromArray(expect)
+  let testUnify = (
+    t: Zora.t,
+    t1: Term.t,
+    t2: Term.t,
+    ~expect: option<array<Term.subst>>=?,
+    ~msg=?,
+  ) => {
     let res = Term.unify(t1, t2)->Seq.take(10)
-    // Console.log(
-    //   `t1: ${Term.prettyPrint(t1, ~scope=[])}   t2:${Term.prettyPrint(t2, ~scope=[])}\nsubsts: ${res
-    //     ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
-    //     ->Seq.join(",")}\n`,
-    // )
-    let noMatches =
-      expect
-      ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)
-      ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
-      ->Seq.toArray
-    let msg = msg->Option.getOr("each substitution in `expect` should have a match in solutions")
-    t->equal(noMatches, [], ~msg)
+    switch expect {
+    | Some(expect) => {
+        let expect = Seq.fromArray(expect)
+        let noMatches =
+          expect
+          ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)
+          ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
+          ->Seq.toArray
+        let msg =
+          msg->Option.getOr("each substitution in `expect` should have a match in solutions")
+        t->equal(noMatches, [], ~msg)
+      }
+    | None => {
+        let msg = msg->Option.getOr("expect non-nil substitution sequence")
+        t->ok(res->Seq.head->Option.isSome, ~msg)
+      }
+    }
   }
 
-  let testUnifyFail = (t: Zora.t, at: string, bt: string, ~msg=?) => {
-    let gen = Term.makeGen()
-    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
-    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+  let testUnifyFail = (t: Zora.t, a: Term.t, b: Term.t, ~msg=?) => {
     let res = Term.unify(a, b)
     if res->Seq.length != 0 {
       t->fail(~msg="unification succeeded: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
     } else {
       t->ok(true, ~msg=msg->Option.getOr("unification failed"))
     }
+  }
+
+  let testUnifyFailString = (t: Zora.t, at: string, bt: string, ~msg=?) => {
+    let gen = Term.makeGen()
+    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+    testUnifyFail(t, a, b, ~msg?)
   }
 }

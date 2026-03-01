@@ -3,6 +3,7 @@ type rec t =
   | Compound({subexps: array<t>})
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
+  | Ghost
 
 include Signatures.TERM
   with type t := t

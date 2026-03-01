@@ -114,3 +114,5 @@ let prettyPrintSubstCodom = (v: substCodom, ~scope: array<StringTerm.meta>) =>
   | StringV(t) => StringTerm.prettyPrint(t, ~scope)
   | SExpV(t) => SExp.prettyPrint(t, ~scope)
   }
+
+let ghostJudgment = (StringTerm.ghostTerm, SExp.ghostTerm)

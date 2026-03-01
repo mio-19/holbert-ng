@@ -11,6 +11,7 @@ module Make = (Term: TERM): (
   let upshiftSubstCodom = Term.upshift
   let substituteSubstCodom = Term.substitute
   let mapTerms = (t: Term.t, f: Term.t => Term.t): Term.t => f(t)
+  let ghostJudgment = Term.ghostTerm
 }
 
 module SExpJ = Make(SExp)

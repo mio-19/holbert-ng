@@ -750,3 +750,5 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   | ParseError(msg) => Error(msg)
   }
 }
+
+let ghostTerm = Unallowed

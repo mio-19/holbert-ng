@@ -145,20 +145,21 @@ zoraBlock("parse and prettyprint", t => {
 })
 
 zoraBlock("unify test", t => {
+  let testUnifyFail = Util.testUnifyFailString
   t->block("symbols", t => {
     let x = "x"
     let y = "y"
     t->testUnify(x, x)
-    t->Util.testUnifyFail(y, x)
-    t->Util.testUnifyFail(x, y)
+    t->testUnifyFail(y, x)
+    t->testUnifyFail(x, y)
   })
   t->block("applications", t => {
     let ab = "(a b)"
     let cd = "(c d)"
     t->testUnify(ab, ab)
     t->testUnify(cd, cd)
-    t->Util.testUnifyFail(ab, cd)
-    t->Util.testUnifyFail(cd, ab)
+    t->testUnifyFail(ab, cd)
+    t->testUnifyFail(cd, ab)
   })
   t->block("flex-rigid", t => {
     let x = "?0"
@@ -278,13 +279,13 @@ zoraBlock("unify test", t => {
     let a = "(x. ?0 x)"
     let b = "(x. f (?0 x))"
     // ?0 occurs in the rigid term on the right → should not unify
-    t->Util.testUnifyFail(a, b)
+    t->testUnifyFail(a, b)
   })
   t->block("no capture", t => {
     let a = "(x. ?0)"
     let b = "(x. x)"
     // Should fail: it cannot capture the bound variable.
-    t->Util.testUnifyFail(a, b)
+    t->testUnifyFail(a, b)
   })
   t->block("eta", t => {
     t->testUnify(
@@ -340,7 +341,7 @@ zoraBlock("unify test", t => {
     let a = "(Nat (S ?6))"
     let b = "(Nat (S (S \\0)))"
     let c = "(Nat (S (?6 \\0)))"
-    t->Util.testUnifyFail(a, b)
+    t->testUnifyFail(a, b)
     t->testUnify(c, b, ~subst=emptySubst->substAdd(6, t->Util.parse("(x. S \\0)")))
   })
   t->block("tests from induction examples", _t => {

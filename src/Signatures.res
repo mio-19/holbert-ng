@@ -24,6 +24,7 @@ module type TERM = {
   let parseMeta: string => result<(meta, string), string>
   let prettyPrint: (t, ~scope: array<meta>) => string
   let prettyPrintMeta: meta => string
+  let ghostTerm: t
 }
 
 module type JUDGMENT = {
@@ -54,6 +55,7 @@ module type JUDGMENT = {
   ) => result<(substCodom, string), string>
   let prettyPrint: (t, ~scope: array<Term.meta>) => string
   let prettyPrintSubstCodom: (substCodom, ~scope: array<Term.meta>) => string
+  let ghostJudgment: t
 }
 
 module type TERM_VIEW = {

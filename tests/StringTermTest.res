@@ -45,51 +45,56 @@ zoraBlock("unify", t => {
   let b = parse(`"b"`)
   let x = parse(`"?1()"`)
   let y = parse(`"?2()"`)
+  t->block("ghost", t => {
+    t->Util.testUnifyFail(a, StringTerm.ghostTerm)
+    t->Util.testUnify(x, StringTerm.ghostTerm)
+    t->Util.testUnify([x, y, x]->Array.flat, StringTerm.ghostTerm)
+  })
   t->block("schematics on at most one side", t => {
-    t->Util.testUnify(a, a, [Map.make()])
-    t->Util.testUnify(x, a, [Map.fromArray([(1, a)])])
-    t->Util.testUnify(a, x, [Map.fromArray([(1, a)])])
+    t->Util.testUnify(a, a, ~expect=[Map.make()])
+    t->Util.testUnify(x, a, ~expect=[Map.fromArray([(1, a)])])
+    t->Util.testUnify(a, x, ~expect=[Map.fromArray([(1, a)])])
 
     let xy = parse(`"?1() ?2()"`)
     let ab = parse(`"a b"`)
-    t->Util.testUnify(x, ab, [Map.fromArray([(1, ab)])])
+    t->Util.testUnify(x, ab, ~expect=[Map.fromArray([(1, ab)])])
     t->Util.testUnify(
       xy,
       ab,
-      [
+      ~expect=[
         Map.fromArray([(1, []), (2, ab)]),
         Map.fromArray([(1, a), (2, b)]),
         Map.fromArray([(1, ab), (2, [])]),
       ],
     )
 
-    t->Util.testUnify(parse(`"?1() b ?2()"`), ab, [Map.fromArray([(1, a), (2, [])])])
+    t->Util.testUnify(parse(`"?1() b ?2()"`), ab, ~expect=[Map.fromArray([(1, a), (2, [])])])
     t->Util.testUnify(
       parse(`"?1() ?2() b"`),
       ab,
-      [Map.fromArray([(1, []), (2, a)]), Map.fromArray([(1, a), (2, [])])],
+      ~expect=[Map.fromArray([(1, []), (2, a)]), Map.fromArray([(1, a), (2, [])])],
     )
     t->Util.testUnify(
       parse(`"a ?1() ?2()"`),
       ab,
-      [Map.fromArray([(1, []), (2, b)]), Map.fromArray([(1, b), (2, [])])],
+      ~expect=[Map.fromArray([(1, []), (2, b)]), Map.fromArray([(1, b), (2, [])])],
     )
 
     let xax = parse(`"?1() a ?1()"`)
-    t->Util.testUnify(xax, parse(`"a"`), [Map.fromArray([(1, [])])])
-    t->Util.testUnify(xax, parse(`"a a a"`), [Map.fromArray([(1, a)])])
-    t->Util.testUnify(xax, parse(`"a b a a b"`), [Map.fromArray([(1, parse(`"a b"`))])])
+    t->Util.testUnify(xax, parse(`"a"`), ~expect=[Map.fromArray([(1, [])])])
+    t->Util.testUnify(xax, parse(`"a a a"`), ~expect=[Map.fromArray([(1, a)])])
+    t->Util.testUnify(xax, parse(`"a b a a b"`), ~expect=[Map.fromArray([(1, parse(`"a b"`))])])
   })
 
   t->block("schematics appearing at most twice", t => {
-    t->Util.testUnify(x, x, [Map.fromArray([(1, [])])])
-    t->Util.testUnify(x, y, [Map.fromArray([(1, []), (2, [])])])
+    t->Util.testUnify(x, x, ~expect=[Map.fromArray([(1, [])])])
+    t->Util.testUnify(x, y, ~expect=[Map.fromArray([(1, []), (2, [])])])
 
-    t->Util.testUnify(a, parse(`"?1() a"`), [Map.fromArray([(1, [])])])
+    t->Util.testUnify(a, parse(`"?1() a"`), ~expect=[Map.fromArray([(1, [])])])
     t->Util.testUnify(
       parse(`"?1() a"`),
       parse(`"a ?1()"`),
-      [
+      ~expect=[
         Map.fromArray([(1, [])]),
         Map.fromArray([(1, parse(`"a"`))]),
         Map.fromArray([(1, parse(`"a a"`))]),
@@ -97,17 +102,25 @@ zoraBlock("unify", t => {
         Map.fromArray([(1, parse(`"a a a a"`))]),
       ],
     )
-    t->Util.testUnify(parse(`"a ?1()"`), parse(`"?2() b`), [Map.fromArray([(1, b), (2, a)])])
-    t->Util.testUnify(parse(`"a ?1() a"`), parse(`"?2() b a"`), [Map.fromArray([(1, b), (2, a)])])
+    t->Util.testUnify(
+      parse(`"a ?1()"`),
+      parse(`"?2() b`),
+      ~expect=[Map.fromArray([(1, b), (2, a)])],
+    )
+    t->Util.testUnify(
+      parse(`"a ?1() a"`),
+      parse(`"?2() b a"`),
+      ~expect=[Map.fromArray([(1, b), (2, a)])],
+    )
     t->Util.testUnify(
       parse(`"b ?1() a"`),
       parse(`"?2() a ?1()"`),
-      [Map.fromArray([(1, a), (2, b)]), Map.fromArray([(1, []), (2, b)])],
+      ~expect=[Map.fromArray([(1, a), (2, b)]), Map.fromArray([(1, []), (2, b)])],
     )
     t->Util.testUnify(
       parse(`"a b ?1() c ?2()"`),
       parse(`"?2() c ?1() b a"`),
-      [Map.fromArray([(1, a), (2, parse(`"a b a"`))])],
+      ~expect=[Map.fromArray([(1, a), (2, parse(`"a b a"`))])],
     )
   })
 })
