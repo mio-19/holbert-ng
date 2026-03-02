@@ -116,7 +116,8 @@ module Make = (
         let newFacts = Dict.fromArray(Belt.Array.zip(prf.assumptions, rule.premises))
         Ok({
           Context.fixes: rule.vars->Array.concat(ctx.fixes),
-          facts: Dict.copy(ctx.facts)->Dict.assign(newFacts),
+          localFacts: Dict.copy(ctx.localFacts)->Dict.assign(newFacts),
+          globalFacts: ctx.globalFacts,
         })
       } else {
         Error(

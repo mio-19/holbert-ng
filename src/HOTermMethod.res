@@ -159,7 +159,9 @@ module MakeRewriteHOTerm = (
   let apply = (ctx: Context.t, j: Judgment.t, gen: HOTerm.gen, f: Rule.t => 'a) => {
     let ret: Dict.t<(t<'a>, Judgment.subst)> = Dict.make()
 
-    ctx.facts->Dict.forEachWithKey((eqRule, name) => {
+    ctx
+    ->Context.facts
+    ->Dict.forEachWithKey((eqRule, name) => {
       if isEqualityRule(eqRule) {
         let insts = eqRule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
         let instantiatedRule = eqRule->Rule.instantiate(insts)
@@ -203,7 +205,7 @@ module MakeRewriteHOTerm = (
   }
 
   let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, f: ('a, Rule.t) => 'b) => {
-    switch ctx.facts->Dict.get(it.equalityName) {
+    switch ctx->Context.facts->Dict.get(it.equalityName) {
     | None => Error(`Cannot find equality '${it.equalityName}'`)
     | Some(eqRule) if !isEqualityRule(eqRule) =>
       Error(`'${it.equalityName}' is not a valid equality (has premises)`)
@@ -429,7 +431,9 @@ module ConstructorInj = (
     let ret = Dict.make()
     switch j->Judgment.reduce->HOTerm.strip {
     | (HOTerm.Symbol({name: "="}), [lhs, rhs]) =>
-      ctx.facts->Dict.forEachWithKey((fact, name) => {
+      ctx
+      ->Context.facts
+      ->Dict.forEachWithKey((fact, name) => {
         switch extractConstructorEquality(fact.conclusion) {
         | Some((_cName, lArgs, rArgs)) =>
           Belt.Array.zip(lArgs, rArgs)->Array.forEachWithIndex(((la, ra), idx) =>
@@ -449,7 +453,7 @@ module ConstructorInj = (
   }
 
   let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) => {
-    switch (ctx.facts->Dict.get(it.source), goal->Judgment.reduce->HOTerm.strip) {
+    switch (ctx->Context.facts->Dict.get(it.source), goal->Judgment.reduce->HOTerm.strip) {
     | (None, _) => Error(`Cannot find equality '${it.source}'`)
     | (Some(fact), (HOTerm.Symbol({name: "="}), [lhs, rhs])) =>
       switch extractConstructorEquality(fact.conclusion) {
