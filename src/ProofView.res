@@ -1,6 +1,9 @@
 open Signatures
 open MethodView
 
+@send external closest: ({..}, string) => Nullable.t<Dom.element> = "closest"
+@send external focus: {..} => unit = "focus"
+
 module Make = (
   Term: TERM,
   Judgment: JUDGMENT with module Term := Term,
@@ -21,6 +24,17 @@ module Make = (
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   @react.componentWithProps
   let rec make = (props: props) => {
+    let {sidebarRef} = React.useContext(SidebarContext.context)
+    let (isFocused, setFocused) = React.useState(() => false)
+        
+    let onBlur = e => {
+      let leavingProof = ReactEvent.Focus.relatedTarget(e)
+        ->Option.flatMap(el => el->closest(".sidebar")->Nullable.toOption)
+        ->Option.isNone
+      if leavingProof {
+        setFocused(_ => false)
+      }
+    }
     switch props.proof {
     | Proof.Checked({fixes, assumptions, method, rule}) => {
         let scope = Array.concat(fixes, props.scope)
@@ -37,21 +51,41 @@ module Make = (
             <JudgmentView judgment={rule.conclusion} scope />
             {switch method {
             | Goal(options) =>
-              options(props.gen)
-              ->Dict.toArray
-              ->Array.map(((str, (opt, subst))) => {
-                <button
-                  key=str
-                  onClick={_ =>
-                    props.onChange(
-                      Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
-                      subst,
-                    )}
-                >
-                  {React.string(str)}
-                </button>
-              })
-              ->React.array
+              let portal = switch sidebarRef.current->Nullable.toOption {
+              | None => React.null
+              | Some(node) => Portal.createPortal(<> {
+                    options(props.gen)
+                    ->Dict.toArray
+                    ->Array.map(((str, (opt, subst))) => {
+                      <button tabIndex=0 onBlur
+                        key=str
+                        onClick={_ =>
+                          props.onChange(
+                            Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
+                            subst,
+                          )}
+                      >
+                        {React.string(str)}
+                      </button>
+                    })
+                    ->React.array }
+                  </>, node)
+              }
+              <div className="proof-goal" tabIndex=0
+                onBlur
+                onFocus={e => {
+                  setFocused(_ => true)
+                  ReactEvent.Focus.stopPropagation(e)
+              }}>
+                {if (isFocused) { 
+                  <> 
+                    <span className="button-icon button-icon-blue typcn typcn-location" /> 
+                    {portal} 
+                  </> 
+                } else { 
+                  <span className="button-icon button-icon-blue typcn typcn-location-outline" /> 
+                }}
+              </div>
             | Do(method) =>
               React.createElement(
                 MethodView.make(p =>
