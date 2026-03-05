@@ -46,10 +46,10 @@ module Make = (
     }
   }
   let make = props => {
-    Console.log(props.imports)
     let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
     let ctx: Context.t = {fixes: [], facts: props.imports.facts}
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
+    let sidebarRef = React.useRef(Nullable.null)
     let proofChanged = (proof, subst) => {
       props.onChange(
         {...props.content, proof: Proof.uncheck(proof)->Proof.substitute(subst)},
@@ -59,7 +59,8 @@ module Make = (
         },
       )
     }
-    <>
+    
+    <SidebarContext sidebarRef>
       <h3> {React.string("Theorem")} </h3>
       <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
         {React.string(props.content.name)}
@@ -68,6 +69,7 @@ module Make = (
       <ProofView
         ruleStyle={ruleStyle} scope={[]} proof=checked gen={props.content.gen} onChange=proofChanged
       />
-    </>
+      <div className="sidebar" ref={ReactDOM.Ref.domRef(sidebarRef)} />
+    </SidebarContext>
   }
 }
