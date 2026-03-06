@@ -4,8 +4,10 @@ module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   type t = {
     fixes: array<Term.meta>,
-    facts: Dict.t<Rule.t>,
+    localFacts: Dict.t<Rule.t>,
+    globalFacts: Dict.t<Rule.t>,
   }
+  let facts = t => t.localFacts->Dict.copy->Dict.assign(t.globalFacts)
 }
 
 module type PROOF_METHOD = {
@@ -139,7 +141,8 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   }
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
-    ctx.facts
+    ctx
+    ->Context.facts
     ->Dict.toArray
     ->Array.filterMap(((key, rule)) => {
       let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
@@ -167,7 +170,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ret
   }
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
-    switch ctx.facts->Dict.get(it.ruleName) {
+    switch ctx->Context.facts->Dict.get(it.ruleName) {
     | None => Error("Cannot find rule '"->String.concat(it.ruleName)->String.concat("'"))
     | Some(rule) if Array.length(rule.vars) == Array.length(it.instantiation) => {
         let {premises, conclusion} = Rule.instantiate(rule, it.instantiation)
@@ -314,7 +317,8 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
   }
 
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
-    switch (ctx.facts->Dict.get(it.ruleName), ctx.facts->Dict.get(it.elimName)) {
+    let facts = ctx->Context.facts
+    switch (facts->Dict.get(it.ruleName), facts->Dict.get(it.elimName)) {
     | (None, _) => Error(`Cannot find rule '${it.ruleName}'`)
     | (_, None) => Error(`Cannot find elimination fact '${it.elimName}'`)
     | (Some(rule), Some(elim)) if rule.premises->Array.length > 0 => {
@@ -359,7 +363,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
     let possibleRules =
-      ctx.facts
+      ctx.globalFacts
       ->Dict.toArray
       ->Array.filter(((_, r)) =>
         r.premises->Array.length > 0 && {
@@ -368,7 +372,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
           }
       )
     let possibleElims =
-      ctx.facts
+      ctx.localFacts
       ->Dict.toArray
       ->Array.filter(((_, r)) => r.premises->Array.length == 0 && r.vars->Array.length == 0)
     possibleRules->Array.forEach(((ruleName, rule)) => {

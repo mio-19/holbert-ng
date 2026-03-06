@@ -47,7 +47,7 @@ module Make = (
   }
   let make = props => {
     let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
-    let ctx: Context.t = {fixes: [], facts: props.imports.facts}
+    let ctx: Context.t = {fixes: [], globalFacts: props.imports.facts, localFacts: Dict.make()}
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
     let sidebarRef = React.useRef(Nullable.null)
     let proofChanged = (proof, subst) => {
