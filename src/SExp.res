@@ -8,6 +8,7 @@ type rec t =
   | Compound({subexps: array<t>})
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
+  | Ghost
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
@@ -138,6 +139,7 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
         }
       ),
     })
+  | Ghost => Ghost
   }
 let rec upshift = (term: t, amount: int, ~from: int=0) =>
   switch term {
@@ -162,6 +164,7 @@ let rec upshift = (term: t, amount: int, ~from: int=0) =>
         }
       ),
     })
+  | Ghost => Ghost
   }
 let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
@@ -204,6 +207,7 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     "("
     ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
     ->String.concat(")")
+  | Ghost => "§SExp.Ghost"
   }
 
 let prettyPrintSubst = (sub, ~scope) => Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
@@ -356,3 +360,5 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   | Some(e) => Ok((e, cur.contents))
   }
 }
+
+let ghostTerm = Ghost

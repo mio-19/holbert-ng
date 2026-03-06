@@ -59,4 +59,5 @@ let rec make = ({term, scope}) =>
         ->React.array}
       </span>
     </span>
+  | Ghost => React.null
   }

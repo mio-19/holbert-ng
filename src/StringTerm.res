@@ -7,6 +7,7 @@ type piece =
   | String(string)
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
+  | Ghost
 type t = array<piece>
 type meta = string
 type schematic = int
@@ -91,6 +92,7 @@ let unify = (s: array<piece>, t: array<piece>, ~gen as _=?): Seq.t<subst> => {
     | (_, _) => false
     }
   }
+
   let rec oneSide = (s, t) => {
     switch (s, t) {
     | ([], []) => [emptySubst]
@@ -175,7 +177,7 @@ let unify = (s: array<piece>, t: array<piece>, ~gen as _=?): Seq.t<subst> => {
             | None => searchSub(schematic, allowed, Eps)
             | Some(p) =>
               switch p {
-              | String(_) =>
+              | String(_) | Ghost =>
                 Array.concat(
                   searchSub(schematic, allowed, PieceLitSub(p)),
                   searchSub(schematic, allowed, Eps),
@@ -297,6 +299,7 @@ let substDeBruijn = (string: t, substs: array<t>, ~from: int=0) => {
           ),
         }),
       ]
+    | Ghost => [Ghost]
     }
   )
 }
@@ -324,6 +327,7 @@ let upshift = (term: t, amount: int, ~from: int=0) =>
           }
         ),
       })
+    | Ghost => Ghost
     }
   })
 
@@ -378,6 +382,7 @@ let prettyPrint = (term: t, ~scope: array<string>) =>
             ->Array.join(" ")
           `?${Int.toString(schematic)}(${allowedStr})`
         }
+      | Ghost => "§String.Ghost"
       }
     })->Array.join(" ")}"`
 let prettyPrintMeta = (str: string) => `${str}.`
@@ -504,6 +509,7 @@ let toSExp = t => {
     | String(s) => SExp.Symbol({name: s})
     | Var({idx}) => SExp.Var({idx: idx})
     | Schematic({schematic, allowed}) => SExp.Schematic({schematic, allowed})
+    | Ghost => SExp.ghostTerm
     }
   switch Array.length(t) {
   | 1 => convertPiece(t[0]->Option.getExn)
@@ -517,4 +523,7 @@ let rec fromSExp = (t: SExp.t) =>
   | SExp.Schematic({schematic, allowed}) => [Schematic({schematic, allowed})]
   | SExp.Var({idx}) => [Var({idx: idx})]
   | SExp.Compound({subexps}) => subexps->Array.flatMap(fromSExp)
+  | SExp.Ghost => [Ghost]
   }
+
+let ghostTerm = [Ghost]

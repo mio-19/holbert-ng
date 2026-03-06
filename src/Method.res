@@ -139,9 +139,19 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   }
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
-    ctx.facts->Dict.forEachWithKey((rule, key) => {
+    ctx.facts
+    ->Dict.toArray
+    ->Array.filterMap(((key, rule)) => {
       let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
+      let ghostSubs = Judgment.unify(Judgment.ghostJudgment, res.conclusion)
+      if ghostSubs->Seq.head->Option.isNone {
+        Some((key, res, insts))
+      } else {
+        None
+      }
+    })
+    ->Array.forEach(((key, res, insts)) => {
       let substs = Judgment.unify(res.conclusion, j, ~gen)
       substs
       ->Seq.take(seqSizeLimit)
