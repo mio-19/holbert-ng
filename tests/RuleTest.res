@@ -41,12 +41,12 @@ zoraBlock("string terms", t => {
         {
           vars: [],
           premises: [],
-          conclusion: ([StringTerm.Var({idx: 0})], Symbol({name: "p"})),
+          conclusion: ([StringTerm.Var({idx: 0})], SExp.symbol("p")),
         },
       ],
       conclusion: (
         [StringTerm.String("("), StringTerm.Var({idx: 0}), StringTerm.String(")")],
-        SExp.Symbol({name: "p"}),
+        SExp.symbol("p"),
       ),
     },
   )

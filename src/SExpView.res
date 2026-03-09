@@ -46,7 +46,8 @@ let rec make = ({term, scope}) =>
       ->React.array}
     </span>
   | Var({idx}) => viewVar({idx, scope})
-  | Symbol({name: s}) => <span className="term-const"> {React.string(s)} </span>
+  | Symbol(name) =>
+    <span className="term-const"> {React.string(name->SExp.Symbol.prettyPrint(~scope))} </span>
   | Schematic({schematic: s, allowed: vs}) =>
     <span className="term-schematic">
       {React.string("?")}

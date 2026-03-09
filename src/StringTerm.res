@@ -506,7 +506,11 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 let toSExp = t => {
   let convertPiece = p =>
     switch p {
-    | String(s) => SExp.Symbol({name: s})
+    | String(s) => {
+        // FIX: dirty as fuck
+        let (s, _) = SExp.Symbol.parse(s, ~scope=[])->Result.getExn
+        SExp.Symbol(s)
+      }
     | Var({idx}) => SExp.Var({idx: idx})
     | Schematic({schematic, allowed}) => SExp.Schematic({schematic, allowed})
     | Ghost => SExp.ghostTerm
@@ -519,7 +523,7 @@ let toSExp = t => {
 
 let rec fromSExp = (t: SExp.t) =>
   switch t {
-  | SExp.Symbol({name}) => [String(name)]
+  | SExp.Symbol(name) => [String(SExp.Symbol.prettyPrint(name, ~scope=[]))]
   | SExp.Schematic({schematic, allowed}) => [Schematic({schematic, allowed})]
   | SExp.Var({idx}) => [Var({idx: idx})]
   | SExp.Compound({subexps}) => subexps->Array.flatMap(fromSExp)

@@ -32,7 +32,7 @@ let varsInRule = (rule: Rule.t) => {
 
 let getSExpName = (t: SExp.t): option<string> =>
   switch t {
-  | Symbol({name}) => Some(name)
+  | Symbol(name) => Some(name->SExp.Symbol.prettyPrint(~scope=[]))
   | _ => None
   }
 
@@ -78,7 +78,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
     Array.concat(Array.concat([StringTerm.Var({idx: aIdx})], t), [StringTerm.Var({idx: bIdx})])
   }
   let lookupGroup = (t: SExp.t): option<int> =>
-    mentionedGroups->Array.findIndexOpt(g => t == SExp.Symbol({name: g.name}))
+    mentionedGroups->Array.findIndexOpt(g => t == SExp.symbol(g.name))
   let rec replaceJudgeRHS = (rule: Rule.t, baseIdx: int): Rule.t => {
     let baseIdx = baseIdx + Array.length(rule.vars)
     let inductionHyps =
@@ -102,7 +102,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
         {
           Rule.vars: [],
           premises: [],
-          conclusion: ([StringTerm.Var({idx: xIdx})], Symbol({name: group.name})),
+          conclusion: ([StringTerm.Var({idx: xIdx})], SExp.symbol(group.name)),
         },
       ],
       mentionedGroups->Array.flatMap(g => g.rules->Array.map(r => replaceJudgeRHS(r, 0))),
@@ -144,10 +144,12 @@ let deserialise = (str: string, ~imports as _: Ports.t) => {
     let grouped: dict<array<Rule.t>> = Dict.make()
     raw->Dict.forEach(rule =>
       switch rule.conclusion->Pair.second {
-      | Symbol({name: a}) =>
-        switch grouped->Dict.get(a) {
-        | None => grouped->Dict.set(a, [rule])
-        | Some(rs) => rs->Array.push(rule)
+      | Symbol(name) => {
+          let name = SExp.getSymbol(name)
+          switch grouped->Dict.get(name) {
+          | None => grouped->Dict.set(name, [rule])
+          | Some(rs) => rs->Array.push(rule)
+          }
         }
       | _ => ()
       }
@@ -178,7 +180,8 @@ let make = props => {
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-      )}>
+      )}
+    >
       {content
       ->Dict.toArray
       ->Array.mapWithIndex(((n, r), i) =>
@@ -186,7 +189,8 @@ let make = props => {
           rule={r}
           scope={[]}
           key={String.make(i)}
-          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}
+        >
           {React.string(n)}
         </RuleView>
       )

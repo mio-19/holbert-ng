@@ -117,3 +117,11 @@ let mustFindIndex = (arr, f) => {
   | i => i
   }
 }
+
+module Result = {
+  let ok = (r: result<'a, 'b>): option<'a> =>
+    switch r {
+    | Ok(a) => Some(a)
+    | Error(_) => None
+    }
+}

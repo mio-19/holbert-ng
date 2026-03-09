@@ -1,12 +1,5 @@
-type rec t =
-  | Symbol({name: string})
-  | Compound({subexps: array<t>})
-  | Var({idx: int})
-  | Schematic({schematic: int, allowed: array<int>})
-  | Ghost
+module ConstSymbol: SExpFunc.SYMBOL
 
-include Signatures.TERM
-  with type t := t
-  and type meta = string
-  and type schematic = int
-  and type subst = Map.t<int, t>
+include module type of SExpFunc.Make(ConstSymbol)
+let symbol: string => t
+let getSymbol: ConstSymbol.t => string
