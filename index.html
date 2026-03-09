@@ -546,6 +546,16 @@
       ------------------- MParse-Juxtapose
       "$s1 $s2" (MP (p1 p2))
     </hol-string>
+    <hol-string id="index.html/string-rhs" deps="index.html/myconfig">
+      ---- Expr-e
+      "e" (Expr e)
+
+      s1.
+      s2. e2.
+      "$s2" (Expr e2)
+      ------------- Stmt-Let
+      "let $s1 = $s2" (Let (ID s1) e2)
+    </hol-string>
     <hol-string id="index.html/mexp-induct" deps="index.html/myconfig">
       s. p.
       "$s" M "" p  [s1. "$s1" p |- "($s1)" p] [s1. s2. "$s1" p "$s2" p |- "$s1 $s2" p]
