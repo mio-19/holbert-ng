@@ -5,6 +5,8 @@ module type SYMBOL = {
   let prettyPrint: (t, ~scope: array<string>) => string
   let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
   let substitute: (t, subst) => t
+  // used for grouping judgments together for rule induction
+  let constSymbol: t => option<string>
 }
 
 module IntCmp = Belt.Id.MakeComparable({

@@ -1,5 +1,7 @@
-module StringSymbol: SExpFunc.SYMBOL = {
-  type t = StringS(StringTerm.t) | ConstS(SExp.ConstSymbol.t)
+type stringSymbol = StringS(StringTerm.t) | ConstS(SExp.ConstSymbol.t)
+
+module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
+  type t = stringSymbol
   type subst = Map.t<int, t>
   type gen = ref<int>
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
@@ -35,8 +37,14 @@ module StringSymbol: SExpFunc.SYMBOL = {
       }
     | ConstS(s) => ConstS(s)
     }
+  let constSymbol = s =>
+    switch s {
+    | StringS(_) => None
+    | ConstS(s) => SExp.ConstSymbol.constSymbol(s)
+    }
 }
 module StringSExp = SExpFunc.Make(StringSymbol)
+let constSymbol = (s: string): StringSExp.t => StringSExp.Symbol(ConstS(SExp.pSymbol(s)))
 
 let toSExp = (t: StringTerm.t): StringSExp.t => {
   let convertPiece = (p: StringTerm.piece): StringSExp.t =>

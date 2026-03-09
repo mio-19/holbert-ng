@@ -24,6 +24,7 @@ type judgeGroup = {
 }
 
 module Set = Belt.Set.String
+module SExp = StringTermJudgment.StringSExp
 let varsInRule = (rule: Rule.t) => {
   rule.premises->Array.reduce(Set.fromArray(rule.vars), (s, r) =>
     s->Set.union(Set.fromArray(r.vars))
@@ -78,7 +79,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
     Array.concat(Array.concat([StringTerm.Var({idx: aIdx})], t), [StringTerm.Var({idx: bIdx})])
   }
   let lookupGroup = (t: SExp.t): option<int> =>
-    mentionedGroups->Array.findIndexOpt(g => t == SExp.symbol(g.name))
+    mentionedGroups->Array.findIndexOpt(g => t == StringTermJudgment.constSymbol(g.name))
   let rec replaceJudgeRHS = (rule: Rule.t, baseIdx: int): Rule.t => {
     let baseIdx = baseIdx + Array.length(rule.vars)
     let inductionHyps =
@@ -102,7 +103,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
         {
           Rule.vars: [],
           premises: [],
-          conclusion: ([StringTerm.Var({idx: xIdx})], SExp.symbol(group.name)),
+          conclusion: ([StringTerm.Var({idx: xIdx})], StringTermJudgment.constSymbol(group.name)),
         },
       ],
       mentionedGroups->Array.flatMap(g => g.rules->Array.map(r => replaceJudgeRHS(r, 0))),
@@ -144,13 +145,15 @@ let deserialise = (str: string, ~imports as _: Ports.t) => {
     let grouped: dict<array<Rule.t>> = Dict.make()
     raw->Dict.forEach(rule =>
       switch rule.conclusion->Pair.second {
-      | Symbol(name) => {
-          let name = SExp.getSymbol(name)
-          switch grouped->Dict.get(name) {
-          | None => grouped->Dict.set(name, [rule])
-          | Some(rs) => rs->Array.push(rule)
-          }
-        }
+      | Symbol(name) => StringTermJudgment.StringSymbol.constSymbol(name)
+        ->Option.map(
+          name =>
+            switch grouped->Dict.get(name) {
+            | None => grouped->Dict.set(name, [rule])
+            | Some(rs) => rs->Array.push(rule)
+            },
+        )
+        ->ignore
       | _ => ()
       }
     )
