@@ -1,6 +1,7 @@
 module type SYMBOL = {
   type t
-  let match: (t, t) => bool
+  type subst = Map.t<int, t>
+  let unify: (t, t) => Seq.t<subst>
   let prettyPrint: (t, ~scope: array<string>) => string
   let parse: (string, ~scope: array<string>) => result<(t, string), string>
 }
@@ -94,49 +95,41 @@ module Make = (Symbol: SYMBOL): {
     s->Map.set(schematic, term)
     s
   }
-  let rec unifyTerm = (a: t, b: t) =>
+  let rec unifyTerm = (a: t, b: t): Seq.t<subst> =>
     switch (a, b) {
-    | (Symbol(na), Symbol(nb)) if na->Symbol.match(nb) => Some(emptySubst)
-    | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Some(emptySubst)
-    | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb => Some(emptySubst)
+    | (Symbol(na), Symbol(nb)) =>
+      Symbol.unify(na, nb)->Seq.map(subst => subst->Util.mapMapValues(v => Symbol(v)))
     | (Compound({subexps: xa}), Compound({subexps: xb})) if Array.length(xa) == Array.length(xb) =>
       unifyArray(Belt.Array.zip(xa, xb))
+    | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Seq.once(emptySubst)
+    | (Schematic({schematic: sa, _}), Schematic({schematic: sb, _})) if sa == sb =>
+      Seq.once(emptySubst)
     | (Schematic({schematic, allowed}), t)
       if !Belt.Set.has(schematicsIn(t), schematic) &&
       Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
-      Some(singletonSubst(schematic, t))
+      Seq.once(singletonSubst(schematic, t))
     | (t, Schematic({schematic, allowed}))
       if !Belt.Set.has(schematicsIn(t), schematic) &&
       Belt.Set.subset(freeVarsIn(t), Belt.Set.fromArray(allowed, ~id=module(IntCmp))) =>
-      Some(singletonSubst(schematic, t))
-    | (_, _) => None
+      Seq.once(singletonSubst(schematic, t))
+    | (_, _) => Seq.empty
     }
-  and unifyArray = (a: array<(t, t)>) => {
+  and unifyArray = (a: array<(t, t)>): Seq.t<subst> => {
     if Array.length(a) == 0 {
-      Some(emptySubst)
+      Seq.once(emptySubst)
     } else {
       let (x, y) = a[0]->Option.getUnsafe
-      switch unifyTerm(x, y) {
-      | None => None
-      | Some(s1) =>
-        switch a
+      unifyTerm(x, y)->Seq.flatMap(s1 =>
+        a
         ->Array.sliceToEnd(~start=1)
         ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
-        ->unifyArray {
-        | None => None
-        | Some(s2) => Some(combineSubst(s1, s2))
-        }
-      }
+        ->unifyArray
+        ->Seq.map(s2 => combineSubst(s1, s2))
+      )
     }
   }
-  let unify = (a: t, b: t, ~gen as _=?) => {
-    Seq.fromArray(
-      switch unifyTerm(a, b) {
-      | None => []
-      | Some(s) => [s]
-      },
-    )
-  }
+  let unify = (a: t, b: t, ~gen as _=?) => unifyTerm(a, b)
+
   let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     switch term {
     | Symbol(_) => term

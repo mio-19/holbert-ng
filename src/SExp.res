@@ -1,6 +1,12 @@
 module ConstSymbol: SExpFunc.SYMBOL = {
   type t = string
-  let match = (nameA, nameB) => nameA == nameB
+  type subst = Map.t<int, string>
+  let unify = (a, b) =>
+    if a == b {
+      Seq.once(Map.make())
+    } else {
+      Seq.empty
+    }
   let prettyPrint = (name, ~scope as _: array<string>) => name
   let parse = (string, ~scope as _: array<string>) => Ok((string, ""))
 }
