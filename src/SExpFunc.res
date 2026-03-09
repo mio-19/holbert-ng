@@ -3,7 +3,8 @@ module type SYMBOL = {
   type subst = Map.t<int, t>
   let unify: (t, t) => Seq.t<subst>
   let prettyPrint: (t, ~scope: array<string>) => string
-  let parse: (string, ~scope: array<string>) => result<(t, string), string>
+  let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
+  let substitute: (t, subst) => t
 }
 
 module IntCmp = Belt.Id.MakeComparable({
@@ -69,6 +70,20 @@ module Make = (Symbol: SYMBOL): {
       switch Map.get(subst, schematic) {
       | None => term
       | Some(found) => found
+      }
+    | Symbol(name) => {
+        let symbolSubs =
+          subst
+          ->Map.entries
+          ->Iterator.toArray
+          ->Array.filterMap(((name, v)) =>
+            switch v {
+            | Symbol(v) => Some((name, v))
+            | _ => None
+            }
+          )
+          ->Map.fromArray
+        Symbol(name->Symbol.substitute(symbolSubs))
       }
     | _ => term
     }

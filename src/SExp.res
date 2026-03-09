@@ -8,7 +8,8 @@ module ConstSymbol: SExpFunc.SYMBOL = {
       Seq.empty
     }
   let prettyPrint = (name, ~scope as _: array<string>) => name
-  let parse = (string, ~scope as _: array<string>) => Ok((string, ""))
+  let parse = (string, ~scope as _: array<string>, ~gen as _=?) => Ok((string, ""))
+  let substitute = (name, _) => name
 }
 
 include SExpFunc.Make(ConstSymbol)
