@@ -1,4 +1,14 @@
-module Make = (Symbol: SExpFunc.SYMBOL, SExp: module type of SExpFunc.Make(Symbol)): {
+module type SYMBOL_VIEW = {
+  module Symbol: SExpFunc.SYMBOL
+  type props = {name: Symbol.t, scope: array<string>}
+  let make: props => React.element
+}
+
+module Make = (
+  Symbol: SExpFunc.SYMBOL,
+  SymbolView: SYMBOL_VIEW with module Symbol := Symbol,
+  SExp: module type of SExpFunc.Make(Symbol),
+): {
   include Signatures.TERM_VIEW with module Term := SExp
 } => {
   type props = {term: SExp.t, scope: array<string>}
@@ -50,7 +60,9 @@ module Make = (Symbol: SExpFunc.SYMBOL, SExp: module type of SExpFunc.Make(Symbo
       </span>
     | Var({idx}) => viewVar({idx, scope})
     | Symbol(name) =>
-      <span className="term-const"> {React.string(name->SExp.Symbol.prettyPrint(~scope))} </span>
+      <span className="term-const">
+        <SymbolView name scope />
+      </span>
     | Schematic({schematic: s, allowed: vs}) =>
       <span className="term-schematic">
         {React.string("?")}
