@@ -5,6 +5,11 @@ module type SYMBOL = {
   let prettyPrint: (t, ~scope: array<string>) => string
   let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
   let substitute: (t, subst) => t
+  // used for when trying to substitute a variable of the wrong type
+  let lowerVar: int => t
+  let lowerSchematic: (int, array<int>) => t
+  let ghost: t
+  let substDeBruijn: (t, array<t>, ~from: int) => t
   // used for grouping judgments together for rule induction
   let constSymbol: t => option<string>
 }
@@ -147,9 +152,21 @@ module Make = (Symbol: SYMBOL): {
   }
   let unify = (a: t, b: t, ~gen as _=?) => unifyTerm(a, b)
 
+  let rec lower = (term: t): Symbol.t =>
+    switch term {
+    | Symbol(s) => s
+    | Var({idx}) => Symbol.lowerVar(idx)
+    | Schematic({schematic, allowed}) => Symbol.lowerSchematic(schematic, allowed)
+    | Compound({subexps: [e1]}) => lower(e1)
+    | _ => Symbol.ghost
+    }
   let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     switch term {
-    | Symbol(_) => term
+    | Symbol(s) => {
+        let symbolSubsts = substs->Array.map(lower)
+        Symbol(Symbol.substDeBruijn(s, symbolSubsts, ~from))
+      }
+
     | Compound({subexps}) =>
       Compound({subexps: Array.map(subexps, x => substDeBruijn(x, substs, ~from))})
     | Var({idx: var}) =>
@@ -295,26 +312,31 @@ module Make = (Symbol: SYMBOL): {
         | Some(res) =>
           switch RegExp.Result.matches(res) {
           | [symb] => {
-              cur := String.sliceToEnd(str, ~start=RegExp.lastIndex(symbolRegexp))
-              let parseSymb = () => {
+              let specialSymb = tok => {
+                cur := String.sliceToEnd(str, ~start=RegExp.lastIndex(symbolRegexp))
+                Some(tok)
+              }
+              let regularSymb = () => {
                 // FIX: not ideal to throw away symbol error message
-                Symbol.parse(symb, ~scope)
+                Console.log(("current", cur.contents))
+                Symbol.parse(cur.contents, ~scope)
                 ->Util.Result.ok
                 ->Option.map(((s, rest)) => {
-                  cur := rest->String.concat(cur.contents)
+                  cur := rest
+                  Console.log(("parsed", s, cur.contents))
                   SymbolT(s)
                 })
               }
               switch checkVariable(symb) {
-              | Some(idx) => Some(VarT(idx))
+              | Some(idx) => specialSymb(VarT(idx))
               | None => {
                   let schematicRegexp = RegExp.fromString(schematicRegexpString)
                   switch schematicRegexp->RegExp.exec(symb) {
-                  | None => parseSymb()
+                  | None => regularSymb()
                   | Some(res') =>
                     switch RegExp.Result.matches(res') {
-                    | [s] => Some(SchematicT(s->Int.fromString->Option.getUnsafe))
-                    | _ => parseSymb()
+                    | [s] => specialSymb(SchematicT(s->Int.fromString->Option.getUnsafe))
+                    | _ => regularSymb()
                     }
                   }
                 }

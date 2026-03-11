@@ -30,10 +30,26 @@ module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
         let stringSubs = subst->Util.mapMapValues(v =>
           switch v {
           | StringS(s) => s
-          | _ => throw(Util.Unreachable("const should not have map values"))
+          | _ => [StringTerm.Ghost]
           }
         )
         StringS(StringTerm.substitute(s, stringSubs))
+      }
+    | ConstS(s) => ConstS(s)
+    }
+  let lowerVar = idx => StringS([StringTerm.Var({idx: idx})])
+  let lowerSchematic = (schematic, allowed) => StringS([StringTerm.Schematic({schematic, allowed})])
+  let ghost = StringS([StringTerm.Ghost])
+  let substDeBruijn = (s, substs: array<t>, ~from) =>
+    switch s {
+    | StringS(s) => {
+        let stringSubs = substs->Array.map(v =>
+          switch v {
+          | StringS(s) => s
+          | _ => [StringTerm.String("AYAYAYSLKDJFLSKDJ")]
+          }
+        )
+        StringS(StringTerm.substDeBruijn(s, stringSubs, ~from))
       }
     | ConstS(s) => ConstS(s)
     }
