@@ -32,7 +32,7 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 }
 
 // zoraBlock("string terms", t => {
-//   module T = MakeTest(StringTermJudgment.StringSExp, StringTermJudgment.StringSExpJ)
+//   module T = MakeTest(StringSExp, StringSExpJ)
 //   t->T.testParseInner(
 //     `[s1. ("$s1" p) |- ("($s1)" p)]`,
 //     {
@@ -41,15 +41,15 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 //         {
 //           vars: [],
 //           premises: [],
-//           conclusion: StringTermJudgment.StringSExp.Compound(
+//           conclusion: StringSExp.Compound(
 //             [StringTerm.Var({idx: 0})],
-//             SExp.pSymbol("p")->StringTermJudgment.ConstS->StringTermJudgment.StringSExp.Symbol,
+//             SExp.pSymbol("p")->StringTermJudgment.ConstS->StringSExp.Symbol,
 //           ),
 //         },
 //       ],
 //       conclusion: (
 //         [StringTerm.String("("), StringTerm.Var({idx: 0}), StringTerm.String(")")],
-//         SExp.pSymbol("p")->StringTermJudgment.ConstS->StringTermJudgment.StringSExp.Symbol,
+//         SExp.pSymbol("p")->StringTermJudgment.ConstS->StringSExp.Symbol,
 //       ),
 //     },
 //   )

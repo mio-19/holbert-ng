@@ -1,7 +1,7 @@
 open Component
 
-module Term = StringTermJudgment.StringSExp
-module Judgment = StringTermJudgment.StringSExpJ
+module Term = StringSExp
+module Judgment = TermAsJudgment.StringSExpJ
 module JudgmentView = StringTermJView
 
 module Rule = Rule.Make(Term, Judgment)
@@ -24,7 +24,7 @@ type judgeGroup = {
 }
 
 module Set = Belt.Set.String
-module SExp = StringTermJudgment.StringSExp
+module SExp = StringSExp
 let varsInRule = (rule: Rule.t) => {
   rule.premises->Array.reduce(Set.fromArray(rule.vars), (s, r) =>
     s->Set.union(Set.fromArray(r.vars))
@@ -37,7 +37,7 @@ let getSExpName = (t: SExp.t): option<string> =>
   | _ => None
   }
 
-open StringTermJudgment
+open StringSExp
 let destructure = (r: Judgment.t): (StringTerm.t, string) =>
   switch r {
   | Compound({subexps: [Symbol(StringS(s)), Symbol(ConstS(name))]}) => (s, name)

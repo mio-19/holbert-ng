@@ -1,4 +1,5 @@
 module HOTermJ = TermAsJudgment.HOTermJ
+module StringSExpJ = TermAsJudgment.StringSExpJ
 
 module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTermJ, HOTermJView))
 module InductiveS = Editable.TextArea(InductiveSet.Make(HOTerm, HOTermJ, HOTermJView))
@@ -51,25 +52,25 @@ module ConfS = ConfigBlock.Make(HOTerm, HOTermJ)
 
 module AxiomStr = Editable.TextArea(StringAxiomSet)
 module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
-  StringTermJudgment.StringSExp,
-  StringTermJudgment.StringSExpJ,
-  MethodView.DerivationView(StringTermJudgment.StringSExp, StringTermJudgment.StringSExpJ),
+  StringSExp,
+  StringSExpJ,
+  MethodView.DerivationView(StringSExp, StringSExpJ),
   MethodView.LemmaView(
-    StringTermJudgment.StringSExp,
-    StringTermJudgment.StringSExpJ,
+    StringSExp,
+    StringSExpJ,
     StringTermJView,
   ),
 )
 module DLEStrView = MethodView.CombineMethodView(
-  StringTermJudgment.StringSExp,
-  StringTermJudgment.StringSExpJ,
+  StringSExp,
+  StringSExpJ,
   DerivationsOrLemmasStrView,
-  MethodView.EliminationView(StringTermJudgment.StringSExp, StringTermJudgment.StringSExpJ),
+  MethodView.EliminationView(StringSExp, StringSExpJ),
 )
 module TheoremStr = Editable.TextArea(
   Theorem.Make(
-    StringTermJudgment.StringSExp,
-    StringTermJudgment.StringSExpJ,
+    StringSExp,
+    StringSExpJ,
     StringTermJView,
     DLEStrView,
   ),

@@ -60,8 +60,4 @@ module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
     }
 }
 
-module StringSExp = SExpFunc.Make(StringSymbol)
-module StringSExpJ = TermAsJudgment.Make(StringSExp)
-include TermAsJudgment.Make(StringSExp)
-
-let constSymbol = (s: string): StringSExp.t => s->ConstS->StringSExp.Symbol
+include SExpFunc.Make(StringSymbol)
