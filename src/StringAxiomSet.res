@@ -1,7 +1,7 @@
 open Component
 
 module Term = StringSExp
-module Judgment = TermAsJudgment.StringSExpJ
+module Judgment = StringSExp
 module JudgmentView = StringTermJView
 
 module Rule = Rule.Make(Term, Judgment)

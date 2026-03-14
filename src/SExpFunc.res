@@ -18,18 +18,21 @@ module IntCmp = Belt.Id.MakeComparable({
 })
 
 module Make = (Symbol: SYMBOL): {
+  module Symbol: SYMBOL with type t = Symbol.t
+
   type rec t =
     | Symbol(Symbol.t)
     | Compound({subexps: array<t>})
     | Var({idx: int})
     | Schematic({schematic: int, allowed: array<int>})
     | Ghost
-  module Symbol: SYMBOL with type t := Symbol.t
+
   include Signatures.TERM
     with type t := t
     and type meta = string
     and type schematic = int
     and type subst = Map.t<int, t>
+  let mapTerms: (t, t => t) => t
 } => {
   type rec t =
     | Symbol(Symbol.t)
@@ -423,4 +426,5 @@ module Make = (Symbol: SYMBOL): {
   }
 
   let ghostTerm = Ghost
+  let mapTerms = (t, f) => f(t)
 }

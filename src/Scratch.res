@@ -1,77 +1,60 @@
-module HOTermJ = TermAsJudgment.HOTermJ
-module StringSExpJ = TermAsJudgment.StringSExpJ
-
-module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTermJ, HOTermJView))
-module InductiveS = Editable.TextArea(InductiveSet.Make(HOTerm, HOTermJ, HOTermJView))
+module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTerm, HOTermJView))
+module InductiveS = Editable.TextArea(InductiveSet.Make(HOTerm, HOTerm, HOTermJView))
 
 module EqualityViews = MethodView.CombineMethodView(
   HOTerm,
-  HOTermJ,
-  MethodView.RewriteView(HOTermJ),
-  MethodView.RewriteReverseView(HOTermJ),
+  HOTerm,
+  MethodView.RewriteView(HOTerm),
+  MethodView.RewriteReverseView(HOTerm),
 )
 module ConstructorEqualityViews = MethodView.CombineMethodView(
   HOTerm,
-  HOTermJ,
+  HOTerm,
   EqualityViews,
-  MethodView.ConstructorNeqView(HOTermJ),
+  MethodView.ConstructorNeqView(HOTerm),
 )
 module RewritesView = MethodView.CombineMethodView(
   HOTerm,
-  HOTermJ,
+  HOTerm,
   ConstructorEqualityViews,
-  MethodView.ConstructorInjView(HOTermJ),
+  MethodView.ConstructorInjView(HOTerm),
 )
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   HOTerm,
-  HOTermJ,
+  HOTerm,
   MethodView.CombineMethodView(
     HOTerm,
-    HOTermJ,
-    MethodView.DerivationView(HOTerm, HOTermJ),
-    MethodView.LemmaView(HOTerm, HOTermJ, HOTermJView),
+    HOTerm,
+    MethodView.DerivationView(HOTerm, HOTerm),
+    MethodView.LemmaView(HOTerm, HOTerm, HOTermJView),
   ),
-  MethodView.EliminationView(HOTerm, HOTermJ),
+  MethodView.EliminationView(HOTerm, HOTerm),
 )
-module DLRView = MethodView.CombineMethodView(
-  HOTerm,
-  HOTermJ,
-  DerivationsOrLemmasView,
-  RewritesView,
-)
+module DLRView = MethodView.CombineMethodView(HOTerm, HOTerm, DerivationsOrLemmasView, RewritesView)
 module DLREView = MethodView.CombineMethodView(
   HOTerm,
-  HOTermJ,
+  HOTerm,
   DLRView,
-  MethodView.EliminationView(HOTerm, HOTermJ),
+  MethodView.EliminationView(HOTerm, HOTerm),
 )
 
 // Temporarily use DLRView (without Elimination) due to HOTerm unification bug
-module TheoremS = Editable.TextArea(Theorem.Make(HOTerm, HOTermJ, HOTermJView, DLRView))
-module ConfS = ConfigBlock.Make(HOTerm, HOTermJ)
+module TheoremS = Editable.TextArea(Theorem.Make(HOTerm, HOTerm, HOTermJView, DLRView))
+module ConfS = ConfigBlock.Make(HOTerm, HOTerm)
 
 module AxiomStr = Editable.TextArea(StringAxiomSet)
 module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
   StringSExp,
-  StringSExpJ,
-  MethodView.DerivationView(StringSExp, StringSExpJ),
-  MethodView.LemmaView(
-    StringSExp,
-    StringSExpJ,
-    StringTermJView,
-  ),
+  StringSExp,
+  MethodView.DerivationView(StringSExp, StringSExp),
+  MethodView.LemmaView(StringSExp, StringSExp, StringTermJView),
 )
 module DLEStrView = MethodView.CombineMethodView(
   StringSExp,
-  StringSExpJ,
+  StringSExp,
   DerivationsOrLemmasStrView,
-  MethodView.EliminationView(StringSExp, StringSExpJ),
+  MethodView.EliminationView(StringSExp, StringSExp),
 )
 module TheoremStr = Editable.TextArea(
-  Theorem.Make(
-    StringSExp,
-    StringSExpJ,
-    StringTermJView,
-    DLEStrView,
-  ),
+  Theorem.Make(StringSExp, StringSExp, StringTermJView, DLEStrView),
 )

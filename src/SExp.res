@@ -22,6 +22,3 @@ module ConstSymbol: SExpFunc.SYMBOL with type t = string = {
 }
 
 include SExpFunc.Make(ConstSymbol)
-let pSymbol = s => s->ConstSymbol.parse(~scope=[])->Result.getExn->Pair.first
-let symbol = s => s->pSymbol->Symbol
-let getSymbol = s => s->ConstSymbol.prettyPrint(~scope=[])

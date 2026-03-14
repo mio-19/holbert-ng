@@ -19,16 +19,17 @@ module Make = (
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Proof.checked, Judgment.subst) => unit,
+    onChange: (Proof.checked, Term.subst) => unit,
   }
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   @react.componentWithProps
   let rec make = (props: props) => {
     let {sidebarRef} = React.useContext(SidebarContext.context)
     let (isFocused, setFocused) = React.useState(() => false)
-        
+
     let onBlur = e => {
-      let leavingProof = ReactEvent.Focus.relatedTarget(e)
+      let leavingProof =
+        ReactEvent.Focus.relatedTarget(e)
         ->Option.flatMap(el => el->closest(".sidebar")->Nullable.toOption)
         ->Option.isNone
       if leavingProof {
@@ -53,11 +54,15 @@ module Make = (
             | Goal(options) =>
               let portal = switch sidebarRef.current->Nullable.toOption {
               | None => React.null
-              | Some(node) => Portal.createPortal(<> {
-                    options(props.gen)
+              | Some(node) =>
+                Portal.createPortal(
+                  <>
+                    {options(props.gen)
                     ->Dict.toArray
                     ->Array.map(((str, (opt, subst))) => {
-                      <button tabIndex=0 onBlur
+                      <button
+                        tabIndex=0
+                        onBlur
                         key=str
                         onClick={_ =>
                           props.onChange(
@@ -68,22 +73,27 @@ module Make = (
                         {React.string(str)}
                       </button>
                     })
-                    ->React.array }
-                  </>, node)
+                    ->React.array}
+                  </>,
+                  node,
+                )
               }
-              <div className="proof-goal" tabIndex=0
+              <div
+                className="proof-goal"
+                tabIndex=0
                 onBlur
                 onFocus={e => {
                   setFocused(_ => true)
                   ReactEvent.Focus.stopPropagation(e)
-              }}>
-                {if (isFocused) { 
-                  <> 
-                    <span className="button-icon button-icon-blue typcn typcn-location" /> 
-                    {portal} 
-                  </> 
-                } else { 
-                  <span className="button-icon button-icon-blue typcn typcn-location-outline" /> 
+                }}
+              >
+                {if isFocused {
+                  <>
+                    <span className="button-icon button-icon-blue typcn typcn-location" />
+                    {portal}
+                  </>
+                } else {
+                  <span className="button-icon button-icon-blue typcn typcn-location-outline" />
                 }}
               </div>
             | Do(method) =>

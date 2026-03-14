@@ -1,4 +1,4 @@
-type stringSymbol = StringS(StringTerm.t) | ConstS(SExp.ConstSymbol.t)
+type stringSymbol = StringS(StringTerm.t) | ConstS(SExp.Symbol.t)
 
 module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
   type t = stringSymbol
@@ -8,20 +8,20 @@ module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
     StringTerm.parse(s, ~scope, ~gen?)
     ->Result.map(((r, rest)) => (StringS(r), rest))
     ->Util.Result.or(() =>
-      SExp.ConstSymbol.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
+      SExp.Symbol.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
     )
   }
   let prettyPrint = (s, ~scope) =>
     switch s {
     | StringS(s) => StringTerm.prettyPrint(s, ~scope)
-    | ConstS(s) => SExp.ConstSymbol.prettyPrint(s, ~scope)
+    | ConstS(s) => SExp.Symbol.prettyPrint(s, ~scope)
     }
   let unify = (s1, s2) =>
     switch (s1, s2) {
     | (StringS(s1), StringS(s2)) =>
       StringTerm.unify(s1, s2)->Seq.map(subst => subst->Util.mapMapValues(v => StringS(v)))
     | (ConstS(s1), ConstS(s2)) =>
-      SExp.ConstSymbol.unify(s1, s2)->Seq.map(subst => subst->Util.mapMapValues(v => ConstS(v)))
+      SExp.Symbol.unify(s1, s2)->Seq.map(subst => subst->Util.mapMapValues(v => ConstS(v)))
     | (_, _) => Seq.empty
     }
   let substitute = (s, subst: subst) =>

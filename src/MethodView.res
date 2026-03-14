@@ -10,14 +10,14 @@ module type METHOD_VIEW = {
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<Term.meta>,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, Term.subst) => unit,
   }
   let make: (srProps<'a> => React.element) => props<'a> => React.element
 }
@@ -29,14 +29,14 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<Term.meta>,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, Term.subst) => unit,
   }
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
@@ -54,7 +54,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
                   "scope": props.scope,
                   "ruleStyle": props.ruleStyle,
                   "gen": props.gen,
-                  "onChange": (newa, subst: Judgment.subst) =>
+                  "onChange": (newa, subst: Term.subst) =>
                     props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
                 },
               )}
@@ -73,14 +73,14 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<Term.meta>,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, Term.subst) => unit,
   }
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
@@ -98,7 +98,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
                   "scope": props.scope,
                   "ruleStyle": props.ruleStyle,
                   "gen": props.gen,
-                  "onChange": (newa, subst: Judgment.subst) =>
+                  "onChange": (newa, subst: Term.subst) =>
                     props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
                 },
               )}
@@ -121,14 +121,14 @@ module LemmaView = (
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<Term.meta>,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, Term.subst) => unit,
   }
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   let make = (subRender: srProps<'a> => React.element) =>
@@ -162,23 +162,21 @@ module LemmaView = (
     }
 }
 
-module RewriteView = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
-) => {
+module RewriteView = (Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t) => {
   module Method = Rewrite(Judgment)
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<HOTerm.meta>,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<HOTerm.meta>,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, HOTerm.subst) => unit,
   }
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
@@ -194,7 +192,7 @@ module RewriteView = (
                 "scope": props.scope,
                 "ruleStyle": props.ruleStyle,
                 "gen": props.gen,
-                "onChange": (subgoal, subst: Judgment.subst) =>
+                "onChange": (subgoal, subst: HOTerm.subst) =>
                   props.onChange({...props.method, subgoal}, subst),
               },
             )}
@@ -205,7 +203,7 @@ module RewriteView = (
 }
 
 module RewriteReverseView = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => {
   module Method = RewriteReverse(Judgment)
   type props<'a> = {
@@ -213,14 +211,14 @@ module RewriteReverseView = (
     scope: array<HOTerm.meta>,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<HOTerm.meta>,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, HOTerm.subst) => unit,
   }
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
@@ -236,7 +234,7 @@ module RewriteReverseView = (
                 "scope": props.scope,
                 "ruleStyle": props.ruleStyle,
                 "gen": props.gen,
-                "onChange": (subgoal, subst: Judgment.subst) =>
+                "onChange": (subgoal, subst: HOTerm.subst) =>
                   props.onChange({...props.method, subgoal}, subst),
               },
             )}
@@ -247,7 +245,7 @@ module RewriteReverseView = (
 }
 
 module ConstructorNeqView = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => {
   module Method = ConstructorNeq(Judgment)
   type props<'a> = {
@@ -255,14 +253,14 @@ module ConstructorNeqView = (
     scope: array<HOTerm.meta>,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<HOTerm.meta>,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, HOTerm.subst) => unit,
   }
   let make = (_subRender: srProps<'a> => React.element) =>
     _props => {
@@ -273,7 +271,7 @@ module ConstructorNeqView = (
 }
 
 module ConstructorInjView = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => {
   module Method = ConstructorInj(Judgment)
   type props<'a> = {
@@ -281,14 +279,14 @@ module ConstructorInjView = (
     scope: array<HOTerm.meta>,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<HOTerm.meta>,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
-    "onChange": ('a, Judgment.subst) => unit,
+    "onChange": ('a, HOTerm.subst) => unit,
   }
   let make = (_subRender: srProps<'a> => React.element) =>
     props => {
@@ -317,7 +315,7 @@ module CombineMethodView = (
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Method.t<'a>, Judgment.subst) => unit,
+    onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = Method1View.srProps<'a>
   let make = (subrender: srProps<'a> => React.element) =>

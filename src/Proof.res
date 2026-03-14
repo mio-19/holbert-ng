@@ -24,13 +24,13 @@ module Make = (
     | ProofError({raw: t, rule: Rule.t, msg: string})
   and checked_option_method =
     | Do(Method.t<checked>)
-    | Goal(Term.gen => Dict.t<(Method.t<checked>, Judgment.subst)>)
+    | Goal(Term.gen => Dict.t<(Method.t<checked>, Term.subst)>)
   let parseKeyword = input => {
     Method.keywords
     ->Array.concat(["?"])
     ->Array.find(kw => String.trim(input)->String.startsWith(kw))
   }
-  let rec substitute = (prf: t, subst: Judgment.subst) => {
+  let rec substitute = (prf: t, subst: Term.subst) => {
     fixes: prf.fixes,
     assumptions: prf.assumptions,
     method: prf.method->Option.map(m =>
@@ -191,7 +191,7 @@ module Make = (
     }
   } // result<checked,string>
 
-  let substituteChecked = (prf: checked, ctx: Context.t, subst: Judgment.subst) => {
+  let substituteChecked = (prf: checked, ctx: Context.t, subst: Term.subst) => {
     switch prf {
     | Checked(prf) =>
       check(ctx, Checked(prf)->uncheck->substitute(subst), prf.rule->Rule.substitute(subst))
