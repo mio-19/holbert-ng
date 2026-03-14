@@ -53,11 +53,6 @@ module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
       }
     | ConstS(s) => ConstS(s)
     }
-  let constSymbol = s =>
-    switch s {
-    | StringS(_) => None
-    | ConstS(s) => SExp.ConstSymbol.constSymbol(s)
-    }
 }
 
 include SExpFunc.Make(StringSymbol)

@@ -10,8 +10,6 @@ module type SYMBOL = {
   let lowerSchematic: (int, array<int>) => t
   let ghost: t
   let substDeBruijn: (t, array<t>, ~from: int) => t
-  // used for grouping judgments together for rule induction
-  let constSymbol: t => option<string>
 }
 
 module IntCmp = Belt.Id.MakeComparable({
