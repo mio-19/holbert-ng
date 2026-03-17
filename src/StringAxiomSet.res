@@ -33,19 +33,19 @@ let varsInRule = (rule: Rule.t) => {
 
 let getSExpName = (t: SExp.t): option<string> =>
   switch t {
-  | Symbol(name) => Some(name->SExp.Symbol.prettyPrint(~scope=[]))
+  | Atom(name) => Some(name->SExp.Atom.prettyPrint(~scope=[]))
   | _ => None
   }
 
 open StringSExp
 let destructure = (r: Judgment.t): (StringTerm.t, string) =>
   switch r {
-  | Compound({subexps: [Symbol(StringS(s)), Symbol(ConstS(name))]}) => (s, name)
+  | Compound({subexps: [Atom(StringS(s)), Atom(ConstS(name))]}) => (s, name)
   | _ => throw(Util.Unreachable("expected valid induction rule"))
   }
 let destructureOpt = (r: Judgment.t): option<(StringTerm.t, string)> =>
   switch r {
-  | Compound({subexps: [Symbol(StringS(s)), Symbol(ConstS(name))]}) => Some((s, name))
+  | Compound({subexps: [Atom(StringS(s)), Atom(ConstS(name))]}) => Some((s, name))
   | _ => None
   }
 let structure = (lhs: StringSExp.t, rhs: StringSExp.t): Judgment.t => Compound({
@@ -110,7 +110,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
       vars: rule.vars,
       premises: rule.premises->Array.concat(inductionHyps),
       conclusion: structure(
-        surround(s, aIdx + baseIdx, bIdx + baseIdx)->StringS->Symbol,
+        surround(s, aIdx + baseIdx, bIdx + baseIdx)->StringS->Atom,
         Var({idx: pIdx + baseIdx}),
       ),
     }
@@ -122,13 +122,13 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
         {
           Rule.vars: [],
           premises: [],
-          conclusion: structure(Var({idx: xIdx}), Symbol(ConstS(group.name))),
+          conclusion: structure(Var({idx: xIdx}), Atom(ConstS(group.name))),
         },
       ],
       mentionedGroups->Array.flatMap(g => g.rules->Array.map(r => replaceJudgeRHS(r, 0))),
     ),
     conclusion: structure(
-      surround([StringTerm.Var({idx: xIdx})], aIdx, bIdx)->StringS->Symbol,
+      surround([StringTerm.Var({idx: xIdx})], aIdx, bIdx)->StringS->Atom,
       Var({idx: 0}),
     ), // TODO: clean here
   }
@@ -167,7 +167,7 @@ let deserialise = (str: string, ~imports as _: Ports.t) => {
     let grouped: dict<array<Rule.t>> = Dict.make()
     raw->Dict.forEach(rule =>
       switch rule.conclusion {
-      | Compound({subexps: [Symbol(StringS(_)), Symbol(ConstS(name))]}) =>
+      | Compound({subexps: [Atom(StringS(_)), Atom(ConstS(name))]}) =>
         switch grouped->Dict.get(name) {
         | None => grouped->Dict.set(name, [rule])
         | Some(rs) => rs->Array.push(rule)

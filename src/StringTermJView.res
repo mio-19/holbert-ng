@@ -1,13 +1,13 @@
-module StringSymbolView: SExpViewFunc.SYMBOL_VIEW with module Symbol := StringSExp.StringSymbol = {
-  type props = {name: StringSExp.StringSymbol.t, scope: array<string>}
+module StringAtomView: SExpViewFunc.ATOM_VIEW with module Atom := StringSExp.StringAtom = {
+  type props = {name: StringSExp.StringAtom.t, scope: array<string>}
   let make = ({name, scope}: props) =>
     switch name {
     | StringSExp.StringS(term) => <StringTermView term scope />
-    | StringSExp.ConstS(name) => <SExpView.ConstSymbolView name scope />
+    | StringSExp.ConstS(name) => <SExpView.ConstAtomView name scope />
     }
 }
 
-module View = SExpViewFunc.Make(StringSExp.StringSymbol, StringSymbolView, StringSExp)
+module View = SExpViewFunc.Make(StringSExp.StringAtom, StringAtomView, StringSExp)
 
 module TermView = View
 type props = {

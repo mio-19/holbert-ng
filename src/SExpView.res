@@ -1,7 +1,7 @@
-module ConstSymbol = SExp.Symbol
-module ConstSymbolView: SExpViewFunc.SYMBOL_VIEW with module Symbol := SExp.Symbol = {
+module ConstAtom = SExp.Atom
+module ConstAtomView: SExpViewFunc.ATOM_VIEW with module Atom := SExp.Atom = {
   type props = {name: string, scope: array<string>}
   let make = (props: props) => React.string(props.name)
 }
 
-include SExpViewFunc.Make(ConstSymbol, ConstSymbolView, SExp)
+include SExpViewFunc.Make(ConstAtom, ConstAtomView, SExp)

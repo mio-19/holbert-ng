@@ -1,4 +1,4 @@
-module ConstSymbol: SExpFunc.SYMBOL with type t = string = {
+module SymbolAtom: SExpFunc.ATOM with type t = string = {
   type t = string
   type subst = Map.t<int, string>
   let unify = (a, b) =>
@@ -23,4 +23,4 @@ module ConstSymbol: SExpFunc.SYMBOL with type t = string = {
   let upshift = (t, _, ~from as _=?) => t
 }
 
-include SExpFunc.Make(ConstSymbol)
+include SExpFunc.Make(SymbolAtom)

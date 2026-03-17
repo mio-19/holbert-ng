@@ -1,15 +1,15 @@
-module type SYMBOL_VIEW = {
-  module Symbol: SExpFunc.SYMBOL
-  type props = {name: Symbol.t, scope: array<string>}
+module type ATOM_VIEW = {
+  module Atom: SExpFunc.ATOM
+  type props = {name: Atom.t, scope: array<string>}
   let make: props => React.element
 }
 
 module Make = (
-  Symbol: SExpFunc.SYMBOL,
-  SymbolView: SYMBOL_VIEW with module Symbol := Symbol,
+  Atom: SExpFunc.ATOM,
+  AtomView: ATOM_VIEW with module Atom := Atom,
   SExp: {
     type rec t =
-      | Symbol(Symbol.t)
+      | Atom(Atom.t)
       | Compound({subexps: array<t>})
       | Var({idx: int})
       | Schematic({schematic: int, allowed: array<int>})
@@ -72,9 +72,9 @@ module Make = (
         ->React.array}
       </span>
     | Var({idx}) => viewVar({idx, scope})
-    | Symbol(name) =>
+    | Atom(name) =>
       <span className="term-const">
-        <SymbolView name scope />
+        <AtomView name scope />
       </span>
     | Schematic({schematic: s, allowed: vs}) =>
       <span className="term-schematic">

@@ -1,3 +1,3 @@
-module ConstSymbolView: SExpViewFunc.SYMBOL_VIEW with module Symbol := SExp.Symbol
+module ConstAtomView: SExpViewFunc.ATOM_VIEW with module Atom := SExp.Atom
 
 include Signatures.TERM_VIEW with module Term := SExp

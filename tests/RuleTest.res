@@ -43,13 +43,13 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 //           premises: [],
 //           conclusion: StringSExp.Compound(
 //             [StringTerm.Var({idx: 0})],
-//             SExp.pSymbol("p")->StringTermJudgment.ConstS->StringSExp.Symbol,
+//             SExp.pAtom("p")->StringTermJudgment.ConstS->StringSExp.Atom,
 //           ),
 //         },
 //       ],
 //       conclusion: (
 //         [StringTerm.String("("), StringTerm.Var({idx: 0}), StringTerm.String(")")],
-//         SExp.pSymbol("p")->StringTermJudgment.ConstS->StringSExp.Symbol,
+//         SExp.pAtom("p")->StringTermJudgment.ConstS->StringSExp.Atom,
 //       ),
 //     },
 //   )

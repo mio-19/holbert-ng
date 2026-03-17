@@ -1,27 +1,27 @@
-type stringSymbol = StringS(StringTerm.t) | ConstS(SExp.Symbol.t)
+type stringAtom = StringS(StringTerm.t) | ConstS(SExp.Atom.t)
 
-module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
-  type t = stringSymbol
+module StringAtom: SExpFunc.ATOM with type t = stringAtom = {
+  type t = stringAtom
   type subst = Map.t<int, t>
   type gen = ref<int>
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
     StringTerm.parse(s, ~scope, ~gen?)
     ->Result.map(((r, rest)) => (StringS(r), rest))
     ->Util.Result.or(() =>
-      SExp.Symbol.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
+      SExp.Atom.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
     )
   }
   let prettyPrint = (s, ~scope) =>
     switch s {
     | StringS(s) => StringTerm.prettyPrint(s, ~scope)
-    | ConstS(s) => SExp.Symbol.prettyPrint(s, ~scope)
+    | ConstS(s) => SExp.Atom.prettyPrint(s, ~scope)
     }
   let unify = (s1, s2) =>
     switch (s1, s2) {
     | (StringS(s1), StringS(s2)) =>
       StringTerm.unify(s1, s2)->Seq.map(subst => subst->Util.mapMapValues(v => StringS(v)))
     | (ConstS(s1), ConstS(s2)) =>
-      SExp.Symbol.unify(s1, s2)->Seq.map(subst => subst->Util.mapMapValues(v => ConstS(v)))
+      SExp.Atom.unify(s1, s2)->Seq.map(subst => subst->Util.mapMapValues(v => ConstS(v)))
     | (_, _) => Seq.empty
     }
   let substitute = (s, subst: subst) =>
@@ -65,4 +65,4 @@ module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
     }
 }
 
-include SExpFunc.Make(StringSymbol)
+include SExpFunc.Make(StringAtom)

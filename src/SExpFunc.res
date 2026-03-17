@@ -1,4 +1,4 @@
-module type SYMBOL = {
+module type ATOM = {
   type t
   type subst = Map.t<int, t>
   let unify: (t, t) => Seq.t<subst>
@@ -19,11 +19,11 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-module Make = (Symbol: SYMBOL): {
-  module Symbol: SYMBOL with type t = Symbol.t
+module Make = (Atom: ATOM): {
+  module Atom: ATOM with type t = Atom.t
 
   type rec t =
-    | Symbol(Symbol.t)
+    | Atom(Atom.t)
     | Compound({subexps: array<t>})
     | Var({idx: int})
     | Schematic({schematic: int, allowed: array<int>})
@@ -37,12 +37,12 @@ module Make = (Symbol: SYMBOL): {
   let mapTerms: (t, t => t) => t
 } => {
   type rec t =
-    | Symbol(Symbol.t)
+    | Atom(Atom.t)
     | Compound({subexps: array<t>})
     | Var({idx: int})
     | Schematic({schematic: int, allowed: array<int>})
     | Ghost
-  module Symbol = Symbol
+  module Atom = Atom
   type meta = string
   type schematic = int
   type subst = Map.t<schematic, t>
@@ -81,19 +81,19 @@ module Make = (Symbol: SYMBOL): {
       | None => term
       | Some(found) => found
       }
-    | Symbol(name) => {
+    | Atom(name) => {
         let symbolSubs =
           subst
           ->Map.entries
           ->Iterator.toArray
           ->Array.filterMap(((name, v)) =>
             switch v {
-            | Symbol(v) => Some((name, v))
+            | Atom(v) => Some((name, v))
             | _ => None
             }
           )
           ->Map.fromArray
-        Symbol(name->Symbol.substitute(symbolSubs))
+        Atom(name->Atom.substitute(symbolSubs))
       }
     | _ => term
     }
@@ -122,8 +122,8 @@ module Make = (Symbol: SYMBOL): {
   }
   let rec unifyTerm = (a: t, b: t): Seq.t<subst> =>
     switch (a, b) {
-    | (Symbol(na), Symbol(nb)) =>
-      Symbol.unify(na, nb)->Seq.map(subst => subst->Util.mapMapValues(v => Symbol(v)))
+    | (Atom(na), Atom(nb)) =>
+      Atom.unify(na, nb)->Seq.map(subst => subst->Util.mapMapValues(v => Atom(v)))
     | (Compound({subexps: xa}), Compound({subexps: xb})) if Array.length(xa) == Array.length(xb) =>
       unifyArray(Belt.Array.zip(xa, xb))
     | (Var({idx: ia}), Var({idx: ib})) if ia == ib => Seq.once(emptySubst)
@@ -155,19 +155,19 @@ module Make = (Symbol: SYMBOL): {
   }
   let unify = (a: t, b: t, ~gen as _=?) => unifyTerm(a, b)
 
-  let rec lower = (term: t): Symbol.t =>
+  let rec lower = (term: t): Atom.t =>
     switch term {
-    | Symbol(s) => s
-    | Var({idx}) => Symbol.lowerVar(idx)
-    | Schematic({schematic, allowed}) => Symbol.lowerSchematic(schematic, allowed)
+    | Atom(s) => s
+    | Var({idx}) => Atom.lowerVar(idx)
+    | Schematic({schematic, allowed}) => Atom.lowerSchematic(schematic, allowed)
     | Compound({subexps: [e1]}) => lower(e1)
-    | _ => Symbol.ghost
+    | _ => Atom.ghost
     }
   let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     switch term {
-    | Symbol(s) => {
+    | Atom(s) => {
         let symbolSubsts = substs->Array.map(lower)
-        Symbol(Symbol.substDeBruijn(s, symbolSubsts, ~from))
+        Atom(Atom.substDeBruijn(s, symbolSubsts, ~from))
       }
 
     | Compound({subexps}) =>
@@ -195,7 +195,7 @@ module Make = (Symbol: SYMBOL): {
     }
   let rec upshift = (term: t, amount: int, ~from: int=0) =>
     switch term {
-    | Symbol(s) => Symbol(s->Symbol.upshift(amount, ~from))
+    | Atom(s) => Atom(s->Atom.upshift(amount, ~from))
     | Compound({subexps}) => Compound({subexps: Array.map(subexps, x => upshift(x, amount, ~from))})
     | Var({idx}) =>
       Var({
@@ -246,7 +246,7 @@ module Make = (Symbol: SYMBOL): {
   }
   let rec prettyPrint = (it: t, ~scope: array<string>) =>
     switch it {
-    | Symbol(name) => Symbol.prettyPrint(name, ~scope)
+    | Atom(name) => Atom.prettyPrint(name, ~scope)
     | Var({idx}) => prettyPrintVar(idx, scope)
     | Schematic({schematic, allowed}) =>
       "?"
@@ -266,7 +266,7 @@ module Make = (Symbol: SYMBOL): {
   let symbolRegexpString = `^([^\\s()\\[\\]]+)`
   let varRegexpString = "^\\\\([0-9]+)$"
   let schematicRegexpString = "^\\?([0-9]+)$"
-  type lexeme = LParen | RParen | VarT(int) | SymbolT(Symbol.t) | SchematicT(int)
+  type lexeme = LParen | RParen | VarT(int) | AtomT(Atom.t) | SchematicT(int)
   let nameRES = "^([^\\s.\\[\\]()]+)\\."
   let prettyPrintMeta = (str: string) => {
     String.concat(str, ".")
@@ -322,12 +322,12 @@ module Make = (Symbol: SYMBOL): {
               let regularSymb = () => {
                 // FIX: not ideal to throw away symbol error message
                 Console.log(("current", cur.contents))
-                Symbol.parse(cur.contents, ~scope)
+                Atom.parse(cur.contents, ~scope)
                 ->Util.Result.ok
                 ->Option.map(((s, rest)) => {
                   cur := rest
                   Console.log(("parsed", s, cur.contents))
-                  SymbolT(s)
+                  AtomT(s)
                 })
               }
               switch checkVariable(symb) {
@@ -362,9 +362,9 @@ module Make = (Symbol: SYMBOL): {
     let rec parseExp = () => {
       let tok = peek()
       switch tok {
-      | Some(SymbolT(s)) => {
+      | Some(AtomT(s)) => {
           let _ = lex()
-          Some(Symbol(s))
+          Some(Atom(s))
         }
       | Some(VarT(idx)) => {
           let _ = lex()
@@ -431,7 +431,7 @@ module Make = (Symbol: SYMBOL): {
   let rec unifiesWithAnything = t =>
     switch t {
     | Schematic(_) => true
-    | Symbol(s) => Symbol.unifiesWithAnything(s)
+    | Atom(s) => Atom.unifiesWithAnything(s)
     | Compound({subexps}) => subexps->Array.every(unifiesWithAnything)
     | _ => false
     }

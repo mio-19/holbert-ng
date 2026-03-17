@@ -1,8 +1,8 @@
-type stringSymbol = StringS(StringTerm.t) | ConstS(SExp.Symbol.t)
-module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol
+type stringAtom = StringS(StringTerm.t) | ConstS(SExp.Atom.t)
+module StringAtom: SExpFunc.ATOM with type t = stringAtom
 
 type rec t =
-  | Symbol(StringSymbol.t)
+  | Atom(StringAtom.t)
   | Compound({subexps: array<t>})
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
@@ -14,5 +14,5 @@ include Signatures.TERM
   and type schematic = int
   and type subst = Map.t<int, t>
 
-module Symbol: SExpFunc.SYMBOL with type t := StringSymbol.t
+module Atom: SExpFunc.ATOM with type t := StringAtom.t
 let mapTerms: (t, t => t) => t
