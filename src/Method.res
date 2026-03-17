@@ -147,8 +147,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ->Array.filterMap(((key, rule)) => {
       let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
-      let ghostSubs = Judgment.unify(Judgment.ghostTerm, res.conclusion)
-      if ghostSubs->Seq.head->Option.isNone {
+      if !Judgment.unifiesWithAnything(res.conclusion) {
         Some((key, res, insts))
       } else {
         None

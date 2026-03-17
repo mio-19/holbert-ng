@@ -25,6 +25,7 @@ module type TERM = {
   let prettyPrint: (t, ~scope: array<meta>) => string
   let prettyPrintMeta: meta => string
   let ghostTerm: t
+  let unifiesWithAnything: t => bool
 }
 
 module type JUDGMENT = {
@@ -37,11 +38,11 @@ module type JUDGMENT = {
   let reduce: t => t
   let upshift: (t, int, ~from: int=?) => t
   // Map a function over all terms in the judgment
-  // NOTE(josh): we should return to whether this is necessary.
   let mapTerms: (t, Term.t => Term.t) => t
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
   let prettyPrint: (t, ~scope: array<Term.meta>) => string
   let ghostTerm: t
+  let unifiesWithAnything: t => bool
 }
 
 module type TERM_VIEW = {

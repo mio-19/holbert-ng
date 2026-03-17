@@ -10,6 +10,7 @@ module type SYMBOL = {
   let lowerSchematic: (int, array<int>) => t
   let ghost: t
   let substDeBruijn: (t, array<t>, ~from: int) => t
+  let unifiesWithAnything: t => bool
 }
 
 module IntCmp = Belt.Id.MakeComparable({
@@ -426,5 +427,12 @@ module Make = (Symbol: SYMBOL): {
   }
 
   let ghostTerm = Ghost
+  let rec unifiesWithAnything = t =>
+    switch t {
+    | Schematic(_) => true
+    | Symbol(s) => Symbol.unifiesWithAnything(s)
+    | Compound({subexps}) => subexps->Array.every(unifiesWithAnything)
+    | _ => false
+    }
   let mapTerms = (t, f) => f(t)
 }

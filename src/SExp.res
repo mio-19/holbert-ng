@@ -19,6 +19,7 @@ module ConstSymbol: SExpFunc.SYMBOL with type t = string = {
   let lowerSchematic = (_, _) => ""
   let ghost = ""
   let substDeBruijn = (name, _, ~from as _) => name
+  let unifiesWithAnything = _ => false
 }
 
 include SExpFunc.Make(ConstSymbol)

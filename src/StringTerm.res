@@ -504,3 +504,10 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 }
 
 let ghostTerm = [Ghost]
+let unifiesWithAnything = t =>
+  t->Array.every(p =>
+    switch p {
+    | Schematic(_) => true
+    | _ => false
+    }
+  )
