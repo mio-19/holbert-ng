@@ -1,7 +1,7 @@
 module SymbolAtom: SExpFunc.ATOM with type t = string = {
   type t = string
   type subst = Map.t<int, string>
-  let unify = (a, b) =>
+  let unify = (a, b, ~gen as _=?) =>
     if a == b {
       Seq.once(Map.make())
     } else {
@@ -18,7 +18,7 @@ module SymbolAtom: SExpFunc.ATOM with type t = string = {
   let lowerVar = _ => ""
   let lowerSchematic = (_, _) => ""
   let ghost = ""
-  let substDeBruijn = (name, _, ~from as _) => name
+  let substDeBruijn = (name, _, ~from as _=?) => name
   let unifiesWithAnything = _ => false
   let upshift = (t, _, ~from as _=?) => t
 }

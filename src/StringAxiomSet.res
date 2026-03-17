@@ -2,7 +2,7 @@ open Component
 
 module Term = StringSExp
 module Judgment = StringSExp
-module JudgmentView = StringTermJView
+module JudgmentView = StringSExpJView
 
 module Rule = Rule.Make(Term, Judgment)
 module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
@@ -38,12 +38,12 @@ let getSExpName = (t: SExp.t): option<string> =>
   }
 
 open StringSExp
-let destructure = (r: Judgment.t): (StringTerm.t, string) =>
+let destructure = (r: Judgment.t): (StringAtom.t, string) =>
   switch r {
   | Compound({subexps: [Atom(StringS(s)), Atom(ConstS(name))]}) => (s, name)
   | _ => throw(Util.Unreachable("expected valid induction rule"))
   }
-let destructureOpt = (r: Judgment.t): option<(StringTerm.t, string)> =>
+let destructureOpt = (r: Judgment.t): option<(StringAtom.t, string)> =>
   switch r {
   | Compound({subexps: [Atom(StringS(s)), Atom(ConstS(name))]}) => Some((s, name))
   | _ => None
@@ -88,8 +88,8 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
   let xIdx = vars->Array.findIndex(i => i == x)
   let aIdx = vars->Array.findIndex(i => i == a)
   let bIdx = vars->Array.findIndex(i => i == b)
-  let surround = (t: StringTerm.t, aIdx: int, bIdx: int) => {
-    Array.concat(Array.concat([StringTerm.Var({idx: aIdx})], t), [StringTerm.Var({idx: bIdx})])
+  let surround = (t: StringAtom.t, aIdx: int, bIdx: int) => {
+    Array.concat(Array.concat([StringAtom.Var({idx: aIdx})], t), [StringAtom.Var({idx: bIdx})])
   }
   let lookupGroup = (name: string): option<int> =>
     mentionedGroups->Array.findIndexOpt(g => name == g.name)
@@ -128,7 +128,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
       mentionedGroups->Array.flatMap(g => g.rules->Array.map(r => replaceJudgeRHS(r, 0))),
     ),
     conclusion: structure(
-      surround([StringTerm.Var({idx: xIdx})], aIdx, bIdx)->StringS->Atom,
+      surround([StringAtom.Var({idx: xIdx})], aIdx, bIdx)->StringS->Atom,
       Var({idx: 0}),
     ), // TODO: clean here
   }

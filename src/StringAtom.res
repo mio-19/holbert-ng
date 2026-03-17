@@ -503,7 +503,9 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
 }
 
-let ghostTerm = [Ghost]
+let lowerSchematic = (schematic, allowed) => [Schematic({schematic, allowed})]
+let lowerVar = idx => [Var({idx: idx})]
+let ghost = [Ghost]
 let unifiesWithAnything = t =>
   t->Array.every(p =>
     switch p {

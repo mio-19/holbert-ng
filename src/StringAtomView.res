@@ -1,4 +1,4 @@
-type props = {term: StringTerm.t, scope: array<string>}
+type props = {name: StringAtom.t, scope: array<string>}
 type idx_props = {idx: int, scope: array<string>}
 let viewVar = (props: idx_props) =>
   switch props.scope[props.idx] {
@@ -28,7 +28,7 @@ let intersperse = a => Util.intersperse(a, ~with=React.string(" "))
 
 module Piece = {
   @react.component
-  let make = (~piece: StringTerm.piece, ~scope) =>
+  let make = (~piece: StringAtom.piece, ~scope) =>
     switch piece {
     | Var({idx}) => viewVar({idx, scope})
     | String(s) => <span className="term-const"> {React.string(s)} </span>
@@ -51,10 +51,10 @@ module Piece = {
 }
 
 @react.componentWithProps
-let make = ({term, scope}) =>
+let make = ({name, scope}) =>
   <span className="term-compound">
     {React.string("\"")}
-    {term
+    {name
     ->Array.mapWithIndex((piece, i) => {
       let key = Int.toString(i)
       <Piece piece scope key />

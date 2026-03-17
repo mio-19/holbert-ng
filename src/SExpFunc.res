@@ -1,7 +1,7 @@
 module type ATOM = {
   type t
   type subst = Map.t<int, t>
-  let unify: (t, t) => Seq.t<subst>
+  let unify: (t, t, ~gen: ref<int>=?) => Seq.t<subst>
   let prettyPrint: (t, ~scope: array<string>) => string
   let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
   let substitute: (t, subst) => t
@@ -10,7 +10,7 @@ module type ATOM = {
   let lowerVar: int => t
   let lowerSchematic: (int, array<int>) => t
   let ghost: t
-  let substDeBruijn: (t, array<t>, ~from: int) => t
+  let substDeBruijn: (t, array<t>, ~from: int=?) => t
   let unifiesWithAnything: t => bool
 }
 

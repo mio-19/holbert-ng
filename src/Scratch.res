@@ -47,7 +47,7 @@ module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
   StringSExp,
   StringSExp,
   MethodView.DerivationView(StringSExp, StringSExp),
-  MethodView.LemmaView(StringSExp, StringSExp, StringTermJView),
+  MethodView.LemmaView(StringSExp, StringSExp, StringSExpJView),
 )
 module DLEStrView = MethodView.CombineMethodView(
   StringSExp,
@@ -56,5 +56,5 @@ module DLEStrView = MethodView.CombineMethodView(
   MethodView.EliminationView(StringSExp, StringSExp),
 )
 module TheoremStr = Editable.TextArea(
-  Theorem.Make(StringSExp, StringSExp, StringTermJView, DLEStrView),
+  Theorem.Make(StringSExp, StringSExp, StringSExpJView, DLEStrView),
 )

@@ -3,6 +3,154 @@ open Zora
 
 let stringifyExn = (t: 'a) => JSON.stringifyAny(t, ~space=2)->Option.getExn
 
+module type CAN_PARSE = {
+  type t
+  type meta
+  type gen
+  let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), string>
+  let prettyPrint: (t, ~scope: array<meta>) => string
+  let makeGen: unit => gen
+}
+
+module MakeParseTester = (Subj: CAN_PARSE) => {
+  let testParse = (
+    t: Zora.t,
+    input: string,
+    expect: Subj.t,
+    ~scope=[],
+    ~msg=?,
+    ~expectRemaining=?,
+  ) => {
+    let res = Subj.parse(input, ~scope, ~gen=Subj.makeGen())
+    switch res {
+    | Ok((parsed, parsedRemaining)) => {
+        t->equal(
+          parsedRemaining,
+          expectRemaining->Option.getOr(""),
+          ~msg=input ++ " input consumed",
+        )
+        // NOTE: we're checking for equality here, not equivalency
+        // error messages are better this way
+        t->equal(parsed, expect, ~msg?)
+      }
+    | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
+    }
+  }
+  let testParseFail = (t: Zora.t, input: string, ~scope=[]) => {
+    let res = Subj.parse(input, ~scope, ~gen=Subj.makeGen())
+    switch res {
+    | Ok((p, remaining)) =>
+      t->fail(
+        ~msg=`parse intended to fail, but succeeded: ${Subj.prettyPrint(
+            p,
+            ~scope,
+          )}\nremaining: ${remaining}`,
+      )
+    | Error(_) => t->ok(true)
+    }
+  }
+  let testParsePrettyPrint = (t: Zora.t, input, expected, ~scope=[]) => {
+    let res = Subj.parse(input, ~scope=[], ~gen=Subj.makeGen())
+
+    switch res {
+    | Ok(res) => {
+        let result = Subj.prettyPrint(res->Pair.first, ~scope)
+        t->equal(result, expected, ~msg="prettyPrint output matches expected")
+      }
+    | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
+    }
+  }
+  let parse = (t: Zora.t, input: string): Subj.t => {
+    let res = Subj.parse(input, ~scope=[], ~gen=Subj.makeGen())
+    switch res {
+    | Ok((term, "")) => term
+    | Ok((_, rest)) => {
+        t->fail(~msg="parse incomplete: " ++ rest)
+        throw(Util.Unreachable(""))
+      }
+    | Error(msg) => {
+        t->fail(~msg="parse failed: " ++ msg)
+        throw(Util.Unreachable(""))
+      }
+    }
+  }
+}
+
+module type CAN_UNIFY = {
+  type t
+  type subst
+  type gen
+  type meta
+  let unify: (t, t, ~gen: gen=?) => Seq.t<subst>
+  let substEqual: (subst, subst) => bool
+  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
+}
+
+module MakeUnifyTester = (Subj: CAN_UNIFY) => {
+  let testUnify = (
+    t: Zora.t,
+    t1: Subj.t,
+    t2: Subj.t,
+    ~expect: option<array<Subj.subst>>=?,
+    ~msg=?,
+  ) => {
+    let res = Subj.unify(t1, t2)->Seq.take(10)
+    switch expect {
+    | Some(expect) => {
+        let expect = Seq.fromArray(expect)
+        let noMatches =
+          expect
+          ->Seq.filter(sub1 => Seq.find(res, sub2 => Subj.substEqual(sub1, sub2))->Option.isNone)
+          ->Seq.map(t => Subj.prettyPrintSubst(t, ~scope=[]))
+          ->Seq.toArray
+        let msg =
+          msg->Option.getOr("each substitution in `expect` should have a match in solutions")
+        t->equal(noMatches, [], ~msg)
+      }
+    | None => {
+        let msg = msg->Option.getOr("expect non-nil substitution sequence")
+        t->ok(res->Seq.head->Option.isSome, ~msg)
+      }
+    }
+  }
+
+  let testUnifyFail = (t: Zora.t, a: Subj.t, b: Subj.t, ~msg=?) => {
+    let res = Subj.unify(a, b)
+    if res->Seq.length != 0 {
+      t->fail(~msg="unification succeeded: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
+    } else {
+      t->ok(true, ~msg=msg->Option.getOr("unification failed"))
+    }
+  }
+}
+
+module MakeAtomTester = (Atom: SExpFunc.ATOM) => {
+  module ParseWrapper: CAN_PARSE
+    with type t = Atom.t
+    and type meta = string
+    and type gen = ref<int> = {
+    include Atom
+    type gen = ref<int>
+    type meta = string
+    let makeGen = () => ref(0)
+  }
+  module ParseTester = MakeParseTester(ParseWrapper)
+  module UnifyWrapper: CAN_UNIFY
+    with type t = Atom.t
+    and type meta = string
+    and type gen = ref<int>
+    and type subst = Atom.subst = {
+    include Atom
+    type meta = string
+    type gen = ref<int>
+    let prettyPrintSubst = (sub, ~scope) =>
+      Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
+    let substEqual = Util.mapEqual
+  }
+  module UnifyTester = MakeUnifyTester(UnifyWrapper)
+}
+
+// TODO: modularise in the same way as AtomTester
 module MakeTerm = (Term: TERM) => {
   let termEquivalent = (t: Zora.t, t1: Term.t, t2: Term.t, ~msg=?) => {
     t->ok(
