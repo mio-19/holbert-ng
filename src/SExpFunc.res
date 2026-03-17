@@ -5,6 +5,7 @@ module type SYMBOL = {
   let prettyPrint: (t, ~scope: array<string>) => string
   let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
   let substitute: (t, subst) => t
+  let upshift: (t, int, ~from: int=?) => t
   // used for when trying to substitute a variable of the wrong type
   let lowerVar: int => t
   let lowerSchematic: (int, array<int>) => t
@@ -194,7 +195,7 @@ module Make = (Symbol: SYMBOL): {
     }
   let rec upshift = (term: t, amount: int, ~from: int=0) =>
     switch term {
-    | Symbol(_) => term
+    | Symbol(s) => Symbol(s->Symbol.upshift(amount, ~from))
     | Compound({subexps}) => Compound({subexps: Array.map(subexps, x => upshift(x, amount, ~from))})
     | Var({idx}) =>
       Var({

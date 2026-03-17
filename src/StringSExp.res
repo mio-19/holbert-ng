@@ -37,6 +37,11 @@ module StringSymbol: SExpFunc.SYMBOL with type t = stringSymbol = {
       }
     | ConstS(s) => ConstS(s)
     }
+  let upshift = (s, amount: int, ~from=?) =>
+    switch s {
+    | StringS(s) => StringS(s->StringTerm.upshift(amount, ~from?))
+    | ConstS(s) => ConstS(s)
+    }
   let lowerVar = idx => StringS([StringTerm.Var({idx: idx})])
   let lowerSchematic = (schematic, allowed) => StringS([StringTerm.Schematic({schematic, allowed})])
   let ghost = StringS([StringTerm.Ghost])

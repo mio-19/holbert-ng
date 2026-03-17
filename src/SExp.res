@@ -20,6 +20,7 @@ module ConstSymbol: SExpFunc.SYMBOL with type t = string = {
   let ghost = ""
   let substDeBruijn = (name, _, ~from as _) => name
   let unifiesWithAnything = _ => false
+  let upshift = (t, _, ~from as _=?) => t
 }
 
 include SExpFunc.Make(ConstSymbol)
