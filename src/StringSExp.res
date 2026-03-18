@@ -67,9 +67,9 @@ module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
       }
     | ConstS(s) => ConstS(s)
     }
-  let unifiesWithAnything = s =>
+  let concrete = s =>
     switch s {
-    | StringS(s) => StringAtom.unifiesWithAnything(s)
+    | StringS(s) => StringAtom.concrete(s)
     | ConstS(_) => false
     }
 }

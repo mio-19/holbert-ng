@@ -19,7 +19,7 @@ module SymbolAtom: SExpFunc.ATOM with type t = string = {
   let lowerSchematic = (_, _) => None
   let ghost = ""
   let substDeBruijn = (name, _, ~from as _=?, ~to as _) => name
-  let unifiesWithAnything = _ => false
+  let concrete = _ => false
   let upshift = (t, _, ~from as _=?) => t
 }
 

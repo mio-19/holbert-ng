@@ -752,7 +752,7 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
 }
 
 let ghostTerm = Unallowed
-let unifiesWithAnything = t =>
+let concrete = t =>
   switch t {
   | Schematic(_) => true
   | _ => false

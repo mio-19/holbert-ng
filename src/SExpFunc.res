@@ -11,7 +11,7 @@ module type ATOM = {
   let lowerSchematic: (int, array<int>) => option<t>
   let ghost: t
   let substDeBruijn: (t, Map.t<int, t>, ~from: int=?, ~to: int) => t
-  let unifiesWithAnything: t => bool
+  let concrete: t => bool
 }
 
 module IntCmp = Belt.Id.MakeComparable({
@@ -431,11 +431,11 @@ module Make = (Atom: ATOM): {
   }
 
   let ghostTerm = Ghost
-  let rec unifiesWithAnything = t =>
+  let rec concrete = t =>
     switch t {
     | Schematic(_) => true
-    | Atom(s) => Atom.unifiesWithAnything(s)
-    | Compound({subexps}) => subexps->Array.every(unifiesWithAnything)
+    | Atom(s) => Atom.concrete(s)
+    | Compound({subexps}) => subexps->Array.every(concrete)
     | _ => false
     }
   let mapTerms = (t, f) => f(t)

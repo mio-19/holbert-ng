@@ -505,7 +505,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 let lowerSchematic = (schematic, allowed) => Some([Schematic({schematic, allowed})])
 let lowerVar = idx => Some([Var({idx: idx})])
 let ghost = [Ghost]
-let unifiesWithAnything = t =>
+let concrete = t =>
   t->Array.every(p =>
     switch p {
     | Schematic(_) => true
