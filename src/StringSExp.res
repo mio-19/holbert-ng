@@ -1,4 +1,4 @@
-type stringSExpAtom = StringS(StringAtom.t) | ConstS(SExp.Atom.t)
+type stringSExpAtom = StringS(StringAtom.t) | ConstS(string)
 
 module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
   type t = stringSExpAtom
@@ -8,20 +8,22 @@ module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
     StringAtom.parse(s, ~scope, ~gen?)
     ->Result.map(((r, rest)) => (StringS(r), rest))
     ->Util.Result.or(() =>
-      SExp.Atom.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
+      SExp.SymbolAtom.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
     )
   }
   let prettyPrint = (s, ~scope) =>
     switch s {
     | StringS(s) => StringAtom.prettyPrint(s, ~scope)
-    | ConstS(s) => SExp.Atom.prettyPrint(s, ~scope)
+    | ConstS(s) => SExp.SymbolAtom.prettyPrint(s, ~scope)
     }
   let unify = (s1, s2, ~gen=?) =>
     switch (s1, s2) {
     | (StringS(s1), StringS(s2)) =>
       StringAtom.unify(s1, s2, ~gen?)->Seq.map(subst => subst->Util.mapMapValues(v => StringS(v)))
     | (ConstS(s1), ConstS(s2)) =>
-      SExp.Atom.unify(s1, s2, ~gen?)->Seq.map(subst => subst->Util.mapMapValues(v => ConstS(v)))
+      SExp.SymbolAtom.unify(s1, s2, ~gen?)->Seq.map(subst =>
+        subst->Util.mapMapValues(v => ConstS(v))
+      )
     | (_, _) => Seq.empty
     }
   let substitute = (s, subst: subst) =>

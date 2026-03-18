@@ -20,8 +20,6 @@ module IntCmp = Belt.Id.MakeComparable({
 })
 
 module Make = (Atom: ATOM): {
-  module Atom: ATOM with type t = Atom.t
-
   type rec t =
     | Atom(Atom.t)
     | Compound({subexps: array<t>})

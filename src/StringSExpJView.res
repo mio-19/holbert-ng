@@ -3,10 +3,11 @@ module StringAtomView: SExpViewFunc.ATOM_VIEW with module Atom := StringSExp.Str
   let make = ({name, scope}: props) =>
     switch name {
     | StringSExp.StringS(name) => <StringAtomView name scope />
-    | StringSExp.ConstS(name) => <SExpView.ConstAtomView name scope />
+    | StringSExp.ConstS(name) => <SExpView.SymbolAtomView name scope />
     }
 }
 
+module StringSExpJ = StringSExp
 module View = SExpViewFunc.Make(StringSExp.StringSExpAtom, StringAtomView, StringSExp)
 
 module TermView = View

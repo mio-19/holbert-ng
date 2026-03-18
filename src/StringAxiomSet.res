@@ -33,7 +33,7 @@ let varsInRule = (rule: Rule.t) => {
 
 let getSExpName = (t: SExp.t): option<string> =>
   switch t {
-  | Atom(name) => Some(name->SExp.Atom.prettyPrint(~scope=[]))
+  | Atom(name) => Some(name->SExp.StringSExpAtom.prettyPrint(~scope=[]))
   | _ => None
   }
 

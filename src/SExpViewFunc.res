@@ -7,20 +7,7 @@ module type ATOM_VIEW = {
 module Make = (
   Atom: SExpFunc.ATOM,
   AtomView: ATOM_VIEW with module Atom := Atom,
-  SExp: {
-    type rec t =
-      | Atom(Atom.t)
-      | Compound({subexps: array<t>})
-      | Var({idx: int})
-      | Schematic({schematic: int, allowed: array<int>})
-      | Ghost
-    include Signatures.TERM
-      with type t := t
-      and type meta = string
-      and type schematic = int
-      and type subst = Map.t<int, t>
-    let mapTerms: (t, t => t) => t
-  },
+  SExp: module type of SExpFunc.Make(Atom),
 ): {
   include Signatures.TERM_VIEW with module Term := SExp
 } => {
