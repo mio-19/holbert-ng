@@ -15,10 +15,10 @@ module SymbolAtom: SExpFunc.ATOM with type t = string = {
     | _ => Error("constant symbol parse error")
     }
   let substitute = (name, _) => name
-  let lowerVar = _ => ""
-  let lowerSchematic = (_, _) => ""
+  let lowerVar = _ => None
+  let lowerSchematic = (_, _) => None
   let ghost = ""
-  let substDeBruijn = (name, _, ~from as _=?) => name
+  let substDeBruijn = (name, _, ~from as _=?, ~to as _) => name
   let unifiesWithAnything = _ => false
   let upshift = (t, _, ~from as _=?) => t
 }

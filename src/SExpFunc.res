@@ -7,10 +7,10 @@ module type ATOM = {
   let substitute: (t, subst) => t
   let upshift: (t, int, ~from: int=?) => t
   // used for when trying to substitute a variable of the wrong type
-  let lowerVar: int => t
-  let lowerSchematic: (int, array<int>) => t
+  let lowerVar: int => option<t>
+  let lowerSchematic: (int, array<int>) => option<t>
   let ghost: t
-  let substDeBruijn: (t, array<t>, ~from: int=?) => t
+  let substDeBruijn: (t, Map.t<int, t>, ~from: int=?, ~to: int) => t
   let unifiesWithAnything: t => bool
 }
 
@@ -155,19 +155,24 @@ module Make = (Atom: ATOM): {
   }
   let unify = (a: t, b: t, ~gen as _=?) => unifyTerm(a, b)
 
-  let rec lower = (term: t): Atom.t =>
+  let rec lower = (term: t): option<Atom.t> =>
     switch term {
-    | Atom(s) => s
+    | Atom(s) => Some(s)
     | Var({idx}) => Atom.lowerVar(idx)
     | Schematic({schematic, allowed}) => Atom.lowerSchematic(schematic, allowed)
     | Compound({subexps: [e1]}) => lower(e1)
-    | _ => Atom.ghost
+    | _ => None
     }
   let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     switch term {
     | Atom(s) => {
-        let symbolSubsts = substs->Array.map(lower)
-        Atom(Atom.substDeBruijn(s, symbolSubsts, ~from))
+        let symbolSubsts =
+          substs
+          ->Array.mapWithIndex((t, i) => lower(t)->Option.map(a => (i, a)))
+          ->Array.keepSome
+          ->Map.fromArray
+
+        Atom(Atom.substDeBruijn(s, symbolSubsts, ~from, ~to=Array.length(substs)))
       }
 
     | Compound({subexps}) =>

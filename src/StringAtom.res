@@ -274,27 +274,26 @@ let unify = (s: array<piece>, t: array<piece>, ~gen as _=?): Seq.t<subst> => {
 }
 
 // law: unify(a,b) == [{}] iff equivalent(a,b)
-let equivalent: (t, t) => bool = (s, t) => s == t
-let substDeBruijn = (string: t, substs: array<t>, ~from: int=0) => {
+let substDeBruijn = (string: t, substs: Map.t<int, t>, ~from: int=0, ~to: int) => {
   Array.flatMap(string, piece =>
     switch piece {
     | String(_) => [piece]
     | Var({idx: var}) =>
       if var < from {
         [piece]
-      } else if var - from < Array.length(substs) && var - from >= 0 {
-        Option.getUnsafe(substs[var - from])
+      } else if var - from < to {
+        Map.get(substs, var - from)->Option.getOr([piece])
       } else {
-        [Var({idx: var - Array.length(substs)})]
+        [Var({idx: var - to})]
       }
     | Schematic({schematic, allowed}) => [
         Schematic({
           schematic,
           allowed: Array.filterMap(allowed, i =>
-            if i < from + Array.length(substs) {
+            if i < from + to {
               None
             } else {
-              Some(i - (from + Array.length(substs)))
+              Some(i - (from + to))
             }
           ),
         }),
@@ -503,8 +502,8 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
 }
 
-let lowerSchematic = (schematic, allowed) => [Schematic({schematic, allowed})]
-let lowerVar = idx => [Var({idx: idx})]
+let lowerSchematic = (schematic, allowed) => Some([Schematic({schematic, allowed})])
+let lowerVar = idx => Some([Var({idx: idx})])
 let ghost = [Ghost]
 let unifiesWithAnything = t =>
   t->Array.every(p =>

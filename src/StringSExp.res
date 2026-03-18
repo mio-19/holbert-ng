@@ -42,19 +42,26 @@ module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
     | StringS(s) => StringS(s->StringAtom.upshift(amount, ~from?))
     | ConstS(s) => ConstS(s)
     }
-  let lowerVar = idx => StringS([StringAtom.Var({idx: idx})])
-  let lowerSchematic = (schematic, allowed) => StringS([StringAtom.Schematic({schematic, allowed})])
+  let lowerVar = idx => Some(StringS([StringAtom.Var({idx: idx})]))
+  let lowerSchematic = (schematic, allowed) => Some(
+    StringS([StringAtom.Schematic({schematic, allowed})]),
+  )
   let ghost = StringS([StringAtom.Ghost])
-  let substDeBruijn = (s, substs: array<t>, ~from=?) =>
+  let substDeBruijn = (s, substs: Map.t<int, t>, ~from=?, ~to: int) =>
     switch s {
     | StringS(s) => {
-        let stringSubs = substs->Array.map(v =>
-          switch v {
-          | StringS(s) => s
-          | _ => [StringAtom.String("AYAYAYSLKDJFLSKDJ")]
-          }
-        )
-        StringS(StringAtom.substDeBruijn(s, stringSubs, ~from?))
+        let stringSubs =
+          substs
+          ->Map.entries
+          ->Iterator.toArrayWithMapper(((i, v)) =>
+            switch v {
+            | StringS(s) => Some((i, s))
+            | _ => None
+            }
+          )
+          ->Array.keepSome
+          ->Map.fromArray
+        StringS(StringAtom.substDeBruijn(s, stringSubs, ~from?, ~to))
       }
     | ConstS(s) => ConstS(s)
     }
