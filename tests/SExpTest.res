@@ -62,8 +62,4 @@ zoraBlock("unify var", t => {
   t->block("comp-schema comp neq", t => {
     t->Util.testUnify(schemaComp, comp1, ~expect=[])
   })
-  t->block("ghost", t => {
-    t->Util.testUnifyFail(x, SExp.ghostTerm)
-    t->Util.testUnify(schema1, SExp.ghostTerm)
-  })
 })

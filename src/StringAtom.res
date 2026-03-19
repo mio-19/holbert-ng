@@ -7,15 +7,10 @@ type piece =
   | String(string)
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
-  | Ghost
 type t = array<piece>
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
-let mapSubst = Util.mapMapValues
-let substEqual = Util.mapEqual
-let makeSubst = () => Map.make()
-let mergeSubsts = Util.mapUnion
 
 let substitute = (term: t, subst: subst) =>
   Array.flatMap(term, piece => {
@@ -43,7 +38,6 @@ let schematicsCountsIn: t => Belt.Map.Int.t<int> = (term: t) =>
 let maxSchematicCount = (term: t) => {
   schematicsCountsIn(term)->Belt.Map.Int.maximum->Option.map(Pair.second)->Option.getOr(0)
 }
-let reduce = t => t
 let freeVarsIn = (term: t): Belt.Set.t<int, IntCmp.identity> =>
   Array.map(term, piece => {
     switch piece {
@@ -177,7 +171,7 @@ let unify = (s: array<piece>, t: array<piece>, ~gen as _=?): Seq.t<subst> => {
             | None => searchSub(schematic, allowed, Eps)
             | Some(p) =>
               switch p {
-              | String(_) | Ghost =>
+              | String(_) =>
                 Array.concat(
                   searchSub(schematic, allowed, PieceLitSub(p)),
                   searchSub(schematic, allowed, Eps),
@@ -298,7 +292,6 @@ let substDeBruijn = (string: t, substs: Map.t<int, t>, ~from: int=0, ~to: int) =
           ),
         }),
       ]
-    | Ghost => [Ghost]
     }
   )
 }
@@ -326,43 +319,11 @@ let upshift = (term: t, amount: int, ~from: int=0) =>
           }
         ),
       })
-    | Ghost => Ghost
     }
   })
 
-let place = (x: int, ~scope: array<string>) => [
-  Schematic({
-    schematic: x,
-    allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
-  }),
-]
-
 type gen = ref<int>
-let seen = (g: gen, s: int) => {
-  if s >= g.contents {
-    g := s + 1
-  }
-}
-let fresh = (g: gen, ~replacing as _=?) => {
-  let v = g.contents
-  g := g.contents + 1
-  v
-}
-let makeGen = () => {
-  ref(0)
-}
 
-let parseMeta = (str: string) => {
-  let re = /^([^\s.\[\]()]+)\./y
-  switch re->RegExp.exec(str->String.trim) {
-  | None => Error("not a meta name")
-  | Some(res) =>
-    switch RegExp.Result.matches(res) {
-    | [n] => Ok(n, String.sliceToEnd(str->String.trim, ~start=RegExp.lastIndex(re)))
-    | _ => Error("impossible happened")
-    }
-  }
-}
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   "$" ++
   switch scope[idx] {
@@ -381,11 +342,8 @@ let prettyPrint = (term: t, ~scope: array<string>) =>
             ->Array.join(" ")
           `?${Int.toString(schematic)}(${allowedStr})`
         }
-      | Ghost => "§String.Ghost"
       }
     })->Array.join(" ")}"`
-let prettyPrintMeta = (str: string) => `${str}.`
-let prettyPrintSubst = (sub, ~scope) => Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
 
 type remaining = string
 type errorMessage = string
@@ -504,7 +462,6 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
 
 let lowerSchematic = (schematic, allowed) => Some([Schematic({schematic, allowed})])
 let lowerVar = idx => Some([Var({idx: idx})])
-let ghost = [Ghost]
 let concrete = t =>
   t->Array.every(p =>
     switch p {

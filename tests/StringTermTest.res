@@ -50,11 +50,6 @@ zoraBlock("unify", t => {
   let b = parse(`"b"`)
   let x = parse(`"?1()"`)
   let y = parse(`"?2()"`)
-  t->block("ghost", t => {
-    t->UnifyUtil.testUnifyFail(a, StringAtom.ghost)
-    t->UnifyUtil.testUnify(x, StringAtom.ghost)
-    t->UnifyUtil.testUnify([x, y, x]->Array.flat, StringAtom.ghost)
-  })
   t->block("schematics on at most one side", t => {
     t->UnifyUtil.testUnify(a, a, ~expect=[Map.make()])
     t->UnifyUtil.testUnify(x, a, ~expect=[Map.fromArray([(1, a)])])

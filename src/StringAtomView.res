@@ -46,7 +46,6 @@ module Piece = {
           ->React.array}
         </span>
       </span>
-    | Ghost => <span className="term-const"> {React.string("§String.Ghost")} </span>
     }
 }
 

@@ -2,7 +2,6 @@ type rec piece =
   | String(string)
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
-  | Ghost
 type t = array<piece>
 type subst = Map.t<int, t>
 type gen = ref<int>

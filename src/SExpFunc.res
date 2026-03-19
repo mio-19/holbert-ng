@@ -9,7 +9,6 @@ module type ATOM = {
   // used for when trying to substitute a variable of the wrong type
   let lowerVar: int => option<t>
   let lowerSchematic: (int, array<int>) => option<t>
-  let ghost: t
   let substDeBruijn: (t, Map.t<int, t>, ~from: int=?, ~to: int) => t
   let concrete: t => bool
 }
@@ -25,7 +24,6 @@ module Make = (Atom: ATOM): {
     | Compound({subexps: array<t>})
     | Var({idx: int})
     | Schematic({schematic: int, allowed: array<int>})
-    | Ghost
 
   include Signatures.TERM
     with type t := t
@@ -39,7 +37,6 @@ module Make = (Atom: ATOM): {
     | Compound({subexps: array<t>})
     | Var({idx: int})
     | Schematic({schematic: int, allowed: array<int>})
-    | Ghost
   module Atom = Atom
   type meta = string
   type schematic = int
@@ -194,7 +191,6 @@ module Make = (Atom: ATOM): {
           }
         ),
       })
-    | Ghost => Ghost
     }
   let rec upshift = (term: t, amount: int, ~from: int=0) =>
     switch term {
@@ -219,7 +215,6 @@ module Make = (Atom: ATOM): {
           }
         ),
       })
-    | Ghost => Ghost
     }
   let place = (x: int, ~scope: array<string>) => Schematic({
     schematic: x,
@@ -261,7 +256,6 @@ module Make = (Atom: ATOM): {
       "("
       ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
       ->String.concat(")")
-    | Ghost => "§SExp.Ghost"
     }
 
   let prettyPrintSubst = (sub, ~scope) =>
@@ -430,7 +424,6 @@ module Make = (Atom: ATOM): {
     }
   }
 
-  let ghostTerm = Ghost
   let rec concrete = t =>
     switch t {
     | Schematic(_) => true

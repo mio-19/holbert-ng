@@ -29,12 +29,17 @@ module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
   let substitute = (s, subst: subst) =>
     switch s {
     | StringS(s) => {
-        let stringSubs = subst->Util.mapMapValues(v =>
-          switch v {
-          | StringS(s) => s
-          | _ => [StringAtom.Ghost]
-          }
-        )
+        let stringSubs =
+          subst
+          ->Map.entries
+          ->Iterator.toArrayWithMapper(((i, v)) =>
+            switch v {
+            | StringS(s) => Some((i, s))
+            | _ => None
+            }
+          )
+          ->Array.keepSome
+          ->Map.fromArray
         StringS(StringAtom.substitute(s, stringSubs))
       }
     | ConstS(s) => ConstS(s)
@@ -48,7 +53,6 @@ module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
   let lowerSchematic = (schematic, allowed) => Some(
     StringS([StringAtom.Schematic({schematic, allowed})]),
   )
-  let ghost = StringS([StringAtom.Ghost])
   let substDeBruijn = (s, substs: Map.t<int, t>, ~from=?, ~to: int) =>
     switch s {
     | StringS(s) => {

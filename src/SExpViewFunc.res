@@ -75,6 +75,5 @@ module Make = (
           ->React.array}
         </span>
       </span>
-    | Ghost => React.null
     }
 }
