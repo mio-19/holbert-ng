@@ -3,7 +3,6 @@ type rec piece =
   | Var({idx: int})
   | Schematic({schematic: int, allowed: array<int>})
 type t = array<piece>
-type subst = Map.t<int, t>
-type gen = ref<int>
 
-include SExpFunc.ATOM with type t := t and type subst := subst
+module Atom: SExpFunc.ATOM with type t = t
+module AtomView: SExpViewFunc.ATOM_VIEW with module Atom := Atom

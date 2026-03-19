@@ -1,29 +1,27 @@
-type stringSExpAtom = StringS(StringAtom.t) | ConstS(string)
+type t = StringS(StringA.Atom.t) | ConstS(string)
 
-module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
-  type t = stringSExpAtom
+module Atom: SExpFunc.ATOM with type t = t = {
+  type t = t
   type subst = Map.t<int, t>
   type gen = ref<int>
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
-    StringAtom.parse(s, ~scope, ~gen?)
+    StringA.Atom.parse(s, ~scope, ~gen?)
     ->Result.map(((r, rest)) => (StringS(r), rest))
     ->Util.Result.or(() =>
-      SExp.SymbolAtom.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
+      Symbolic.Atom.parse(s, ~scope, ~gen?)->Result.map(((r, rest)) => (ConstS(r), rest))
     )
   }
   let prettyPrint = (s, ~scope) =>
     switch s {
-    | StringS(s) => StringAtom.prettyPrint(s, ~scope)
-    | ConstS(s) => SExp.SymbolAtom.prettyPrint(s, ~scope)
+    | StringS(s) => StringA.Atom.prettyPrint(s, ~scope)
+    | ConstS(s) => Symbolic.Atom.prettyPrint(s, ~scope)
     }
   let unify = (s1, s2, ~gen=?) =>
     switch (s1, s2) {
     | (StringS(s1), StringS(s2)) =>
-      StringAtom.unify(s1, s2, ~gen?)->Seq.map(subst => subst->Util.mapMapValues(v => StringS(v)))
+      StringA.Atom.unify(s1, s2, ~gen?)->Seq.map(subst => subst->Util.mapMapValues(v => StringS(v)))
     | (ConstS(s1), ConstS(s2)) =>
-      SExp.SymbolAtom.unify(s1, s2, ~gen?)->Seq.map(subst =>
-        subst->Util.mapMapValues(v => ConstS(v))
-      )
+      Symbolic.Atom.unify(s1, s2, ~gen?)->Seq.map(subst => subst->Util.mapMapValues(v => ConstS(v)))
     | (_, _) => Seq.empty
     }
   let substitute = (s, subst: subst) =>
@@ -40,18 +38,18 @@ module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
           )
           ->Array.keepSome
           ->Map.fromArray
-        StringS(StringAtom.substitute(s, stringSubs))
+        StringS(StringA.Atom.substitute(s, stringSubs))
       }
     | ConstS(s) => ConstS(s)
     }
   let upshift = (s, amount: int, ~from=?) =>
     switch s {
-    | StringS(s) => StringS(s->StringAtom.upshift(amount, ~from?))
+    | StringS(s) => StringS(s->StringA.Atom.upshift(amount, ~from?))
     | ConstS(s) => ConstS(s)
     }
-  let lowerVar = idx => Some(StringS([StringAtom.Var({idx: idx})]))
+  let lowerVar = idx => Some(StringS([StringA.Var({idx: idx})]))
   let lowerSchematic = (schematic, allowed) => Some(
-    StringS([StringAtom.Schematic({schematic, allowed})]),
+    StringS([StringA.Schematic({schematic, allowed})]),
   )
   let substDeBruijn = (s, substs: Map.t<int, t>, ~from=?, ~to: int) =>
     switch s {
@@ -67,15 +65,22 @@ module StringSExpAtom: SExpFunc.ATOM with type t = stringSExpAtom = {
           )
           ->Array.keepSome
           ->Map.fromArray
-        StringS(StringAtom.substDeBruijn(s, stringSubs, ~from?, ~to))
+        StringS(StringA.Atom.substDeBruijn(s, stringSubs, ~from?, ~to))
       }
     | ConstS(s) => ConstS(s)
     }
   let concrete = s =>
     switch s {
-    | StringS(s) => StringAtom.concrete(s)
+    | StringS(s) => StringA.Atom.concrete(s)
     | ConstS(_) => false
     }
 }
 
-include SExpFunc.Make(StringSExpAtom)
+module AtomView: SExpViewFunc.ATOM_VIEW with module Atom := Atom = {
+  type props = {name: Atom.t, scope: array<string>}
+  let make = ({name, scope}: props) =>
+    switch name {
+    | StringS(name) => <StringA.AtomView name scope />
+    | ConstS(name) => <Symbolic.AtomView name scope />
+    }
+}

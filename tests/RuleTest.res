@@ -42,14 +42,14 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 //           vars: [],
 //           premises: [],
 //           conclusion: StringSExp.Compound(
-//             [StringAtom.Var({idx: 0})],
-//             SExp.pAtom("p")->StringAtomJudgment.ConstS->StringSExp.Atom,
+//             [StringA.Atom.Var({idx: 0})],
+//             SExp.pAtom("p")->StringA.AtomJudgment.ConstS->StringSymbolic.Atom,
 //           ),
 //         },
 //       ],
 //       conclusion: (
-//         [StringAtom.String("("), StringAtom.Var({idx: 0}), StringAtom.String(")")],
-//         SExp.pAtom("p")->StringAtomJudgment.ConstS->StringSExp.Atom,
+//         [StringA.Atom.String("("), StringA.Atom.Var({idx: 0}), StringA.Atom.String(")")],
+//         SExp.pAtom("p")->StringA.AtomJudgment.ConstS->StringSymbolic.Atom,
 //       ),
 //     },
 //   )

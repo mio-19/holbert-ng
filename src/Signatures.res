@@ -24,6 +24,7 @@ module type TERM = {
   let parseMeta: string => result<(meta, string), string>
   let prettyPrint: (t, ~scope: array<meta>) => string
   let prettyPrintMeta: meta => string
+  // will unifying t with a term give meaningful substitutions?
   let concrete: t => bool
 }
 
@@ -40,7 +41,6 @@ module type JUDGMENT = {
   let mapTerms: (t, Term.t => Term.t) => t
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
   let prettyPrint: (t, ~scope: array<Term.meta>) => string
-  // will unifying t with a term give meaningful substitutions?
   let concrete: t => bool
 }
 

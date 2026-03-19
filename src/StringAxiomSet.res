@@ -1,12 +1,12 @@
 open Component
 
-module Term = StringSExp
-module Judgment = StringSExp
-module JudgmentView = StringSExpJView
+module StringSExp = SExpFunc.Make(StringSymbol.Atom)
+module TermView = SExpViewFunc.Make(StringSymbol.Atom, StringSymbol.AtomView, StringSExp)
+module JudgmentView = TermViewAsJudgmentView.Make(StringSExp, StringSExp, TermView)
 
-module Rule = Rule.Make(Term, Judgment)
-module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
-module Ports = Ports(Term, Judgment)
+module Rule = Rule.Make(StringSExp, StringSExp)
+module RuleView = RuleView.Make(StringSExp, StringSExp, JudgmentView)
+module Ports = Ports(StringSExp, StringSExp)
 type state = {
   raw: dict<Rule.t>,
   derived: dict<Rule.t>,
@@ -24,31 +24,29 @@ type judgeGroup = {
 }
 
 module Set = Belt.Set.String
-module SExp = StringSExp
 let varsInRule = (rule: Rule.t) => {
   rule.premises->Array.reduce(Set.fromArray(rule.vars), (s, r) =>
     s->Set.union(Set.fromArray(r.vars))
   )
 }
 
-let getSExpName = (t: SExp.t): option<string> =>
+let getSExpName = (t: StringSExp.t): option<string> =>
   switch t {
-  | Atom(name) => Some(name->SExp.StringSExpAtom.prettyPrint(~scope=[]))
+  | Atom(name) => Some(name->StringSymbol.Atom.prettyPrint(~scope=[]))
   | _ => None
   }
 
-open StringSExp
-let destructure = (r: Judgment.t): (StringAtom.t, string) =>
+let destructure = (r: StringSExp.t): (StringA.Atom.t, string) =>
   switch r {
   | Compound({subexps: [Atom(StringS(s)), Atom(ConstS(name))]}) => (s, name)
   | _ => throw(Util.Unreachable("expected valid induction rule"))
   }
-let destructureOpt = (r: Judgment.t): option<(StringAtom.t, string)> =>
+let destructureOpt = (r: StringSExp.t): option<(StringA.Atom.t, string)> =>
   switch r {
   | Compound({subexps: [Atom(StringS(s)), Atom(ConstS(name))]}) => Some((s, name))
   | _ => None
   }
-let structure = (lhs: StringSExp.t, rhs: StringSExp.t): Judgment.t => Compound({
+let structure = (lhs: StringSExp.t, rhs: StringSExp.t): StringSExp.t => Compound({
   subexps: [lhs, rhs],
 })
 let findMentionedRuleGroups = (group: judgeGroup, allGroups: array<judgeGroup>): array<
@@ -88,8 +86,8 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
   let xIdx = vars->Array.findIndex(i => i == x)
   let aIdx = vars->Array.findIndex(i => i == a)
   let bIdx = vars->Array.findIndex(i => i == b)
-  let surround = (t: StringAtom.t, aIdx: int, bIdx: int) => {
-    Array.concat(Array.concat([StringAtom.Var({idx: aIdx})], t), [StringAtom.Var({idx: bIdx})])
+  let surround = (t: StringA.Atom.t, aIdx: int, bIdx: int) => {
+    Array.concat(Array.concat([StringA.Var({idx: aIdx})], t), [StringA.Var({idx: bIdx})])
   }
   let lookupGroup = (name: string): option<int> =>
     mentionedGroups->Array.findIndexOpt(g => name == g.name)
@@ -128,7 +126,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
       mentionedGroups->Array.flatMap(g => g.rules->Array.map(r => replaceJudgeRHS(r, 0))),
     ),
     conclusion: structure(
-      surround([StringAtom.Var({idx: xIdx})], aIdx, bIdx)->StringS->Atom,
+      surround([StringA.Var({idx: xIdx})], aIdx, bIdx)->StringS->Atom,
       Var({idx: 0}),
     ), // TODO: clean here
   }

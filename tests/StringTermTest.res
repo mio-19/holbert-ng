@@ -1,6 +1,6 @@
 open Zora
 
-module Util = TestUtil.MakeAtomTester(StringAtom)
+module Util = TestUtil.MakeAtomTester(StringA.Atom)
 module ParseUtil = Util.ParseTester
 
 zoraBlock("parse", t => {
@@ -41,7 +41,7 @@ zoraBlock("parse", t => {
 })
 
 let parse = (input: string) =>
-  StringAtom.parse(input, ~scope=[], ~gen=Util.ParseWrapper.makeGen())->Result.getExn->Pair.first
+  StringA.Atom.parse(input, ~scope=[], ~gen=Util.ParseWrapper.makeGen())->Result.getExn->Pair.first
 
 module UnifyUtil = Util.UnifyTester
 

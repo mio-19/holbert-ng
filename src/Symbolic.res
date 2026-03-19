@@ -1,4 +1,5 @@
-module SymbolAtom: SExpFunc.ATOM with type t = string = {
+type t = string
+module Atom = {
   type t = string
   type subst = Map.t<int, string>
   let unify = (a, b, ~gen as _=?) =>
@@ -22,4 +23,7 @@ module SymbolAtom: SExpFunc.ATOM with type t = string = {
   let upshift = (t, _, ~from as _=?) => t
 }
 
-include SExpFunc.Make(SymbolAtom)
+module AtomView = {
+  type props = {name: string, scope: array<string>}
+  let make = (props: props) => React.string(props.name)
+}
