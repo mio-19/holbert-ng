@@ -2,7 +2,7 @@ open Signatures
 open Method
 
 module MakeRewriteHOTerm = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
   Config: {
     let keyword: string
     let reversed: bool
@@ -43,7 +43,7 @@ module MakeRewriteHOTerm = (
 
   type t<'a> = {
     equalityName: string,
-    instantiation: array<Judgment.substCodom>,
+    instantiation: array<Term.t>,
     subgoal: 'a,
   }
 
@@ -57,10 +57,10 @@ module MakeRewriteHOTerm = (
     }
   }
 
-  let substitute = (it: t<'a>, subst: Judgment.subst) => {
+  let substitute = (it: t<'a>, subst: Term.subst) => {
     {
       equalityName: it.equalityName,
-      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstCodom(subst)),
+      instantiation: it.instantiation->Array.map(t => t->Judgment.substitute(subst)),
       subgoal: it.subgoal,
     }
   }
@@ -72,7 +72,7 @@ module MakeRewriteHOTerm = (
     ~subprinter: ('a, ~scope: array<HOTerm.meta>, ~indentation: int=?) => string,
   ) => {
     let ind = String.repeat(" ", indentation)
-    let args = it.instantiation->Array.map(t => Judgment.prettyPrintSubstCodom(t, ~scope))
+    let args = it.instantiation->Array.map(t => Term.prettyPrint(t, ~scope))
     let argsStr = if Array.length(args) > 0 {
       " " ++ Array.join(args, " ")
     } else {
@@ -98,7 +98,7 @@ module MakeRewriteHOTerm = (
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Judgment.parseSubstCodom(cur.contents, ~scope, ~gen)
+            it := Term.parse(cur.contents, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -157,7 +157,7 @@ module MakeRewriteHOTerm = (
   }
 
   let apply = (ctx: Context.t, j: Judgment.t, gen: HOTerm.gen, f: Rule.t => 'a) => {
-    let ret: Dict.t<(t<'a>, Judgment.subst)> = Dict.make()
+    let ret: Dict.t<(t<'a>, Term.subst)> = Dict.make()
 
     ctx
     ->Context.facts
@@ -246,7 +246,7 @@ module MakeRewriteHOTerm = (
 }
 
 module Rewrite = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => MakeRewriteHOTerm(
   Judgment,
   {
@@ -256,7 +256,7 @@ module Rewrite = (
 )
 
 module RewriteReverse = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => MakeRewriteHOTerm(
   Judgment,
   {
@@ -265,9 +265,7 @@ module RewriteReverse = (
   },
 )
 
-module ConstructorNeq = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
-) => {
+module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t) => {
   module Term = HOTerm
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
@@ -321,7 +319,7 @@ module ConstructorNeq = (
 
   let map = (it: t<'a>, _f: 'a => 'b): t<'b> => it
 
-  let substitute = (it: t<'a>, _subst: Judgment.subst) => it
+  let substitute = (it: t<'a>, _subst: Term.subst) => it
 
   let prettyPrint = (_it: t<'a>, ~scope as _, ~indentation=0, ~subprinter as _) =>
     String.repeat(" ", indentation)->String.concat("constructor_neq")
@@ -353,9 +351,7 @@ module ConstructorNeq = (
     }
 }
 
-module ConstructorInj = (
-  Judgment: JUDGMENT with module Term := HOTerm and type subst = HOTerm.subst and type t = HOTerm.t,
-) => {
+module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t) => {
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
 
@@ -370,7 +366,7 @@ module ConstructorInj = (
 
   let map = (it: t<'a>, _f: 'a => 'b): t<'b> => it
 
-  let substitute = (it: t<'a>, _subst: Judgment.subst) => it
+  let substitute = (it: t<'a>, _subst: HOTerm.subst) => it
 
   let prettyPrint = (it: t<'a>, ~scope as _, ~indentation=0, ~subprinter as _) =>
     String.repeat(" ", indentation)->String.concat(

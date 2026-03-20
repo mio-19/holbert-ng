@@ -1,5 +1,4 @@
 open Signatures
-open Util
 module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   type t = {
@@ -17,9 +16,9 @@ module type PROOF_METHOD = {
   module Context: module type of Context(Term, Judgment)
   type t<'a>
   let keywords: array<string>
-  let substitute: (t<'a>, Judgment.subst) => t<'a>
+  let substitute: (t<'a>, Term.subst) => t<'a>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
-  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Dict.t<(t<'a>, Judgment.subst)>
+  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Dict.t<(t<'a>, Term.subst)>
   let map: (t<'a>, 'a => 'b) => t<'b>
   let parse: (
     string,
@@ -37,13 +36,14 @@ module type PROOF_METHOD = {
 }
 
 let seqSizeLimit = 100
+let newline = Util.newline
 
 module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
   type t<'a> = {
     ruleName: string,
-    instantiation: array<Judgment.substCodom>,
+    instantiation: array<Term.t>,
     subgoals: array<'a>,
   }
   let map = (it: t<'a>, f) => {
@@ -53,10 +53,10 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
       subgoals: it.subgoals->Array.map(f),
     }
   }
-  let substitute = (it: t<'a>, subst: Judgment.subst) => {
+  let substitute = (it: t<'a>, subst: Term.subst) => {
     {
       ruleName: it.ruleName,
-      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstCodom(subst)),
+      instantiation: it.instantiation->Array.map(t => t->Term.substitute(subst)),
       subgoals: it.subgoals,
     }
   }
@@ -68,7 +68,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ~indentation=0,
     ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
   ) => {
-    let args = it.instantiation->Array.map(t => Judgment.prettyPrintSubstCodom(t, ~scope))
+    let args = it.instantiation->Array.map(t => Term.prettyPrint(t, ~scope))
     "by ("
     ->String.concat(Array.join([it.ruleName]->Array.concat(args), " "))
     ->String.concat(") {")
@@ -95,7 +95,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Judgment.parseSubstCodom(cur.contents, ~scope, ~gen)
+            it := Term.parse(cur.contents, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -147,8 +147,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ->Array.filterMap(((key, rule)) => {
       let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
-      let ghostSubs = Judgment.unify(Judgment.ghostJudgment, res.conclusion)
-      if ghostSubs->Seq.head->Option.isNone {
+      if !Judgment.concrete(res.conclusion) {
         Some((key, res, insts))
       } else {
         None
@@ -212,7 +211,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
   type t<'a> = {
     ruleName: string,
     elimName: string,
-    instantiation: array<Judgment.substCodom>,
+    instantiation: array<Term.t>,
     subgoals: array<'a>,
   }
   exception InternalParseError(string)
@@ -229,7 +228,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       ""
     }
     let instantiation = Array.join(
-      it.instantiation->Array.map(t => Judgment.prettyPrintSubstCodom(t, ~scope)),
+      it.instantiation->Array.map(t => Term.prettyPrint(t, ~scope)),
       " ",
     )
     let subgoalsStr =
@@ -248,11 +247,11 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     }
   }
 
-  let substitute = (it: t<'a>, subst: Judgment.subst) => {
+  let substitute = (it: t<'a>, subst: Term.subst) => {
     {
       ruleName: it.ruleName,
       elimName: it.elimName,
-      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstCodom(subst)),
+      instantiation: it.instantiation->Array.map(t => t->Term.substitute(subst)),
       subgoals: it.subgoals,
     }
   }
@@ -270,7 +269,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Judgment.parseSubstCodom(cur.contents, ~scope, ~gen)
+            it := Term.parse(cur.contents, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -394,7 +393,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
                   instantiation: ruleInsts,
                   subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
                 }
-                let subst = Judgment.mergeSubsts(elimSub, ruleSub)
+                let subst = Term.mergeSubsts(elimSub, ruleSub)
                 ret->Dict.set(`elim ${ruleName} with ${elimName}`, (new, subst))
               },
             )
@@ -421,7 +420,7 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       show: f(it.show),
     }
   }
-  let substitute = (it: t<'a>, subst: Judgment.subst) => {
+  let substitute = (it: t<'a>, subst: Term.subst) => {
     {
       rule: it.rule->Rule.substitute(subst),
       proof: it.proof,

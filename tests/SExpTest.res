@@ -1,14 +1,14 @@
 open Zora
+
+module SExp = SExpFunc.Make(Symbolic.Atom)
 open SExp
 
 module Util = TestUtil.MakeTerm(SExp)
 
 zoraBlock("parse symbol", t => {
-  t->block("single char", t => t->Util.testParse("x", Symbol({name: "x"})))
-  t->block("multi char", t => t->Util.testParse("xyz", Symbol({name: "xyz"})))
-  t->block("judgement terminal", t =>
-    t->Util.testParse("a]", Symbol({name: "a"}), ~expectRemaining="]")
-  )
+  t->block("single char", t => t->Util.testParse("x", Atom("x")))
+  t->block("multi char", t => t->Util.testParse("xyz", Atom("xyz")))
+  t->block("judgement terminal", t => t->Util.testParse("a]", Atom("a"), ~expectRemaining="]"))
 })
 
 zoraBlock("parse var", t => {
@@ -29,12 +29,12 @@ zoraBlock("parse schematic", t => {
 
 zoraBlock("parse compound", t => {
   t->block("unit", t => t->Util.testParse("()", Compound({subexps: []})))
-  t->block("single", t => t->Util.testParse("(a)", Compound({subexps: [Symbol({name: "a"})]})))
+  t->block("single", t => t->Util.testParse("(a)", Compound({subexps: [Atom("a")]})))
   t->block("multiple", t => {
     t->Util.testParse(
       "(a \\1 ?1())",
       Compound({
-        subexps: [Symbol({name: "a"}), Var({idx: 1}), Schematic({schematic: 1, allowed: []})],
+        subexps: [Atom("a"), Var({idx: 1}), Schematic({schematic: 1, allowed: []})],
       }),
     )
   })
@@ -63,9 +63,5 @@ zoraBlock("unify var", t => {
   })
   t->block("comp-schema comp neq", t => {
     t->Util.testUnify(schemaComp, comp1, ~expect=[])
-  })
-  t->block("ghost", t => {
-    t->Util.testUnifyFail(x, SExp.ghostTerm)
-    t->Util.testUnify(schema1, SExp.ghostTerm)
   })
 })

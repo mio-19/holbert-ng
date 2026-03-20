@@ -5,18 +5,17 @@ let ruleNamePattern = "^[^|()\\s\\-—][^()\\s]*"
 let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s]*)?"
 module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   type rec t = {vars: array<Term.meta>, premises: array<t>, conclusion: Judgment.t}
-  let rec substitute = (rule: t, subst: Judgment.subst) => {
-    let subst' =
-      subst->Judgment.mapSubst(v => v->Judgment.upshiftSubstCodom(Array.length(rule.vars)))
+  let rec substitute = (rule: t, subst: Term.subst) => {
+    let subst' = subst->Term.mapSubst(v => v->Term.upshift(Array.length(rule.vars)))
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),
       conclusion: rule.conclusion->Judgment.substitute(subst')->Judgment.reduce,
     }
   }
-  let rec substDeBruijn = (rule: t, substs: array<Judgment.substCodom>, ~from: int=0) => {
+  let rec substDeBruijn = (rule: t, substs: array<Term.t>, ~from: int=0) => {
     let len = Array.length(rule.vars)
-    let substs' = substs->Array.map(v => v->Judgment.upshiftSubstCodom(len, ~from))
+    let substs' = substs->Array.map(v => v->Term.upshift(len, ~from))
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise =>
@@ -36,13 +35,13 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
   type bare = {premises: array<t>, conclusion: Judgment.t}
-  let substituteBare = (rule: bare, subst: Judgment.subst) => {
+  let substituteBare = (rule: bare, subst: Term.subst) => {
     {
       premises: rule.premises->Array.map(premise => premise->substitute(subst)),
       conclusion: rule.conclusion->Judgment.substitute(subst)->Judgment.reduce,
     }
   }
-  let instantiate = (rule: t, terms: array<Judgment.substCodom>) => {
+  let instantiate = (rule: t, terms: array<Term.t>) => {
     assert(Array.length(terms) == Array.length(rule.vars))
     let terms' = [...terms]
     Array.reverse(terms')
@@ -51,8 +50,8 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       conclusion: rule.conclusion->Judgment.substDeBruijn(terms')->Judgment.reduce,
     }
   }
-  let genSchemaInsts = (rule: t, gen: Term.gen, ~scope: array<Judgment.meta>) => {
-    rule.vars->Array.map(m => Judgment.placeSubstCodom(gen->Term.fresh(~replacing=m), ~scope))
+  let genSchemaInsts = (rule: t, gen: Term.gen, ~scope: array<Term.meta>) => {
+    rule.vars->Array.map(m => Term.place(gen->Term.fresh(~replacing=m), ~scope))
   }
   let parseRuleName = str => {
     let re = RegExp.fromStringWithFlags(ruleNamePattern, ~flags="y")

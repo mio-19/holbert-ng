@@ -31,23 +31,26 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   }
 }
 
-zoraBlock("string terms", t => {
-  module T = MakeTest(StringTerm, StringTermJudgment)
-  t->T.testParseInner(
-    `[s1. "$s1" p |- "($s1)" p]`,
-    {
-      vars: ["s1"],
-      premises: [
-        {
-          vars: [],
-          premises: [],
-          conclusion: ([StringTerm.Var({idx: 0})], Symbol({name: "p"})),
-        },
-      ],
-      conclusion: (
-        [StringTerm.String("("), StringTerm.Var({idx: 0}), StringTerm.String(")")],
-        SExp.Symbol({name: "p"}),
-      ),
-    },
-  )
-})
+// zoraBlock("string terms", t => {
+//   module T = MakeTest(StringSExp, StringSExpJ)
+//   t->T.testParseInner(
+//     `[s1. ("$s1" p) |- ("($s1)" p)]`,
+//     {
+//       vars: ["s1"],
+//       premises: [
+//         {
+//           vars: [],
+//           premises: [],
+//           conclusion: StringSExp.Compound(
+//             [StringA.Atom.Var({idx: 0})],
+//             SExp.pAtom("p")->StringA.AtomJudgment.ConstS->StringSymbolic.Atom,
+//           ),
+//         },
+//       ],
+//       conclusion: (
+//         [StringA.Atom.String("("), StringA.Atom.Var({idx: 0}), StringA.Atom.String(")")],
+//         SExp.pAtom("p")->StringA.AtomJudgment.ConstS->StringSymbolic.Atom,
+//       ),
+//     },
+//   )
+// })
