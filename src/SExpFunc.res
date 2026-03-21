@@ -144,9 +144,17 @@ module Make = (Atom: ATOM): {
       unifyTerm(x, y)->Seq.flatMap(s1 =>
         a
         ->Array.sliceToEnd(~start=1)
-        ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
+        ->Array.filterMap(((t1, t2)) =>
+          try {Some((substitute(t1, s1), substitute(t2, s1)))} catch {
+          | SubstNotCompatible(_) => None
+          }
+        )
         ->unifyArray
-        ->Seq.map(s2 => combineSubst(s1, s2))
+        ->Seq.filterMap(s2 =>
+          try {Some(combineSubst(s1, s2))} catch {
+          | SubstNotCompatible(_) => None
+          }
+        )
       )
     }
   }
