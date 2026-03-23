@@ -1,13 +1,13 @@
 open Component
 
-module StringSymbol = CombinedAtom.MakeAtomAndView(
+module StringSymbol = AtomDef.MakeAtomAndView(
   Coercible.StringA,
   StringA.AtomView,
   Coercible.Symbolic,
   Symbolic.AtomView,
 )
-module StringSExp = SExpFunc.Make(StringSymbol.Atom)
-module TermView = SExpViewFunc.Make(StringSymbol.Atom, StringSymbol.AtomView, StringSExp)
+module StringSExp = SExp.Make(StringSymbol.Atom)
+module TermView = SExpView.Make(StringSymbol.Atom, StringSymbol.AtomView, StringSExp)
 module JudgmentView = TermViewAsJudgmentView.Make(StringSExp, StringSExp, TermView)
 
 module Rule = Rule.Make(StringSExp, StringSExp)

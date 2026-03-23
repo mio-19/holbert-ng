@@ -1,8 +1,6 @@
 // type level stuff to enable well-typed coercions
 type typeTag<_> = ..
 type rec eq<_, _> = Refl: eq<'a, 'a>
-// coercion<t> represents a coercion from some type 'a to t
-type rec coercion<_> = Coercion(typeTag<'a>, 'a => option<'b>): coercion<'b>
 
 module type ATOM = {
   type t
@@ -21,6 +19,8 @@ module type ATOM = {
   let concrete: t => bool
 }
 
+// coercion<t> represents a coercion from some type 'a to t
+type rec coercion<_> = Coercion(typeTag<'a>, 'a => option<'b>): coercion<'b>
 module type COERCIBLE_ATOM = {
   include ATOM
   let coercions: array<coercion<t>>
@@ -36,7 +36,9 @@ module MakeCoercible = (
   let coercions = Coercions.coercions
 }
 
-exception RawVarOrSchematic
+exception MatchCombineAtomVar
+exception MatchCombineAtomSchematic
+
 module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
   type base =
     | Left(Left.t)
@@ -80,7 +82,8 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     switch t {
     | Left(s) => leftBranch(s)
     | Right(s) => rightBranch(s)
-    | _ => throw(RawVarOrSchematic)
+    | Var(_) => throw(MatchCombineAtomVar)
+    | Schematic(_) => throw(MatchCombineAtomSchematic)
     }
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
     Left.parse(s, ~scope, ~gen?)
@@ -165,4 +168,37 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
       },
     )
   let concrete = s => s->match(Left.concrete, Right.concrete)
+}
+
+module type ATOM_VIEW = {
+  module Atom: ATOM
+  type props = {name: Atom.t, scope: array<string>}
+  let make: props => React.element
+}
+
+module MakeAtomView = (
+  Left: COERCIBLE_ATOM,
+  LeftView: ATOM_VIEW with module Atom := Left,
+  Right: COERCIBLE_ATOM,
+  RightView: ATOM_VIEW with module Atom := Right,
+  Combined: module type of CombineAtom(Left, Right),
+): {
+  include ATOM_VIEW with module Atom := Combined
+} => {
+  type props = {name: Combined.t, scope: array<string>}
+  let make = ({name, scope}: props) =>
+    name->Combined.match(
+      left => <LeftView name={left} scope />,
+      right => <RightView name={right} scope />,
+    )
+}
+
+module MakeAtomAndView = (
+  Left: COERCIBLE_ATOM,
+  LeftView: ATOM_VIEW with module Atom := Left,
+  Right: COERCIBLE_ATOM,
+  RightView: ATOM_VIEW with module Atom := Right,
+) => {
+  module Atom = CombineAtom(Left, Right)
+  module AtomView = MakeAtomView(Left, LeftView, Right, RightView, Atom)
 }

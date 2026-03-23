@@ -5,4 +5,4 @@ type rec piece =
 type t = array<piece>
 
 module Atom: AtomDef.ATOM with type t = t
-module AtomView: SExpViewFunc.ATOM_VIEW with module Atom := Atom
+module AtomView: AtomDef.ATOM_VIEW with module Atom := Atom

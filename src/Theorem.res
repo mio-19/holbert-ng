@@ -63,7 +63,7 @@ module Make = (
           Proof.check(ctx, proof, props.content.rule)->ignore
           {...props.content, proof, substFailed: None}
         } catch {
-        | SExpFunc.SubstNotCompatible(s) => {...props.content, substFailed: Some(s)}
+        | SExp.SubstNotCompatible(s) => {...props.content, substFailed: Some(s)}
         },
         ~exports={
           Ports.facts: Dict.fromArray([(props.content.name, props.content.rule)]),

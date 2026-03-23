@@ -291,7 +291,7 @@ module Atom = {
           | Some(v) => v
           | None =>
             throw(
-              SExpFunc.SubstNotCompatible(`index ${Int.toString(var - from)} not of sort string`),
+              SExp.SubstNotCompatible(`index ${Int.toString(var - from)} not of sort string`),
             )
           }
         } else {
