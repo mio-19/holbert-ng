@@ -12,8 +12,16 @@ type meta = string
 type schematic = int
 
 module Atom = {
+  open AtomDef
   type t = t
   type subst = Map.t<schematic, t>
+  type typeTag<_> += Tag: typeTag<t>
+  let tag = Tag
+  let tagEq = (type a, tag: typeTag<a>): option<eq<t, a>> =>
+    switch tag {
+    | Tag => Some(Refl)
+    | _ => None
+    }
   let substitute = (term: t, subst: subst) =>
     Array.flatMap(term, piece => {
       switch piece {
@@ -481,12 +489,6 @@ module AtomView = {
         {React.int(props.idx)}
       </span>
     }
-
-  let makeMeta = (str: string) =>
-    <span className="rule-binder">
-      {React.string(str)}
-      {React.string(".")}
-    </span>
 
   let parenthesise = f =>
     [

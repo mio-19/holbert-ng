@@ -43,9 +43,9 @@ module TheoremS = Editable.TextArea(Theorem.Make(HOTerm, HOTerm, HOTermJView, DL
 module ConfS = ConfigBlock.Make(HOTerm, HOTerm)
 
 module StringSymbol = CombinedAtom.MakeAtomAndView(
-  StringA.Atom,
+  Coercible.StringA,
   StringA.AtomView,
-  Symbolic.Atom,
+  Coercible.Symbolic,
   Symbolic.AtomView,
 )
 module StringSExp = SExpFunc.Make(StringSymbol.Atom)

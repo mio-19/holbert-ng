@@ -1,7 +1,15 @@
 type t = string
 module Atom = {
+  open AtomDef
   type t = string
   type subst = Map.t<int, string>
+  type typeTag<_> += Tag: typeTag<t>
+  let tag = Tag
+  let tagEq = (type a, tag: typeTag<a>): option<eq<t, a>> =>
+    switch tag {
+    | Tag => Some(Refl)
+    | _ => None
+    }
   let unify = (a, b, ~gen as _=?) =>
     if a == b {
       Seq.once(Map.make())
