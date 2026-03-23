@@ -42,6 +42,12 @@ module DLREView = MethodView.CombineMethodView(
 module TheoremS = Editable.TextArea(Theorem.Make(HOTerm, HOTerm, HOTermJView, DLRView))
 module ConfS = ConfigBlock.Make(HOTerm, HOTerm)
 
+module StringSymbol = CombinedAtom.MakeAtomAndView(
+  StringA.Atom,
+  StringA.AtomView,
+  Symbolic.Atom,
+  Symbolic.AtomView,
+)
 module StringSExp = SExpFunc.Make(StringSymbol.Atom)
 module TermView = SExpViewFunc.Make(StringSymbol.Atom, StringSymbol.AtomView, StringSExp)
 module StringSExpJView = TermViewAsJudgmentView.Make(StringSExp, StringSExp, TermView)

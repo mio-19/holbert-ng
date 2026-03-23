@@ -333,24 +333,12 @@ module Atom = {
 
   type gen = ref<int>
 
-  let prettyPrintVar = (idx: int, scope: array<string>) =>
-    "$" ++
-    switch scope[idx] {
-    | Some(n) if Array.indexOf(scope, n) == idx => n
-    | _ => "\\"->String.concat(String.make(idx))
-    }
   let prettyPrint = (term: t, ~scope: array<string>) =>
     `"${Array.map(term, piece => {
         switch piece {
         | String(str) => str
-        | Var({idx}) => prettyPrintVar(idx, scope)
-        | Schematic({schematic, allowed}) => {
-            let allowedStr =
-              allowed
-              ->Array.map(idx => prettyPrintVar(idx, scope))
-              ->Array.join(" ")
-            `?${Int.toString(schematic)}(${allowedStr})`
-          }
+        | Var({idx}) => Util.prettyPrintVar(idx, scope)
+        | Schematic({schematic, allowed}) => Util.prettyPrintSchematic(schematic, allowed, scope)
         }
       })->Array.join(" ")}"`
 
