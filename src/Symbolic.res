@@ -3,9 +3,8 @@ module Atom = {
   open AtomDef
   type t = string
   type subst = Map.t<int, string>
-  type typeTag<_> += Tag: typeTag<t>
-  let tag = Tag
-  let tagEq = (type a, tag: typeTag<a>): option<eq<t, a>> =>
+  type atomTag<_> += Tag: atomTag<t>
+  let tagEq = (type a, tag: atomTag<a>): option<eq<t, a>> =>
     switch tag {
     | Tag => Some(Refl)
     | _ => None

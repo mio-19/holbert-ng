@@ -1,12 +1,12 @@
 // type level stuff to enable well-typed coercions
-type typeTag<_> = ..
+type atomTag<_> = ..
 type rec eq<_, _> = Refl: eq<'a, 'a>
 
 module type ATOM = {
   type t
   type subst = Map.t<int, t>
-  let tagEq: typeTag<'a> => option<eq<t, 'a>>
-  let tag: typeTag<t>
+  type atomTag<_> += Tag: atomTag<t>
+  let tagEq: atomTag<'a> => option<eq<t, 'a>>
   let unify: (t, t, ~gen: ref<int>=?) => Seq.t<subst>
   let prettyPrint: (t, ~scope: array<string>) => string
   let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
@@ -19,18 +19,18 @@ module type ATOM = {
   let concrete: t => bool
 }
 
-type rec existsValue = ExistsValue(typeTag<'a>, 'a): existsValue
+type rec hValue = HValue(atomTag<'a>, 'a): hValue
 module type COERCIBLE_ATOM = {
   include ATOM
-  let liftForeign: existsValue => option<t>
-  let unwrap: t => existsValue
+  let liftHValue: hValue => option<t>
+  let getHValue: t => hValue
 }
 
 // coercion<t> represents a coercion from some type 'a to t,
 // along with a function that effectively checks whether its argument is
-// an instance of the coerced type. see usage in MakeCoercible.liftForeign
+// an instance of the coerced type. see usage in MakeCoercible.liftHValue
 type rec coercion<_> =
-  Coercion({tagEq: 'c. typeTag<'c> => option<eq<'a, 'c>>, coerce: 'a => option<'b>}): coercion<'b>
+  Coercion({tagEq: 'c. atomTag<'c> => option<eq<'a, 'c>>, coerce: 'a => option<'b>}): coercion<'b>
 module MakeCoercible = (
   Atom: ATOM,
   Coercions: {
@@ -38,14 +38,14 @@ module MakeCoercible = (
   },
 ): (COERCIBLE_ATOM with type t = Atom.t) => {
   include Atom
-  let liftForeign = (ExistsValue(tag, val)) =>
+  let liftHValue = (HValue(tag, val)) =>
     Array.findMap(Coercions.coercions, (Coercion(c)) =>
       switch c.tagEq(tag) {
       | Some(Refl) => c.coerce(val)
       | None => None
       }
     )
-  let unwrap = t => ExistsValue(Atom.tag, t)
+  let getHValue = t => HValue(Atom.Tag, t)
 }
 
 exception MatchCombineAtomBoth
@@ -59,8 +59,8 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     // should not be parsed or otherwise appear organically
     | Both(option<Left.t>, option<Right.t>)
     // likewise, strictly for Atom <-> Atom coercions
-    // occurs only when passed from some upper part of the tree
-    | Foreign(existsValue)
+    // occurs only when passed from some sibling part of the tree
+    | Foreign(hValue)
   include COERCIBLE_ATOM with type t = base
   let match: (t, Left.t => 'a, Right.t => 'a) => 'a
 } => {
@@ -68,18 +68,17 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     | Left(Left.t)
     | Right(Right.t)
     | Both(option<Left.t>, option<Right.t>)
-    | Foreign(existsValue)
+    | Foreign(hValue)
   type t = base
   type subst = Map.t<int, t>
   type gen = ref<int>
-  type typeTag<_> += Tag: typeTag<t>
-  let tag = Tag
-  let tagEq = (type a, tag: typeTag<a>): option<eq<t, a>> =>
+  type atomTag<_> += Tag: atomTag<t>
+  let tagEq = (type a, tag: atomTag<a>): option<eq<t, a>> =>
     switch tag {
     | Tag => Some(Refl)
     | _ => None
     }
-  let liftForeign = v => Some(Foreign(v))
+  let liftHValue = v => Some(Foreign(v))
   let match = (t, leftBranch: Left.t => 'a, rightBranch: Right.t => 'a): 'a =>
     switch t {
     | Left(s) => leftBranch(s)
@@ -87,7 +86,7 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     | Both(_) => throw(MatchCombineAtomBoth)
     | Foreign(_) => throw(MatchCombineAtomForeign)
     }
-  let unwrap = t => t->match(Left.unwrap, Right.unwrap)
+  let getHValue = t => t->match(Left.getHValue, Right.getHValue)
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
     Left.parse(s, ~scope, ~gen?)
     ->Result.map(((r, rest)) => (Left(r), rest))
@@ -109,15 +108,15 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     switch t {
     | Left(s) => Some(s)
     | Both(os, _) => os
-    | Right(s) => s->Right.unwrap->Left.liftForeign
-    | Foreign(v) => Left.liftForeign(v)
+    | Right(s) => s->Right.getHValue->Left.liftHValue
+    | Foreign(v) => Left.liftHValue(v)
     }
   let coerceToRight = (t): option<Right.t> =>
     switch t {
     | Right(s) => Some(s)
     | Both(_, os) => os
-    | Left(s) => s->Left.unwrap->Right.liftForeign
-    | Foreign(v) => Right.liftForeign(v)
+    | Left(s) => s->Left.getHValue->Right.liftHValue
+    | Foreign(v) => Right.liftHValue(v)
     }
   let substitute = (s, subst: subst) => {
     s->match(

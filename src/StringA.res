@@ -15,9 +15,8 @@ module Atom = {
   open AtomDef
   type t = t
   type subst = Map.t<schematic, t>
-  type typeTag<_> += Tag: typeTag<t>
-  let tag = Tag
-  let tagEq = (type a, tag: typeTag<a>): option<eq<t, a>> =>
+  type atomTag<_> += Tag: atomTag<t>
+  let tagEq = (type a, tag: atomTag<a>): option<eq<t, a>> =>
     switch tag {
     | Tag => Some(Refl)
     | _ => None
@@ -290,9 +289,7 @@ module Atom = {
           switch Option.getUnsafe(substs[var - from]) {
           | Some(v) => v
           | None =>
-            throw(
-              SExp.SubstNotCompatible(`index ${Int.toString(var - from)} not of sort string`),
-            )
+            throw(SExp.SubstNotCompatible(`index ${Int.toString(var - from)} not of sort string`))
           }
         } else {
           [Var({idx: var - to})]
