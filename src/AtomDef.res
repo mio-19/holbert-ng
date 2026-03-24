@@ -19,16 +19,18 @@ module type ATOM = {
   let concrete: t => bool
 }
 
-// coercion<t> represents a coercion from some type 'a to t
-type rec coercion<_> =
-  Coercion({tagEq: 'c. typeTag<'c> => option<eq<'a, 'c>>, coerce: 'a => option<'b>}): coercion<'b>
 type rec existsValue = ExistsValue(typeTag<'a>, 'a): existsValue
 module type COERCIBLE_ATOM = {
   include ATOM
-  let coercions: array<coercion<t>>
+  let liftForeign: existsValue => option<t>
   let unwrap: t => existsValue
 }
 
+// coercion<t> represents a coercion from some type 'a to t,
+// along with a function that effectively checks whether its argument is
+// an instance of the coerced type. see usage in MakeCoercible.liftForeign
+type rec coercion<_> =
+  Coercion({tagEq: 'c. typeTag<'c> => option<eq<'a, 'c>>, coerce: 'a => option<'b>}): coercion<'b>
 module MakeCoercible = (
   Atom: ATOM,
   Coercions: {
@@ -36,26 +38,37 @@ module MakeCoercible = (
   },
 ): (COERCIBLE_ATOM with type t = Atom.t) => {
   include Atom
-  let coercions = Coercions.coercions
+  let liftForeign = (ExistsValue(tag, val)) =>
+    Array.findMap(Coercions.coercions, (Coercion(c)) =>
+      switch c.tagEq(tag) {
+      | Some(Refl) => c.coerce(val)
+      | None => None
+      }
+    )
   let unwrap = t => ExistsValue(Atom.tag, t)
 }
 
 exception MatchCombineAtomBoth
+exception MatchCombineAtomForeign
 
 module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
-  type base =
+  type rec base =
     | Left(Left.t)
     | Right(Right.t)
     // used strictly for SExp -> Atom coercions
     // should not be parsed or otherwise appear organically
     | Both(option<Left.t>, option<Right.t>)
+    // likewise, strictly for Atom <-> Atom coercions
+    // occurs only when passed from some upper part of the tree
+    | Foreign(existsValue)
   include COERCIBLE_ATOM with type t = base
   let match: (t, Left.t => 'a, Right.t => 'a) => 'a
 } => {
-  type base =
+  type rec base =
     | Left(Left.t)
     | Right(Right.t)
     | Both(option<Left.t>, option<Right.t>)
+    | Foreign(existsValue)
   type t = base
   type subst = Map.t<int, t>
   type gen = ref<int>
@@ -66,22 +79,13 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     | Tag => Some(Refl)
     | _ => None
     }
-  let coercions = {
-    let left = Left.coercions->Array.map((Coercion(c)) => Coercion({
-      ...c,
-      coerce: x => c.coerce(x)->Option.map(v => Left(v)),
-    }))
-    let right = Right.coercions->Array.map((Coercion(c)) => Coercion({
-      ...c,
-      coerce: x => c.coerce(x)->Option.map(v => Right(v)),
-    }))
-    Array.concat(left, right)
-  }
+  let liftForeign = v => Some(Foreign(v))
   let match = (t, leftBranch: Left.t => 'a, rightBranch: Right.t => 'a): 'a =>
     switch t {
     | Left(s) => leftBranch(s)
     | Right(s) => rightBranch(s)
     | Both(_) => throw(MatchCombineAtomBoth)
+    | Foreign(_) => throw(MatchCombineAtomForeign)
     }
   let unwrap = t => t->match(Left.unwrap, Right.unwrap)
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
@@ -101,34 +105,28 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
       Right.unify(s1, s2, ~gen?)->Seq.map(subst => subst->Util.mapMapValues(v => Right(v)))
     | (_, _) => Seq.empty
     }
-  let coerceLeft = (left: Left.t): option<Right.t> => {
-    let ExistsValue(srcTag, srcVal) = Left.unwrap(left)
-    Array.findMap(Right.coercions, (Coercion(c)) =>
-      switch c.tagEq(srcTag) {
-      | Some(Refl) => c.coerce(srcVal)
-      | None => None
-      }
-    )
-  }
-  let coerceRight = (right: Right.t): option<Left.t> => {
-    let ExistsValue(srcTag, srcVal) = Right.unwrap(right)
-    Array.findMap(Left.coercions, (Coercion(c)) =>
-      switch c.tagEq(srcTag) {
-      | Some(Refl) => c.coerce(srcVal)
-      | None => None
-      }
-    )
-  }
+  let coerceToLeft = (t): option<Left.t> =>
+    switch t {
+    | Left(s) => Some(s)
+    | Both(os, _) => os
+    | Right(s) => s->Right.unwrap->Left.liftForeign
+    | Foreign(v) => Left.liftForeign(v)
+    }
+  let coerceToRight = (t): option<Right.t> =>
+    switch t {
+    | Right(s) => Some(s)
+    | Both(_, os) => os
+    | Left(s) => s->Left.unwrap->Right.liftForeign
+    | Foreign(v) => Right.liftForeign(v)
+    }
   let substitute = (s, subst: subst) => {
     s->match(
       left => {
-        let leftSubs =
-          subst->Util.Map.filterMap((_, v) => v->match(left => Some(left), coerceRight))
+        let leftSubs = subst->Util.Map.filterMap((_, v) => coerceToLeft(v))
         Left(Left.substitute(left, leftSubs))
       },
       right => {
-        let rightSubs =
-          subst->Util.Map.filterMap((_, v) => v->match(coerceLeft, right => Some(right)))
+        let rightSubs = subst->Util.Map.filterMap((_, v) => coerceToRight(v))
         Right(Right.substitute(right, rightSubs))
       },
     )
@@ -145,27 +143,11 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
   let substDeBruijn = (s, substs: array<option<t>>, ~from=?) =>
     s->match(
       left => {
-        let leftSubs = substs->Array.map(o =>
-          o->Option.flatMap(s =>
-            switch s {
-            | Left(s) => Some(s)
-            | Both(os, _) => os
-            | Right(s) => coerceRight(s)
-            }
-          )
-        )
+        let leftSubs = substs->Array.map(o => o->Option.flatMap(coerceToLeft))
         Left(Left.substDeBruijn(left, leftSubs, ~from?))
       },
       right => {
-        let rightSubs = substs->Array.map(o =>
-          o->Option.flatMap(s =>
-            switch s {
-            | Right(s) => Some(s)
-            | Both(_, os) => os
-            | Left(s) => coerceLeft(s)
-            }
-          )
-        )
+        let rightSubs = substs->Array.map(o => o->Option.flatMap(coerceToRight))
         Right(Right.substDeBruijn(right, rightSubs, ~from?))
       },
     )
