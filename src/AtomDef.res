@@ -20,10 +20,13 @@ module type ATOM = {
 }
 
 // coercion<t> represents a coercion from some type 'a to t
-type rec coercion<_> = Coercion(typeTag<'a>, 'a => option<'b>): coercion<'b>
+type rec coercion<_> =
+  Coercion({tagEq: 'c. typeTag<'c> => option<eq<'a, 'c>>, coerce: 'a => option<'b>}): coercion<'b>
+type rec existsValue = ExistsValue(typeTag<'a>, 'a): existsValue
 module type COERCIBLE_ATOM = {
   include ATOM
   let coercions: array<coercion<t>>
+  let unwrap: t => existsValue
 }
 
 module MakeCoercible = (
@@ -34,27 +37,25 @@ module MakeCoercible = (
 ): (COERCIBLE_ATOM with type t = Atom.t) => {
   include Atom
   let coercions = Coercions.coercions
+  let unwrap = t => ExistsValue(Atom.tag, t)
 }
 
-exception MatchCombineAtomVar
-exception MatchCombineAtomSchematic
+exception MatchCombineAtomBoth
 
 module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
   type base =
     | Left(Left.t)
     | Right(Right.t)
-    // neither of the below should appear organically. they're purely so we can lower
-    // substitutions to both Left.t and Right.t
-    | Var({idx: int})
-    | Schematic({schematic: int, allowed: array<int>})
+    // used strictly for SExp -> Atom coercions
+    // should not be parsed or otherwise appear organically
+    | Both(option<Left.t>, option<Right.t>)
   include COERCIBLE_ATOM with type t = base
   let match: (t, Left.t => 'a, Right.t => 'a) => 'a
 } => {
   type base =
     | Left(Left.t)
     | Right(Right.t)
-    | Var({idx: int})
-    | Schematic({schematic: int, allowed: array<int>})
+    | Both(option<Left.t>, option<Right.t>)
   type t = base
   type subst = Map.t<int, t>
   type gen = ref<int>
@@ -66,25 +67,23 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     | _ => None
     }
   let coercions = {
-    let left =
-      Left.coercions->Array.map((Coercion((tag, f))) => Coercion((
-        tag,
-        x => f(x)->Option.map(v => Left(v)),
-      )))
-    let right =
-      Right.coercions->Array.map((Coercion((tag, f))) => Coercion((
-        tag,
-        x => f(x)->Option.map(v => Right(v)),
-      )))
+    let left = Left.coercions->Array.map((Coercion(c)) => Coercion({
+      ...c,
+      coerce: x => c.coerce(x)->Option.map(v => Left(v)),
+    }))
+    let right = Right.coercions->Array.map((Coercion(c)) => Coercion({
+      ...c,
+      coerce: x => c.coerce(x)->Option.map(v => Right(v)),
+    }))
     Array.concat(left, right)
   }
   let match = (t, leftBranch: Left.t => 'a, rightBranch: Right.t => 'a): 'a =>
     switch t {
     | Left(s) => leftBranch(s)
     | Right(s) => rightBranch(s)
-    | Var(_) => throw(MatchCombineAtomVar)
-    | Schematic(_) => throw(MatchCombineAtomSchematic)
+    | Both(_) => throw(MatchCombineAtomBoth)
     }
+  let unwrap = t => t->match(Left.unwrap, Right.unwrap)
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
     Left.parse(s, ~scope, ~gen?)
     ->Result.map(((r, rest)) => (Left(r), rest))
@@ -102,17 +101,20 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
       Right.unify(s1, s2, ~gen?)->Seq.map(subst => subst->Util.mapMapValues(v => Right(v)))
     | (_, _) => Seq.empty
     }
-  let coerceLeft = (left: Left.t): option<Right.t> =>
-    Array.findMap(Right.coercions, (Coercion((tag, f))) =>
-      switch Left.tagEq(tag) {
-      | Some(Refl) => f(left)
+  let coerceLeft = (left: Left.t): option<Right.t> => {
+    let ExistsValue(srcTag, srcVal) = Left.unwrap(left)
+    Array.findMap(Right.coercions, (Coercion(c)) =>
+      switch c.tagEq(srcTag) {
+      | Some(Refl) => c.coerce(srcVal)
       | None => None
       }
     )
+  }
   let coerceRight = (right: Right.t): option<Left.t> => {
-    Array.findMap(Left.coercions, (Coercion((tag, f))) =>
-      switch Right.tagEq(tag) {
-      | Some(Refl) => f(right)
+    let ExistsValue(srcTag, srcVal) = Right.unwrap(right)
+    Array.findMap(Left.coercions, (Coercion(c)) =>
+      switch c.tagEq(srcTag) {
+      | Some(Refl) => c.coerce(srcVal)
       | None => None
       }
     )
@@ -136,8 +138,10 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
       left => Left(left->Left.upshift(amount, ~from?)),
       right => Right(right->Right.upshift(amount, ~from?)),
     )
-  let lowerVar = idx => Some(Var({idx: idx}))
-  let lowerSchematic = (schematic, allowed) => Some(Schematic({schematic, allowed}))
+  let lowerVar = idx => Some(Both(Left.lowerVar(idx), Right.lowerVar(idx)))
+  let lowerSchematic = (schematic, allowed) => Some(
+    Both(Left.lowerSchematic(schematic, allowed), Right.lowerSchematic(schematic, allowed)),
+  )
   let substDeBruijn = (s, substs: array<option<t>>, ~from=?) =>
     s->match(
       left => {
@@ -145,8 +149,7 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
           o->Option.flatMap(s =>
             switch s {
             | Left(s) => Some(s)
-            | Var({idx}) => Left.lowerVar(idx)
-            | Schematic({schematic, allowed}) => Left.lowerSchematic(schematic, allowed)
+            | Both(os, _) => os
             | Right(s) => coerceRight(s)
             }
           )
@@ -158,8 +161,7 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
           o->Option.flatMap(s =>
             switch s {
             | Right(s) => Some(s)
-            | Var({idx}) => Right.lowerVar(idx)
-            | Schematic({schematic, allowed}) => Right.lowerSchematic(schematic, allowed)
+            | Both(_, os) => os
             | Left(s) => coerceLeft(s)
             }
           )

@@ -3,7 +3,12 @@ open AtomDef
 module StringA = MakeCoercible(
   StringA.Atom,
   {
-    let coercions = [Coercion((Symbolic.Atom.tag, s => Some([StringA.String(s)])))]
+    let coercions = [
+      Coercion({
+        tagEq: Symbolic.Atom.tagEq,
+        coerce: s => Some([StringA.String(s)]),
+      }),
+    ]
   },
 )
 
