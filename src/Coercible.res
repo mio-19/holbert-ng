@@ -8,6 +8,14 @@ module StringA = MakeCoercible(
         tagEq: Symbolic.Atom.tagEq,
         coerce: s => Some([StringA.String(s)]),
       }),
+      Coercion({
+        tagEq: tagEqSExp,
+        coerce: t =>
+          switch t {
+          | Var({idx}) => Some([StringA.Var({idx: idx})])
+          | Schematic({schematic, allowed}) => Some([StringA.Schematic({schematic, allowed})])
+          },
+      }),
     ]
   },
 )

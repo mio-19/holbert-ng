@@ -7,7 +7,7 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-module Make = (Atom: ATOM): {
+module Make = (Atom: AtomDef.COERCIBLE_ATOM): {
   type rec t =
     | Atom(Atom.t)
     | Compound({subexps: array<t>})
@@ -150,8 +150,9 @@ module Make = (Atom: ATOM): {
   let rec lower = (term: t): option<Atom.t> =>
     switch term {
     | Atom(s) => Some(s)
-    | Var({idx}) => Atom.lowerVar(idx)
-    | Schematic({schematic, allowed}) => Atom.lowerSchematic(schematic, allowed)
+    | Var({idx}) => Atom.liftHValue(HValue(AtomDef.SExpTag, AtomDef.Var({idx: idx})))
+    | Schematic({schematic, allowed}) =>
+      Atom.liftHValue(HValue(AtomDef.SExpTag, AtomDef.Schematic({schematic, allowed})))
     | Compound({subexps: [e1]}) => lower(e1)
     | _ => None
     }

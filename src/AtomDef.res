@@ -12,9 +12,6 @@ module type ATOM = {
   let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
   let substitute: (t, subst) => t
   let upshift: (t, int, ~from: int=?) => t
-  // used for when trying to substitute a variable of the wrong type
-  let lowerVar: int => option<t>
-  let lowerSchematic: (int, array<int>) => option<t>
   let substDeBruijn: (t, array<option<t>>, ~from: int=?) => t
   let concrete: t => bool
 }
@@ -25,6 +22,14 @@ module type COERCIBLE_ATOM = {
   let liftHValue: hValue => option<t>
   let getHValue: t => hValue
 }
+
+type loweredSExp = Var({idx: int}) | Schematic({schematic: int, allowed: array<int>})
+type atomTag<_> += SExpTag: atomTag<loweredSExp>
+let tagEqSExp = (type a, tag: atomTag<a>): option<eq<loweredSExp, a>> =>
+  switch tag {
+  | SExpTag => Some(Refl)
+  | _ => None
+  }
 
 // coercion<t> represents a coercion from some type 'a to t,
 // along with a function that effectively checks whether its argument is
@@ -55,11 +60,9 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
   type rec base =
     | Left(Left.t)
     | Right(Right.t)
-    // used strictly for SExp -> Atom coercions
-    // should not be parsed or otherwise appear organically
-    | Both(option<Left.t>, option<Right.t>)
-    // likewise, strictly for Atom <-> Atom coercions
-    // occurs only when passed from some sibling part of the tree
+    // strictly for coercions
+    // occurs when passed from some relative in the tree
+    // or when SExp values are lowered into loweredSExp
     | Foreign(hValue)
   include COERCIBLE_ATOM with type t = base
   let match: (t, Left.t => 'a, Right.t => 'a) => 'a
@@ -67,7 +70,6 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
   type rec base =
     | Left(Left.t)
     | Right(Right.t)
-    | Both(option<Left.t>, option<Right.t>)
     | Foreign(hValue)
   type t = base
   type subst = Map.t<int, t>
@@ -83,7 +85,6 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     switch t {
     | Left(s) => leftBranch(s)
     | Right(s) => rightBranch(s)
-    | Both(_) => throw(MatchCombineAtomBoth)
     | Foreign(_) => throw(MatchCombineAtomForeign)
     }
   let getHValue = t => t->match(Left.getHValue, Right.getHValue)
@@ -107,14 +108,12 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
   let coerceToLeft = (t): option<Left.t> =>
     switch t {
     | Left(s) => Some(s)
-    | Both(os, _) => os
     | Right(s) => s->Right.getHValue->Left.liftHValue
     | Foreign(v) => Left.liftHValue(v)
     }
   let coerceToRight = (t): option<Right.t> =>
     switch t {
     | Right(s) => Some(s)
-    | Both(_, os) => os
     | Left(s) => s->Left.getHValue->Right.liftHValue
     | Foreign(v) => Right.liftHValue(v)
     }
@@ -135,10 +134,6 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
       left => Left(left->Left.upshift(amount, ~from?)),
       right => Right(right->Right.upshift(amount, ~from?)),
     )
-  let lowerVar = idx => Some(Both(Left.lowerVar(idx), Right.lowerVar(idx)))
-  let lowerSchematic = (schematic, allowed) => Some(
-    Both(Left.lowerSchematic(schematic, allowed), Right.lowerSchematic(schematic, allowed)),
-  )
   let substDeBruijn = (s, substs: array<option<t>>, ~from=?) =>
     s->match(
       left => {

@@ -23,8 +23,6 @@ module Atom = {
     | _ => Error("constant symbol parse error")
     }
   let substitute = (name, _) => name
-  let lowerVar = _ => None
-  let lowerSchematic = (_, _) => None
   let substDeBruijn = (name, _, ~from as _=?) => name
   let concrete = _ => false
   let upshift = (t, _, ~from as _=?) => t

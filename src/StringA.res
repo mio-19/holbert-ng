@@ -12,11 +12,10 @@ type meta = string
 type schematic = int
 
 module Atom = {
-  open AtomDef
   type t = t
   type subst = Map.t<schematic, t>
-  type atomTag<_> += Tag: atomTag<t>
-  let tagEq = (type a, tag: atomTag<a>): option<eq<t, a>> =>
+  type AtomDef.atomTag<_> += Tag: AtomDef.atomTag<t>
+  let tagEq = (type a, tag: AtomDef.atomTag<a>): option<AtomDef.eq<t, a>> =>
     switch tag {
     | Tag => Some(Refl)
     | _ => None
@@ -461,9 +460,6 @@ module Atom = {
 
     acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
   }
-
-  let lowerSchematic = (schematic, allowed) => Some([Schematic({schematic, allowed})])
-  let lowerVar = idx => Some([Var({idx: idx})])
   let concrete = t =>
     t->Array.every(p =>
       switch p {
