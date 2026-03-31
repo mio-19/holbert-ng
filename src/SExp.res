@@ -250,10 +250,6 @@ module Make = (Atom: AtomDef.COERCIBLE_ATOM): {
 
   let prettyPrintSubst = (sub, ~scope) =>
     Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
-  let symbolRegexpString = `^([^\\s()\\[\\]]+)`
-  let varRegexpString = "^\\\\([0-9]+)$"
-  let schematicRegexpString = "^\\?([0-9]+)$"
-  type lexeme = LParen | RParen | VarT(int) | AtomT(Atom.t) | SchematicT(int)
   let nameRES = "^([^\\s.\\[\\]()]+)\\."
   let prettyPrintMeta = (str: string) => {
     String.concat(str, ".")
@@ -269,149 +265,49 @@ module Make = (Atom: AtomDef.COERCIBLE_ATOM): {
       }
     }
   }
-  let parse = (str: string, ~scope: array<string>, ~gen=?) => {
-    let cur = ref(String.make(str))
-    let lex: unit => option<lexeme> = () => {
-      let str = String.trim(cur.contents)
-      cur := str
-      let checkVariable = (candidate: string) => {
-        let varRegexp = RegExp.fromString(varRegexpString)
-        switch Array.indexOf(scope, candidate) {
-        | -1 =>
-          switch varRegexp->RegExp.exec(candidate) {
-          | Some(res') =>
-            switch RegExp.Result.matches(res') {
-            | [idx] => Some(idx->Int.fromString->Option.getUnsafe)
-            | _ => None
-            }
-          | None => None
+  let mkParser = (~scope: array<string>, ~gen=?): Parser.t<t> => {
+    open Parser
+    let varLit = string("\\")->then(decimal)
+    let ident = regex1(/([^\s\(\)]+)/)
+    let varIdx =
+      varLit
+      ->or(
+        ident->bind(id =>
+          switch scope->Array.indexOfOpt(id) {
+          | Some(idx) => pure(idx)
+          | None => fail("expected variable")
           }
-        | idx => Some(idx)
-        }
-      }
-      if String.get(str, 0) == Some("(") {
-        cur := String.sliceToEnd(str, ~start=1)
-        Some(LParen)
-      } else if String.get(str, 0) == Some(")") {
-        cur := String.sliceToEnd(str, ~start=1)
-        Some(RParen)
-      } else {
-        let symbolRegexp = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
-        switch symbolRegexp->RegExp.exec(str) {
-        | None => None
-        | Some(res) =>
-          switch RegExp.Result.matches(res) {
-          | [symb] => {
-              let specialSymb = tok => {
-                cur := String.sliceToEnd(str, ~start=RegExp.lastIndex(symbolRegexp))
-                Some(tok)
-              }
-              let regularSymb = () => {
-                // FIX: not ideal to throw away symbol error message
-                Console.log(("current", cur.contents))
-                Atom.parse(cur.contents, ~scope)
-                ->Util.Result.ok
-                ->Option.map(((s, rest)) => {
-                  cur := rest
-                  Console.log(("parsed", s, cur.contents))
-                  AtomT(s)
-                })
-              }
-              switch checkVariable(symb) {
-              | Some(idx) => specialSymb(VarT(idx))
-              | None => {
-                  let schematicRegexp = RegExp.fromString(schematicRegexpString)
-                  switch schematicRegexp->RegExp.exec(symb) {
-                  | None => regularSymb()
-                  | Some(res') =>
-                    switch RegExp.Result.matches(res') {
-                    | [s] => specialSymb(SchematicT(s->Int.fromString->Option.getUnsafe))
-                    | _ => regularSymb()
-                    }
-                  }
-                }
-              }
-            }
-          | _ => None
-          }
-        }
-      }
-    }
+        ),
+      )
+      ->lexeme
+    let var = varIdx->map(idx => Var({idx: idx}))
 
-    let peek = () => {
-      // a bit slow, better would be to keep a backlog of lexed tokens..
-      let str = String.make(cur.contents)
-      let tok = lex()
-      cur := str
-      tok
-    }
-    exception ParseError(string)
-    let rec parseExp = () => {
-      let tok = peek()
-      switch tok {
-      | Some(AtomT(s)) => {
-          let _ = lex()
-          Some(Atom(s))
-        }
-      | Some(VarT(idx)) => {
-          let _ = lex()
-          Some(Var({idx: idx}))
-        }
-      | Some(SchematicT(num)) => {
-          let _ = lex()
-          switch lex() {
-          | Some(LParen) => {
-              let it = ref(None)
-              let bits = []
-              let getVar = (t: option<lexeme>) =>
-                switch t {
-                | Some(VarT(idx)) => Some(idx)
-                | _ => None
-                }
-              while {
-                it := lex()
-                it.contents->getVar->Option.isSome
-              } {
-                Array.push(bits, it.contents->getVar->Option.getUnsafe)
-              }
-              switch it.contents {
-              | Some(RParen) =>
-                switch gen {
-                | Some(g) => {
-                    seen(g, num)
-                    Some(Schematic({schematic: num, allowed: bits}))
-                  }
-                | None => throw(ParseError("Schematics not allowed here"))
-                }
-              | _ => throw(ParseError("Expected closing parenthesis"))
-              }
-            }
-          | _ => throw(ParseError("Expected opening parenthesis"))
-          }
-        }
-      | Some(LParen) => {
-          let _ = lex()
-          let bits = []
-          let it = ref(None)
-          while {
-            it := parseExp()
-            it.contents->Option.isSome
-          } {
-            Array.push(bits, it.contents->Option.getUnsafe)
-          }
-          switch lex() {
-          | Some(RParen) => Some(Compound({subexps: bits}))
-          | _ => throw(ParseError("Expected closing parenthesis"))
-          }
-        }
-      | _ => None
-      }
-    }
-    switch parseExp() {
-    | exception ParseError(s) => Error(s)
-    | None => Error("No expression to parse")
-    | Some(e) => Ok((e, cur.contents))
-    }
+    let schemaLit =
+      string("?")
+      ->then(decimal)
+      ->bind(schematic =>
+        many(varIdx)
+        ->between(token("("), token(")"))
+        ->map(allowed => {
+          gen->Option.map(g => allowed->Array.forEach(n => seen(g, n)))->ignore
+          Schematic({schematic, allowed})
+        })
+      )
+    let inner = fix(f =>
+      choice([
+        schemaLit,
+        var,
+        liftParse(Atom.parse, ~scope, ~gen?)->map(a => Atom(a)),
+        many(f)
+        ->between(token("("), token(")"))
+        ->map(subexps => Compound({subexps: subexps})),
+      ])->lexeme
+    )
+    whitespace->then(inner)
+  }
+
+  let parse = (str: string, ~scope: array<string>, ~gen=?) => {
+    Parser.runParser(mkParser(~scope, ~gen?), str)->Result.mapError(e => e.message)
   }
 
   let rec concrete = t =>

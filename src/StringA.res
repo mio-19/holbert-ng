@@ -479,11 +479,11 @@ module AtomView = {
     }
 
   let parenthesise = f =>
-    [
-      <span className="symbol" key={"-1"}> {React.string("(")} </span>,
-      ...f,
-      <span className="symbol" key={"-2"}> {React.string(")")} </span>,
-    ]
+    Array.flat([
+      [<span className="symbol" key={"-1"}> {React.string("(")} </span>],
+      f,
+      [<span className="symbol" key={"-2"}> {React.string(")")} </span>],
+    ])
 
   let intersperse = a => Util.intersperse(a, ~with=React.string(" "))
 

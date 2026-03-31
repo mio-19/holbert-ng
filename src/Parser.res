@@ -21,11 +21,11 @@ let runParser = (p: t<'a>, str: string): result<('a, string), err<string>> => {
   ))
 }
 
-let map = (p: t<'a>, f: 'a => 'b): t<'b> => (str, state) =>
-  p(str, state)->Result.map(((res, state)) => (f(res), state))
+let map = (p: t<'a>, f: 'a => 'b): t<'b> =>
+  (str, state) => p(str, state)->Result.map(((res, state)) => (f(res), state))
 let pure = (a): t<'a> => (_, state) => Ok((a, state))
-let bind = (p1: t<'a>, p2: 'a => t<'b>): t<'b> => (str, state) =>
-  p1(str, state)->Result.flatMap(((res, state)) => p2(res)(str, state))
+let bind = (p1: t<'a>, p2: 'a => t<'b>): t<'b> =>
+  (str, state) => p1(str, state)->Result.flatMap(((res, state)) => p2(res)(str, state))
 let apply = (p: t<'a>, pf: t<'a => 'b>): t<'b> => p->bind(a => pf->map(f => f(a)))
 let then = (p1: t<'a>, p2: t<'b>): t<'b> => p1->bind(_ => p2)
 let thenIgnore = (p1: t<'a>, p2: t<'b>): t<'a> => p1->bind(res => p2->map(_ => res))
@@ -33,17 +33,19 @@ let thenIgnore = (p1: t<'a>, p2: t<'b>): t<'a> => p1->bind(res => p2->map(_ => r
 let fail = (info): t<'a> => (_, state) => Error({message: info, pos: state.pos})
 let void = (p: t<'a>): t<unit> => p->map(_ => ())
 // backtracks by default
-let optional = (p: t<'a>): t<option<'a>> => (str, state) => {
-  switch p(str, state) {
-  | Ok((res, state)) => Ok((Some(res), state))
-  | Error(_) => Ok((None, state))
+let optional = (p: t<'a>): t<option<'a>> =>
+  (str, state) => {
+    switch p(str, state) {
+    | Ok((res, state)) => Ok((Some(res), state))
+    | Error(_) => Ok((None, state))
+    }
   }
-}
-let or = (p1: t<'a>, p2: t<'a>): t<'a> => (str, state) =>
-  switch p1(str, state) {
-  | Ok(r) => Ok(r)
-  | Error(_) => p2(str, state)
-  }
+let or = (p1: t<'a>, p2: t<'a>): t<'a> =>
+  (str, state) =>
+    switch p1(str, state) {
+    | Ok(r) => Ok(r)
+    | Error(_) => p2(str, state)
+    }
 let choice = (ps: array<t<'a>>): t<'a> => {
   ps->Array.reduce(fail("no matches"), or)
 }
@@ -142,10 +144,11 @@ let regex1 = (re: RegExp.t): t<string> =>
     }
   )
 
-let peek = (n): t<string> => (str, state) => {
-  let res = str->String.slice(~start=state.pos.idx, ~end=state.pos.idx + n)
-  Ok((res, state))
-}
+let peek = (n): t<string> =>
+  (str, state) => {
+    let res = str->String.slice(~start=state.pos.idx, ~end=state.pos.idx + n)
+    Ok((res, state))
+  }
 
 type length = int
 let takeWhileMany = (f: string => option<length>) =>
@@ -167,7 +170,7 @@ let takeWhile = (f: string => bool) =>
     }
   )
 
-let dbg = (p: t<'a>, ~label): t<'a> => {
+let dbg = (p: t<'a>, label): t<'a> => {
   let dbgInfo = title =>
     getCurrentStr->bind(str =>
       getState->map(state => {
@@ -184,8 +187,24 @@ let dbg = (p: t<'a>, ~label): t<'a> => {
   })
 }
 
-let lexeme = p => p->thenIgnore(regex(%re(`/^\s*/`))->void)
+let lexeme = p => p->thenIgnore(regex(/^\s*/)->void)
 let token = s => string(s)->lexeme
 
-let decimal = regex1(%re(`/(\d+)/`))->map(xStr => xStr->Int.fromString->Option.getExn)
-let whitespace = regex(%re(`/\s*/`))->void
+let decimal = regex1(/(\d+)/)->map(xStr => xStr->Int.fromString->Option.getExn)
+let whitespace = regex(/\s*/)->void
+
+let lift = (f: string => result<('a, string), string>): t<'a> =>
+  getCurrentStr->bind(str =>
+    switch f(str) {
+    | Ok((res, remaining)) => {
+        let length = String.length(str) - String.length(remaining)
+        consume(length)->map(_ => res)
+      }
+    | Error(msg) => fail(msg)
+    }
+  )
+let liftParse = (
+  f: (string, ~scope: array<'m>, ~gen: 'g=?) => result<('a, string), string>,
+  ~scope: array<'m>,
+  ~gen: option<'g>=?,
+): t<'a> => lift(s => f(s, ~scope, ~gen?))
