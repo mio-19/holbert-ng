@@ -150,9 +150,9 @@ module Make = (Atom: AtomDef.COERCIBLE_ATOM): {
   let rec lower = (term: t): option<Atom.t> =>
     switch term {
     | Atom(s) => Some(s)
-    | Var({idx}) => Atom.liftHValue(HValue(AtomDef.SExpTag, AtomDef.Var({idx: idx})))
+    | Var({idx}) => Atom.coerce(HValue(AtomDef.SExpTag, AtomDef.Var({idx: idx})))
     | Schematic({schematic, allowed}) =>
-      Atom.liftHValue(HValue(AtomDef.SExpTag, AtomDef.Schematic({schematic, allowed})))
+      Atom.coerce(HValue(AtomDef.SExpTag, AtomDef.Schematic({schematic, allowed})))
     | Compound({subexps: [e1]}) => lower(e1)
     | _ => None
     }

@@ -4,11 +4,6 @@ module Atom = {
   type t = string
   type subst = Map.t<int, string>
   type atomTag<_> += Tag: atomTag<t>
-  let tagEq = (type a, tag: atomTag<a>): option<eq<t, a>> =>
-    switch tag {
-    | Tag => Some(Refl)
-    | _ => None
-    }
   let unify = (a, b, ~gen as _=?) =>
     if a == b {
       Seq.once(Map.make())

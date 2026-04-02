@@ -15,11 +15,6 @@ module Atom = {
   type t = t
   type subst = Map.t<schematic, t>
   type AtomDef.atomTag<_> += Tag: AtomDef.atomTag<t>
-  let tagEq = (type a, tag: AtomDef.atomTag<a>): option<AtomDef.eq<t, a>> =>
-    switch tag {
-    | Tag => Some(Refl)
-    | _ => None
-    }
   let substitute = (term: t, subst: subst) =>
     Array.flatMap(term, piece => {
       switch piece {

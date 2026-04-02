@@ -1,28 +1,22 @@
 open AtomDef
 
-module StringA = MakeCoercible(
-  StringA.Atom,
-  {
-    let coercions = [
-      Coercion({
-        tagEq: Symbolic.Atom.tagEq,
-        coerce: s => Some([StringA.String(s)]),
-      }),
-      Coercion({
-        tagEq: tagEqSExp,
-        coerce: t =>
-          switch t {
-          | Var({idx}) => Some([StringA.Var({idx: idx})])
-          | Schematic({schematic, allowed}) => Some([StringA.Schematic({schematic, allowed})])
-          },
-      }),
-    ]
-  },
-)
+module StringA: COERCIBLE_ATOM with type t = StringA.t = {
+  include StringA.Atom
+  let coerce = (HValue(tag, a)) =>
+    switch tag {
+    | Symbolic.Atom.Tag => Some([StringA.String(a)])
+    | AtomDef.SExpTag =>
+      Some([
+        switch a {
+        | Var({idx}) => StringA.Var({idx: idx})
+        | Schematic({schematic, allowed}) => StringA.Schematic({schematic, allowed})
+        },
+      ])
+    | _ => None
+    }
+}
 
-module Symbolic = MakeCoercible(
-  Symbolic.Atom,
-  {
-    let coercions = []
-  },
-)
+module Symbolic: COERCIBLE_ATOM with type t = Symbolic.Atom.t = {
+  include Symbolic.Atom
+  let coerce = _ => None
+}
