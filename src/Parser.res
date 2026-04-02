@@ -4,25 +4,52 @@ type sourceloc = {
   idx: int,
 }
 
-type err<'info> = {
-  message: 'info,
+type info = {
+  msg?: string,
+  expects: array<string>,
+}
+
+type err = {
+  info: info,
   pos: sourceloc,
 }
 
 type state = {pos: sourceloc}
 
-type t<'a> = (string, state) => result<('a, state), err<string>>
+type t<'a> = (string, state) => result<('a, state), err>
 
+let infoPretty = (info: info) => {
+  let expectedMsg = switch info.expects {
+  | [] => None
+  | [expect] => Some(`expected ${expect}`)
+  | _ => {
+      let n = Array.length(info.expects)
+      let first = info.expects->Array.slice(~start=0, ~end=n - 1)->Array.join(", ")
+      Some(`expected ${first}, or ${info.expects[n - 1]->Option.getUnsafe}`)
+    }
+  }
+  switch (info.msg, expectedMsg) {
+  | (Some(infoMsg), Some(expectedMsg)) => `parse failed: ${infoMsg}\n  ${expectedMsg}`
+  | (None, Some(msg)) | (Some(msg), None) => `parse failed: ${msg}`
+  | (None, None) => `parse failed`
+  }
+}
 let initialState = {pos: {line: 1, col: 1, idx: 0}}
-let runParser = (p: t<'a>, str: string): result<('a, string), err<string>> => {
-  p(str, initialState)->Result.map(((res, state)) => (
-    res,
-    str->String.sliceToEnd(~start=state.pos.idx),
-  ))
+let runParser = (p: t<'a>, str: string): result<('a, string), string> => {
+  p(str, initialState)
+  ->Result.map(((res, state)) => (res, str->String.sliceToEnd(~start=state.pos.idx)))
+  ->Result.mapError(err => {
+    `around ${str->String.slice(~start=err.pos.idx, ~end=err.pos.idx + 5)}:\n${infoPretty(
+        err.info,
+      )}`
+  })
 }
 
 let map = (p: t<'a>, f: 'a => 'b): t<'b> =>
   (str, state) => p(str, state)->Result.map(((res, state)) => (f(res), state))
+let mapError = (p: t<'a>, f: err => err) => (str, state) => p(str, state)->Result.mapError(f)
+let label = (p: t<'a>, label: string) =>
+  p->mapError(err => {...err, info: {...err.info, expects: [label]}})
 let pure = (a): t<'a> => (_, state) => Ok((a, state))
 let bind = (p1: t<'a>, p2: 'a => t<'b>): t<'b> =>
   (str, state) => p1(str, state)->Result.flatMap(((res, state)) => p2(res)(str, state))
@@ -30,22 +57,22 @@ let apply = (p: t<'a>, pf: t<'a => 'b>): t<'b> => p->bind(a => pf->map(f => f(a)
 let then = (p1: t<'a>, p2: t<'b>): t<'b> => p1->bind(_ => p2)
 let thenIgnore = (p1: t<'a>, p2: t<'b>): t<'a> => p1->bind(res => p2->map(_ => res))
 
-let fail = (info): t<'a> => (_, state) => Error({message: info, pos: state.pos})
+let fail = (info): t<'a> => (_, state) => Error({info: {msg: info, expects: []}, pos: state.pos})
+let expected = (expects: array<string>, ~msg=?): t<'a> =>
+  (_, state) => Error({info: {?msg, expects}, pos: state.pos})
 let void = (p: t<'a>): t<unit> => p->map(_ => ())
 // backtracks by default
-let optional = (p: t<'a>): t<option<'a>> =>
-  (str, state) => {
-    switch p(str, state) {
-    | Ok((res, state)) => Ok((Some(res), state))
-    | Error(_) => Ok((None, state))
-    }
-  }
 let or = (p1: t<'a>, p2: t<'a>): t<'a> =>
   (str, state) =>
     switch p1(str, state) {
     | Ok(r) => Ok(r)
-    | Error(_) => p2(str, state)
+    | Error(e1) =>
+      p2(str, state)->Result.mapError(e2 => {
+        ...e2,
+        info: {expects: Array.concat(e1.info.expects, e2.info.expects)},
+      })
     }
+let optional = (p: t<'a>): t<option<'a>> => p->map(a => Some(a))->or(pure(None))
 let choice = (ps: array<t<'a>>): t<'a> => {
   ps->Array.reduce(fail("no matches"), or)
 }
@@ -115,7 +142,7 @@ let string = s =>
     if str->String.startsWith(s) {
       consume(String.length(s))->then(pure(s))
     } else {
-      fail(`${str->String.slice(~start=0, ~end=10)} doesn't start with string ${s}`)
+      expected([`literal ${s}`])
     }
   )
 
@@ -131,7 +158,7 @@ let regex = (re: RegExp.t): t<array<string>> => {
   getCurrentStr->bind(str =>
     switch execRe(wrapped, str) {
     | Some((matches, l)) => consume(l)->then(pure(matches))
-    | None => fail("regex failed")
+    | None => expected([`regex pattern ${re->RegExp.source}`])
     }
   )
 }

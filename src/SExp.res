@@ -295,20 +295,19 @@ module Make = (Atom: AtomDef.COERCIBLE_ATOM): {
       )
     let inner = fix(f =>
       choice([
-        schemaLit,
-        var,
-        liftParse(Atom.parse, ~scope, ~gen?)->map(a => Atom(a)),
+        schemaLit->label("schematic"),
+        var->label("variable"),
+        liftParse(Atom.parse, ~scope, ~gen?)->map(a => Atom(a))->label("atom"),
         many(f)
-        ->between(token("("), token(")"))
+        ->between(token("(")->label("open expression"), token(")")->label("close expression"))
         ->map(subexps => Compound({subexps: subexps})),
       ])->lexeme
     )
     whitespace->then(inner)
   }
 
-  let parse = (str: string, ~scope: array<string>, ~gen=?) => {
-    Parser.runParser(mkParser(~scope, ~gen?), str)->Result.mapError(e => e.message)
-  }
+  let parse = (str: string, ~scope: array<string>, ~gen=?) =>
+    Parser.runParser(mkParser(~scope, ~gen?), str)
 
   let rec concrete = t =>
     switch t {
