@@ -9,16 +9,40 @@ module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   let facts = t => t.localFacts->Dict.copy->Dict.assign(t.globalFacts)
 }
 
+module MethodResults = (Term : TERM) => {
+
+  // Currently all three options produce a button
+  // with both Group and Delay producing sub-menus
+  // I may change Group in future to just present
+  // a boxed group of buttons without nesting it in sub-menus.
+  // So use Delay() if sub-menus is what you actually want.
+  type rec t<'a> = Action(string, 'a, Term.subst)
+                 | Delay(string, () => array<t<'a>>)
+                 | Group(string, array<t<'a>>)
+                 
+                 
+                 
+  let rec map = (x: t<'a>, f: 'a => 'b ) =>
+    switch x {
+    | Action(str, a, sub) => Action(str,f(a), sub)
+    | Delay(str, g) => Delay(str, () => g(())->Array.map(x => x->map(f)))
+    | Group(str, gs) => Group(str, gs->Array.map(x => x->map(f)))
+    }
+}  
+
+
+
 module type PROOF_METHOD = {
   module Term: TERM
   module Judgment: JUDGMENT with module Term := Term
   module Rule: module type of Rule.Make(Term, Judgment)
   module Context: module type of Context(Term, Judgment)
+  module Results: module type of MethodResults(Term)
   type t<'a>
   let keywords: array<string>
   let substitute: (t<'a>, Term.subst) => t<'a>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
-  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Dict.t<(t<'a>, Term.subst)>
+  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => array<Results.t<t<'a>>>
   let map: (t<'a>, 'a => 'b) => t<'b>
   let parse: (
     string,
@@ -41,6 +65,7 @@ let newline = Util.newline
 module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
+  module Results = MethodResults(Term)
   type t<'a> = {
     ruleName: string,
     instantiation: array<Term.t>,
@@ -166,7 +191,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
         ret->Dict.set("intro " ++ key, (new, subst))
       })
     })
-    ret
+    ret->Dict.toArray->Array.map(((key, (new, subst))) => Results.Action(key,new,subst))
   }
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     switch ctx->Context.facts->Dict.get(it.ruleName) {
@@ -208,6 +233,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
 module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
+  module Results = MethodResults(Term)
   type t<'a> = {
     ruleName: string,
     elimName: string,
@@ -360,7 +386,6 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
   }
 
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
-    let ret = Dict.make()
     let possibleRules =
       ctx.globalFacts
       ->Dict.toArray
@@ -374,40 +399,44 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       ctx.localFacts
       ->Dict.toArray
       ->Array.filter(((_, r)) => r.premises->Array.length == 0 && r.vars->Array.length == 0)
-    possibleRules->Array.forEach(((ruleName, rule)) => {
-      possibleElims->Array.forEach(((elimName, elim)) => {
-        let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
-        let rule' = rule->Rule.instantiate(ruleInsts)
-        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
-        ->Seq.take(seqSizeLimit)
-        ->Seq.forEach(
-          elimSub => {
-            let rule'' = rule'->Rule.substituteBare(elimSub)
-            Judgment.unify(rule''.conclusion, j, ~gen)
-            ->Seq.take(seqSizeLimit)
-            ->Seq.forEach(
-              ruleSub => {
-                let new = {
-                  ruleName,
-                  elimName,
-                  instantiation: ruleInsts,
-                  subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
-                }
-                let subst = Term.mergeSubsts(elimSub, ruleSub)
-                ret->Dict.set(`elim ${ruleName} with ${elimName}`, (new, subst))
-              },
-            )
-          },
-        )
+    possibleElims->Array.map(((elimName, elim)) => {
+      Results.Delay("elim " + elimName,() => {
+        let subtree = []
+        possibleRules->Array.forEach(((ruleName, rule)) => {
+          let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
+          let rule' = rule->Rule.instantiate(ruleInsts)
+          Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
+          ->Seq.take(seqSizeLimit)
+          ->Seq.forEach(
+            elimSub => {
+              let rule'' = rule'->Rule.substituteBare(elimSub)
+              Judgment.unify(rule''.conclusion, j, ~gen)
+              ->Seq.take(seqSizeLimit)
+              ->Seq.forEach(
+                ruleSub => {
+                  let new = {
+                    ruleName,
+                    elimName,
+                    instantiation: ruleInsts,
+                    subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
+                  }
+                  let subst = Term.mergeSubsts(elimSub, ruleSub)
+                  subtree->Array.push(Results.Action("with " ++ ruleName, new, subst))
+                },
+              )
+            },
+          )
+        })
+        subtree
       })
     })
-    ret
   }
 }
 
 module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
+  module Results = MethodResults(Term)
   type t<'a> = {
     rule: Rule.t,
     proof: 'a,
@@ -457,7 +486,7 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
   let apply = (_ctx: Context.t, _j: Judgment.t, _gen: Term.gen, _f: Rule.t => 'a) => {
-    Dict.make()
+    []
   }
   let check = (it: t<'a>, _ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     let first = f(it.proof, it.rule)
@@ -473,6 +502,7 @@ module Combine = (
 ) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
+  module Results = MethodResults(Term)
   type t<'a> = First(Method1.t<'a>) | Second(Method2.t<'a>)
   let map = (it, f) =>
     switch it {
@@ -486,9 +516,9 @@ module Combine = (
     }
   let keywords = Array.concat(Method1.keywords, Method2.keywords)
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
-    let d1 = Method1.apply(ctx, j, gen, f)->Dict.mapValues(((m, s)) => (First(m), s))
-    let d2 = Method2.apply(ctx, j, gen, f)->Dict.mapValues(((m, s)) => (Second(m), s))
-    d1->Dict.assign(d2)
+    let d1 = Method1.apply(ctx, j, gen, f)->Array.map(me => me->Results.map(m => First(m)))
+    Array.pushMany(d1,Method2.apply(ctx, j, gen, f)->Array.map(me => me->Results.map(m => Second(m))))
+    d1
   }
   let check = (it, ctx, j, f) =>
     switch it {

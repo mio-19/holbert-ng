@@ -11,7 +11,8 @@ module MakeRewriteHOTerm = (
   module Term = HOTerm
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
-
+  module Results = MethodResults(HOTerm)
+  
   let extractEqualityTermsFromJudgment = (judgment: Judgment.t): option<(HOTerm.t, HOTerm.t)> => {
     let term: HOTerm.t = judgment
     switch HOTerm.strip(term) {
@@ -201,7 +202,7 @@ module MakeRewriteHOTerm = (
       }
     })
 
-    ret
+    ret->Dict.toArray->Array.map(((s,(a,b))) => Results.Action(s,a,b))
   }
 
   let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, f: ('a, Rule.t) => 'b) => {
@@ -269,7 +270,7 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
   module Term = HOTerm
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
-
+  module Results = MethodResults(HOTerm)
   type t<'a> = unit
 
   type constructorHead = {name: string, args: array<HOTerm.t>}
@@ -336,7 +337,7 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
       ret->Dict.set(`constructor_neq ${lhs} ${rhs}`, ((), HOTerm.makeSubst()))
     | _ => ()
     }
-    ret
+    ret->Dict.toArray->Array.map(((s,(a,b))) => Results.Action(s,a,b))
   }
 
   let check = (_it: t<'a>, _ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) =>
@@ -354,7 +355,7 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
 module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t) => {
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
-
+  module Results = MethodResults(HOTerm)
   // we need to define this to workaround a type error for map
   type inner = {
     source: string,
@@ -445,7 +446,7 @@ module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type 
       })
     | _ => ()
     }
-    ret
+    ret->Dict.toArray->Array.map(((s,(a,b))) => Results.Action(s,a,b))
   }
 
   let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) => {

@@ -8,6 +8,7 @@ module Make = (
 ) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
+  module Results = MethodResults(Term)
   type rec t = {
     fixes: array<Term.meta>,
     assumptions: array<string>,
@@ -24,7 +25,7 @@ module Make = (
     | ProofError({raw: t, rule: Rule.t, msg: string})
   and checked_option_method =
     | Do(Method.t<checked>)
-    | Goal(Term.gen => Dict.t<(Method.t<checked>, Term.subst)>)
+    | Goal(Term.gen => array<Results.t<Method.t<checked>>>)
   let parseKeyword = input => {
     Method.keywords
     ->Array.concat(["?"])
