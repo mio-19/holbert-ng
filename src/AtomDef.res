@@ -1,10 +1,29 @@
 // type level stuff to enable well-typed coercions
 type atomTag<_> = ..
+type rec hValue = HValue(atomTag<'a>, 'a): hValue
+
+// to allow circular coercions, we declare base types
+// separately from relevant implementation
+module type BASE_ATOM = {
+  type t
+  type atomTag<_> += Tag: atomTag<t>
+  let wrap: t => hValue
+}
+
+module MakeBaseAtom = (
+  T: {
+    type t
+  },
+): (BASE_ATOM with type t = T.t) => {
+  type t = T.t
+  type atomTag<_> += Tag: atomTag<t>
+  let wrap = t => HValue(Tag, t)
+}
 
 module type ATOM = {
-  type t
+  module BaseAtom: BASE_ATOM
+  type t = BaseAtom.t
   type subst = Map.t<int, t>
-  type atomTag<_> += Tag: atomTag<t>
   let unify: (t, t, ~gen: ref<int>=?) => Seq.t<subst>
   let prettyPrint: (t, ~scope: array<string>) => string
   let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
@@ -12,11 +31,6 @@ module type ATOM = {
   let upshift: (t, int, ~from: int=?) => t
   let substDeBruijn: (t, array<option<t>>, ~from: int=?) => t
   let concrete: t => bool
-}
-
-type rec hValue = HValue(atomTag<'a>, 'a): hValue
-module type COERCIBLE_ATOM = {
-  include ATOM
   let coerce: hValue => option<t>
   let wrap: t => hValue
 }
@@ -26,25 +40,27 @@ type atomTag<_> += SExpTag: atomTag<loweredSExp>
 
 exception MatchCombineAtomForeign
 
-module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
-  type rec base =
+module CombineAtom = (Left: ATOM, Right: ATOM): {
+  type base =
     | Left(Left.t)
     | Right(Right.t)
     // strictly for coercions
     // occurs when passed from some relative in the tree
     // or when SExp values are lowered into loweredSExp
     | Foreign(hValue)
-  include COERCIBLE_ATOM with type t = base
+  include ATOM with type BaseAtom.t = base
   let match: (t, Left.t => 'a, Right.t => 'a) => 'a
 } => {
   type rec base =
     | Left(Left.t)
     | Right(Right.t)
     | Foreign(hValue)
-  type t = base
+  module BaseAtom = MakeBaseAtom({
+    type t = base
+  })
+  type t = BaseAtom.t
   type subst = Map.t<int, t>
   type gen = ref<int>
-  type atomTag<_> += Tag: atomTag<t>
   let coerce = v => Some(Foreign(v))
   let match = (t, leftBranch: Left.t => 'a, rightBranch: Right.t => 'a): 'a =>
     switch t {
@@ -125,9 +141,9 @@ module type ATOM_VIEW = {
 }
 
 module MakeAtomView = (
-  Left: COERCIBLE_ATOM,
+  Left: ATOM,
   LeftView: ATOM_VIEW with module Atom := Left,
-  Right: COERCIBLE_ATOM,
+  Right: ATOM,
   RightView: ATOM_VIEW with module Atom := Right,
   Combined: module type of CombineAtom(Left, Right),
 ): {
@@ -142,9 +158,9 @@ module MakeAtomView = (
 }
 
 module MakeAtomAndView = (
-  Left: COERCIBLE_ATOM,
+  Left: ATOM,
   LeftView: ATOM_VIEW with module Atom := Left,
-  Right: COERCIBLE_ATOM,
+  Right: ATOM,
   RightView: ATOM_VIEW with module Atom := Right,
 ) => {
   module Atom = CombineAtom(Left, Right)

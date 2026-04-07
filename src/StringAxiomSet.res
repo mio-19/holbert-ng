@@ -1,9 +1,9 @@
 open Component
 
 module StringSymbol = AtomDef.MakeAtomAndView(
-  Coercible.StringA,
+  StringA.Atom,
   StringA.AtomView,
-  Coercible.Symbolic,
+  Symbolic.Atom,
   Symbolic.AtomView,
 )
 module StringSExp = SExp.Make(StringSymbol.Atom)

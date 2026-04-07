@@ -7,7 +7,7 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-module Make = (Atom: AtomDef.COERCIBLE_ATOM): {
+module Make = (Atom: AtomDef.ATOM): {
   type rec t =
     | Atom(Atom.t)
     | Compound({subexps: array<t>})

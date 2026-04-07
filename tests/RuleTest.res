@@ -33,9 +33,9 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 
 zoraBlock("string terms", t => {
   module StringSymbol = AtomDef.MakeAtomAndView(
-    Coercible.StringA,
+    StringA.Atom,
     StringA.AtomView,
-    Coercible.Symbolic,
+    Symbolic.Atom,
     Symbolic.AtomView,
   )
   module StringSExp = SExp.Make(StringSymbol.Atom)

@@ -1,7 +1,7 @@
 module type ATOM_VIEW = AtomDef.ATOM_VIEW
 
 module Make = (
-  Atom: AtomDef.COERCIBLE_ATOM,
+  Atom: AtomDef.ATOM,
   AtomView: ATOM_VIEW with module Atom := Atom,
   SExp: module type of SExp.Make(Atom),
 ): {

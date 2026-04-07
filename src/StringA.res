@@ -11,10 +11,14 @@ type t = array<piece>
 type meta = string
 type schematic = int
 
+module BaseAtom = AtomDef.MakeBaseAtom({
+  type t = t
+})
+
 module Atom = {
+  module BaseAtom = BaseAtom
   type t = t
   type subst = Map.t<schematic, t>
-  type AtomDef.atomTag<_> += Tag: AtomDef.atomTag<t>
   let substitute = (term: t, subst: subst) =>
     Array.flatMap(term, piece => {
       switch piece {
@@ -462,6 +466,19 @@ module Atom = {
       | _ => false
       }
     )
+  let coerce = (AtomDef.HValue(tag, a)) =>
+    switch tag {
+    | Symbolic.BaseAtom.Tag => Some([String(a)])
+    | AtomDef.SExpTag =>
+      Some([
+        switch a {
+        | Var({idx}) => Var({idx: idx})
+        | Schematic({schematic, allowed}) => Schematic({schematic, allowed})
+        },
+      ])
+    | _ => None
+    }
+  let wrap = a => AtomDef.HValue(BaseAtom.Tag, a)
 }
 
 module AtomView = {
