@@ -14,6 +14,7 @@ type schematic = int
 module Atom = {
   type t = t
   type subst = Map.t<schematic, t>
+  type AtomDef.atomTag<_> += Tag: AtomDef.atomTag<t>
   let substitute = (term: t, subst: subst) =>
     Array.flatMap(term, piece => {
       switch piece {
@@ -282,9 +283,7 @@ module Atom = {
           switch Option.getUnsafe(substs[var - from]) {
           | Some(v) => v
           | None =>
-            throw(
-              SExpFunc.SubstNotCompatible(`index ${Int.toString(var - from)} not of sort string`),
-            )
+            throw(SExp.SubstNotCompatible(`index ${Int.toString(var - from)} not of sort string`))
           }
         } else {
           [Var({idx: var - to})]
@@ -333,24 +332,12 @@ module Atom = {
 
   type gen = ref<int>
 
-  let prettyPrintVar = (idx: int, scope: array<string>) =>
-    "$" ++
-    switch scope[idx] {
-    | Some(n) if Array.indexOf(scope, n) == idx => n
-    | _ => "\\"->String.concat(String.make(idx))
-    }
   let prettyPrint = (term: t, ~scope: array<string>) =>
     `"${Array.map(term, piece => {
         switch piece {
         | String(str) => str
-        | Var({idx}) => prettyPrintVar(idx, scope)
-        | Schematic({schematic, allowed}) => {
-            let allowedStr =
-              allowed
-              ->Array.map(idx => prettyPrintVar(idx, scope))
-              ->Array.join(" ")
-            `?${Int.toString(schematic)}(${allowedStr})`
-          }
+        | Var({idx}) => Util.prettyPrintVar(idx, scope)
+        | Schematic({schematic, allowed}) => Util.prettyPrintSchematic(schematic, allowed, scope)
         }
       })->Array.join(" ")}"`
 
@@ -468,9 +455,6 @@ module Atom = {
 
     acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
   }
-
-  let lowerSchematic = (schematic, allowed) => Some([Schematic({schematic, allowed})])
-  let lowerVar = idx => Some([Var({idx: idx})])
   let concrete = t =>
     t->Array.every(p =>
       switch p {
@@ -493,12 +477,6 @@ module AtomView = {
         {React.int(props.idx)}
       </span>
     }
-
-  let makeMeta = (str: string) =>
-    <span className="rule-binder">
-      {React.string(str)}
-      {React.string(".")}
-    </span>
 
   let parenthesise = f =>
     [

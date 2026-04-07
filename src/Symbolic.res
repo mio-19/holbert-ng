@@ -1,7 +1,9 @@
 type t = string
 module Atom = {
+  open AtomDef
   type t = string
   type subst = Map.t<int, string>
+  type atomTag<_> += Tag: atomTag<t>
   let unify = (a, b, ~gen as _=?) =>
     if a == b {
       Seq.once(Map.make())
@@ -16,8 +18,6 @@ module Atom = {
     | _ => Error("constant symbol parse error")
     }
   let substitute = (name, _) => name
-  let lowerVar = _ => None
-  let lowerSchematic = (_, _) => None
   let substDeBruijn = (name, _, ~from as _=?) => name
   let concrete = _ => false
   let upshift = (t, _, ~from as _=?) => t
