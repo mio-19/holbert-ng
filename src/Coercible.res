@@ -14,9 +14,11 @@ module StringA: COERCIBLE_ATOM with type t = StringA.t = {
       ])
     | _ => None
     }
+  let wrap = a => HValue(StringA.Atom.Tag, a)
 }
 
 module Symbolic: COERCIBLE_ATOM with type t = Symbolic.Atom.t = {
   include Symbolic.Atom
   let coerce = _ => None
+  let wrap = a => HValue(Symbolic.Atom.Tag, a)
 }

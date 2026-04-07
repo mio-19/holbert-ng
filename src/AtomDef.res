@@ -18,6 +18,7 @@ type rec hValue = HValue(atomTag<'a>, 'a): hValue
 module type COERCIBLE_ATOM = {
   include ATOM
   let coerce: hValue => option<t>
+  let wrap: t => hValue
 }
 
 type loweredSExp = Var({idx: int}) | Schematic({schematic: int, allowed: array<int>})
@@ -51,8 +52,12 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
     | Right(s) => rightBranch(s)
     | Foreign(_) => throw(MatchCombineAtomForeign)
     }
-  let wrapLeft = left => HValue(Left.Tag, left)
-  let wrapRight = right => HValue(Right.Tag, right)
+  let wrap = t =>
+    switch t {
+    | Left(s) => Left.wrap(s)
+    | Right(s) => Right.wrap(s)
+    | Foreign(val) => val
+    }
   let parse = (s, ~scope, ~gen: option<gen>=?) => {
     Left.parse(s, ~scope, ~gen?)
     ->Result.map(((r, rest)) => (Left(r), rest))
@@ -73,13 +78,13 @@ module CombineAtom = (Left: COERCIBLE_ATOM, Right: COERCIBLE_ATOM): {
   let coerceToLeft = (t): option<Left.t> =>
     switch t {
     | Left(s) => Some(s)
-    | Right(s) => s->wrapRight->Left.coerce
+    | Right(s) => Right.wrap(s)->Left.coerce
     | Foreign(v) => Left.coerce(v)
     }
   let coerceToRight = (t): option<Right.t> =>
     switch t {
     | Right(s) => Some(s)
-    | Left(s) => s->wrapLeft->Right.coerce
+    | Left(s) => Left.wrap(s)->Right.coerce
     | Foreign(v) => Right.coerce(v)
     }
   let substitute = (s, subst: subst) => {
