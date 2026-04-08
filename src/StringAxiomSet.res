@@ -1,11 +1,19 @@
 open Component
+open! Util
 
+module Symbol = AtomDef.MakeAtomAndView(
+  Symbolic.Atom,
+  Symbolic.AtomView,
+  AtomDef.NilAtomList,
+  AtomDef.NilAtomListView,
+)
 module StringSymbol = AtomDef.MakeAtomAndView(
   StringA.Atom,
   StringA.AtomView,
-  Symbolic.Atom,
-  Symbolic.AtomView,
+  Symbol.Atom,
+  Symbol.AtomView,
 )
+
 module StringSExp = SExp.Make(StringSymbol.Atom)
 module TermView = SExpView.Make(StringSymbol.Atom, StringSymbol.AtomView, StringSExp)
 module JudgmentView = TermViewAsJudgmentView.Make(StringSExp, StringSExp, TermView)
@@ -42,16 +50,18 @@ let getSExpName = (t: StringSExp.t): option<string> =>
   | _ => None
   }
 
-let destructure = (r: StringSExp.t): (StringA.Atom.t, string) =>
-  switch r {
-  | Compound({subexps: [Atom(Left(s)), Atom(Right(name))]}) => (s, name)
-  | _ => throw(Util.Unreachable("expected valid induction rule"))
-  }
 let destructureOpt = (r: StringSExp.t): option<(StringA.Atom.t, string)> =>
   switch r {
-  | Compound({subexps: [Atom(Left(s)), Atom(Right(name))]}) => Some((s, name))
+  | Compound({subexps: [Atom(AtomDef.HValue(tag1, s)), Atom(AtomDef.HValue(tag2, name))]}) =>
+    switch (tag1, tag2) {
+    | (StringA.BaseAtom.Tag, Symbolic.BaseAtom.Tag) => Some((s, name))
+    | _ => None
+    }
   | _ => None
   }
+exception InvalidStringInductionPattern
+let destructure = (r: StringSExp.t): (StringA.Atom.t, string) =>
+  destructureOpt(r)->Option.getOrElse(() => throw(InvalidStringInductionPattern))
 let structure = (lhs: StringSExp.t, rhs: StringSExp.t): StringSExp.t => Compound({
   subexps: [lhs, rhs],
 })
@@ -114,7 +124,7 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
       vars: rule.vars,
       premises: rule.premises->Array.concat(inductionHyps),
       conclusion: structure(
-        surround(s, aIdx + baseIdx, bIdx + baseIdx)->Left->Atom,
+        Atom(AtomDef.HValue(StringA.BaseAtom.Tag, surround(s, aIdx + baseIdx, bIdx + baseIdx))),
         Var({idx: pIdx + baseIdx}),
       ),
     }
@@ -126,13 +136,16 @@ let derive = (group: judgeGroup, mentionedGroups: array<judgeGroup>): Rule.t => 
         {
           Rule.vars: [],
           premises: [],
-          conclusion: structure(Var({idx: xIdx}), Atom(Right(group.name))),
+          conclusion: structure(
+            Var({idx: xIdx}),
+            Atom(AtomDef.HValue(Symbolic.BaseAtom.Tag, group.name)),
+          ),
         },
       ],
       mentionedGroups->Array.flatMap(g => g.rules->Array.map(r => replaceJudgeRHS(r, 0))),
     ),
     conclusion: structure(
-      surround([StringA.Var({idx: xIdx})], aIdx, bIdx)->Left->Atom,
+      Atom(HValue(StringA.BaseAtom.Tag, surround([StringA.Var({idx: xIdx})], aIdx, bIdx))),
       Var({idx: 0}),
     ), // TODO: clean here
   }
@@ -170,8 +183,8 @@ let deserialise = (str: string, ~imports as _: Ports.t) => {
   getBase(str)->Result.map(raw => {
     let grouped: dict<array<Rule.t>> = Dict.make()
     raw->Dict.forEach(rule =>
-      switch rule.conclusion {
-      | Compound({subexps: [Atom(Left(_)), Atom(Right(name))]}) =>
+      switch rule.conclusion->destructureOpt {
+      | Some((_, name)) =>
         switch grouped->Dict.get(name) {
         | None => grouped->Dict.set(name, [rule])
         | Some(rs) => rs->Array.push(rule)

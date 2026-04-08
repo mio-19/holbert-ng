@@ -478,7 +478,6 @@ module Atom = {
       ])
     | _ => None
     }
-  let wrap = a => AtomDef.HValue(BaseAtom.Tag, a)
 }
 
 module AtomView = {
