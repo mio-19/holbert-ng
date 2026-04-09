@@ -1,0 +1,21 @@
+when:
+  - event: ["push", "manual"]
+    branch: ["main", "develop"]
+  - event: ["pull_request"]
+    branch: ["main"]
+
+engine: "nixery"
+
+dependencies:
+  nixpkgs:
+    - nodejs
+
+steps: 
+  - name: "ci setup"
+    command: "npm ci"
+  - name: "rescript build"
+    command: "npm run res:build"
+  - name: "project build"
+    command: "npm run build --if-present"
+  - name: "test"
+    command: "npm test"
