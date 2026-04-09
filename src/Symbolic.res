@@ -24,7 +24,7 @@ module Atom = {
   let concrete = _ => false
   let upshift = (t, _, ~from as _=?) => t
   let coerce = _ => None
-  let wrap = a => AtomDef.HValue(BaseAtom.Tag, a)
+  let wrap = a => AtomDef.AnyValue(BaseAtom.Tag, a)
 }
 
 module AtomView = {

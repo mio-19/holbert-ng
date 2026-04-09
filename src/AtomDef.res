@@ -1,6 +1,6 @@
 // type level stuff to enable well-typed coercions
 type atomTag<_> = ..
-type rec anyValue = HValue(atomTag<'a>, 'a): anyValue
+type rec anyValue = AnyValue(atomTag<'a>, 'a): anyValue
 
 // to allow circular coercions, we declare base types
 // separately from relevant implementation
@@ -17,7 +17,7 @@ module MakeBaseAtom = (
 ): (BASE_ATOM with type t = T.t) => {
   type t = T.t
   type atomTag<_> += Tag: atomTag<t>
-  let wrap = t => HValue(Tag, t)
+  let wrap = t => AnyValue(Tag, t)
 }
 
 module type ATOM = {
@@ -85,7 +85,7 @@ module CombineAtom = (Head: ATOM, Tail: ATOM_LIST): (
   type gen = ref<int>
   let getOrElse = Util.Option.getOrElse
   let coerce = v => Some(v)
-  let onHead = (HValue(tag, val), f: Head.t => 'a): option<'a> =>
+  let onHead = (AnyValue(tag, val), f: Head.t => 'a): option<'a> =>
     switch tag {
     | Head.BaseAtom.Tag => Some(f(val))
     | _ => None
@@ -101,7 +101,7 @@ module CombineAtom = (Head: ATOM, Tail: ATOM_LIST): (
     ->getOrElse(() => Tail.prettyPrint(atom, ~scope))
 
   let unify = (a1, a2, ~gen=?) => {
-    let (HValue(tag1, val1), HValue(tag2, val2)) = (a1, a2)
+    let (AnyValue(tag1, val1), AnyValue(tag2, val2)) = (a1, a2)
     switch (tag1, tag2) {
     | (Head.BaseAtom.Tag, Head.BaseAtom.Tag) =>
       Head.unify(val1, val2)->Seq.map(subst => subst->Util.mapMapValues(HeadBase.wrap))

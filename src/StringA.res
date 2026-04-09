@@ -466,7 +466,7 @@ module Atom = {
       | _ => false
       }
     )
-  let coerce = (AtomDef.HValue(tag, a)) =>
+  let coerce = (AtomDef.AnyValue(tag, a)) =>
     switch tag {
     | Symbolic.BaseAtom.Tag => Some([String(a)])
     | AtomDef.SExpTag =>

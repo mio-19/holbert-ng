@@ -45,8 +45,8 @@ zoraBlock("string terms", t => {
     Symbol.AtomView,
   )
   module StringSExp = SExp.Make(StringSymbol.Atom)
-  let wrapString = (s): StringSExp.t => Atom(AtomDef.HValue(StringA.BaseAtom.Tag, s))
-  let wrapSymbol = (s): StringSExp.t => Atom(HValue(Symbolic.BaseAtom.Tag, s))
+  let wrapString = (s): StringSExp.t => Atom(AtomDef.AnyValue(StringA.BaseAtom.Tag, s))
+  let wrapSymbol = (s): StringSExp.t => Atom(AnyValue(Symbolic.BaseAtom.Tag, s))
   module T = MakeTest(StringSExp, StringSExp)
   t->T.testParseInner(
     `[s1. ("$s1" p) |- ("($s1)" p)]`,

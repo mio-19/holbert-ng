@@ -57,7 +57,9 @@ module StringSymbol = AtomDef.MakeAtomAndView(
 module StringSExp = SExp.Make(StringSymbol.Atom)
 module TermView = SExpView.Make(StringSymbol.Atom, StringSymbol.AtomView, StringSExp)
 module StringSExpJView = TermViewAsJudgmentView.Make(StringSExp, StringSExp, TermView)
-module AxiomStr = Editable.TextArea(StringAxiomSet)
+module AxiomStr = Editable.TextArea(
+  StringAxiomSet.Make(StringSymbol.Atom, StringSExp, StringSExpJView),
+)
 
 module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
   StringSExp,
