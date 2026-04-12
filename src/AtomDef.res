@@ -34,8 +34,10 @@ module type ATOM = {
   let coerce: anyValue => option<t>
 }
 
-type loweredSExp = Var({idx: int}) | Schematic({schematic: int, allowed: array<int>})
-type atomTag<_> += SExpTag: atomTag<loweredSExp>
+type varBase = Var({idx: int}) | Schematic({schematic: int, allowed: array<int>})
+module VarBase = MakeBaseAtom({
+  type t = varBase
+})
 
 exception AtomExpected
 

@@ -462,14 +462,14 @@ module Atom = {
   let concrete = t =>
     t->Array.every(p =>
       switch p {
-      | Schematic(_) => true
-      | _ => false
+      | Schematic(_) => false
+      | _ => true
       }
     )
   let coerce = (AtomDef.AnyValue(tag, a)) =>
     switch tag {
     | Symbolic.BaseAtom.Tag => Some([String(a)])
-    | AtomDef.SExpTag =>
+    | AtomDef.VarBase.Tag =>
       Some([
         switch a {
         | Var({idx}) => Var({idx: idx})

@@ -172,7 +172,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ->Array.filterMap(((key, rule)) => {
       let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
-      if !Judgment.concrete(res.conclusion) {
+      if Judgment.concrete(res.conclusion) {
         Some((key, res, insts))
       } else {
         None

@@ -21,10 +21,9 @@ module Atom = {
     }
   let substitute = (name, _) => name
   let substDeBruijn = (name, _, ~from as _=?) => name
-  let concrete = _ => false
+  let concrete = _ => true
   let upshift = (t, _, ~from as _=?) => t
   let coerce = _ => None
-  let wrap = a => AtomDef.AnyValue(BaseAtom.Tag, a)
 }
 
 module AtomView = {

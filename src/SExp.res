@@ -150,9 +150,9 @@ module Make = (Atom: AtomDef.ATOM): {
   let rec lower = (term: t): option<Atom.t> =>
     switch term {
     | Atom(s) => Some(s)
-    | Var({idx}) => Atom.coerce(AnyValue(AtomDef.SExpTag, AtomDef.Var({idx: idx})))
+    | Var({idx}) => Atom.coerce(AtomDef.VarBase.wrap(Var({idx: idx})))
     | Schematic({schematic, allowed}) =>
-      Atom.coerce(AnyValue(AtomDef.SExpTag, AtomDef.Schematic({schematic, allowed})))
+      Atom.coerce(AtomDef.VarBase.wrap(Schematic({schematic, allowed})))
     | Compound({subexps: [e1]}) => lower(e1)
     | _ => None
     }
@@ -311,9 +311,9 @@ module Make = (Atom: AtomDef.ATOM): {
 
   let rec concrete = t =>
     switch t {
-    | Schematic(_) => true
+    | Schematic(_) => false
     | Atom(s) => Atom.concrete(s)
-    | Compound({subexps}) => subexps->Array.every(concrete)
+    | Compound({subexps}) => subexps->Array.some(concrete)
     | _ => false
     }
   let mapTerms = (t, f) => f(t)

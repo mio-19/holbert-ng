@@ -752,7 +752,7 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
 
 let concrete = t =>
   switch t {
-  | Schematic(_) => true
-  | _ => false
+  | Schematic(_) => false
+  | _ => true
   }
 let mapTerms = (t, f) => f(t)
