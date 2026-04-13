@@ -161,33 +161,52 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     }
   }
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
-    let ret = Dict.make()
     ctx
     ->Context.facts
     ->Dict.toArray
     ->Array.filterMap(((key, rule)) => {
       let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
-      if Judgment.concrete(res.conclusion) {
-        Some((key, res, insts))
-      } else {
+      if !Judgment.concrete(res.conclusion) {
         None
-      }
-    })
-    ->Array.forEach(((key, res, insts)) => {
-      let substs = Judgment.unify(res.conclusion, j, ~gen)
-      substs
-      ->Seq.take(seqSizeLimit)
-      ->Seq.forEach(subst => {
+      } else {
+        let substs = Judgment.unify(res.conclusion, j, ~gen)->Seq.take(seqSizeLimit)->Seq.toArray
         let new = {
           ruleName: key,
           instantiation: insts,
           subgoals: res.premises->Array.map(f),
         }
-        ret->Dict.set("intro " ++ key, (new, subst))
-      })
+        switch substs {
+        | [] => None
+        | [subst] => Some(Results.Action(`intro ${key}`, new, subst))
+        | _ =>
+          Some(
+            Delay(
+              `intro ${key}`,
+              () =>
+                substs->Array.map(subst => {
+                  let s =
+                    rule.vars
+                    ->Belt.Array.reverse
+                    ->Belt.Array.zip(insts->Array.map(t => t->Term.substitute(subst)))
+                    ->Array.map(
+                      ((v, x)) => {
+                        let metaS = Term.prettyPrintMeta(v)
+                        // not very clean, but don't particularly want to
+                        // pollute TERM with another method for printing bare meta
+                        let metaWithoutDot =
+                          metaS->String.slice(~start=0, ~end=String.length(metaS) - 1)
+                        `${metaWithoutDot} |-> ${Term.prettyPrint(x, ~scope=ctx.fixes)}`
+                      },
+                    )
+                    ->Array.join(", ")
+                  Results.Action(s, new, subst)
+                }),
+            ),
+          )
+        }
+      }
     })
-    ret->Dict.toArray->Array.map(((key, (new, subst))) => Results.Action(key, new, subst))
   }
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     switch ctx->Context.facts->Dict.get(it.ruleName) {
