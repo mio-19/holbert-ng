@@ -1,9 +1,11 @@
-type t = string
+module BaseAtom = AtomDef.MakeBaseAtom({
+  type t = string
+})
+
 module Atom = {
-  open AtomDef
+  module BaseAtom = BaseAtom
   type t = string
   type subst = Map.t<int, string>
-  type atomTag<_> += Tag: atomTag<t>
   let unify = (a, b, ~gen as _=?) =>
     if a == b {
       Seq.once(Map.make())
@@ -19,8 +21,9 @@ module Atom = {
     }
   let substitute = (name, _) => name
   let substDeBruijn = (name, _, ~from as _=?) => name
-  let concrete = _ => false
+  let concrete = _ => true
   let upshift = (t, _, ~from as _=?) => t
+  let coerce = _ => None
 }
 
 module AtomView = {

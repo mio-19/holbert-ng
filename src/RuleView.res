@@ -1,5 +1,5 @@
 open Signatures
-open Util
+open! Util
 type style = Gentzen | Linear | Hybrid
 module Make = (
   Term: TERM,

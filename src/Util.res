@@ -143,14 +143,25 @@ let mustFindIndex = (arr, f) => {
 }
 
 module Result = {
-  let ok = (r: result<'a, 'b>): option<'a> =>
+  include Result
+  type t<'a, 'b> = result<'a, 'b>
+  let ok = (r: t<'a, 'b>): option<'a> =>
     switch r {
     | Ok(a) => Some(a)
     | Error(_) => None
     }
-  let or = (r1: result<'a, 'b>, r2: unit => result<'a, 'b>): result<'a, 'b> =>
+  let or = (r1: t<'a, 'b>, r2: unit => t<'a, 'b>): t<'a, 'b> =>
     switch r1 {
     | Ok(_) => r1
     | Error(_) => r2()
+    }
+}
+
+module Option = {
+  include Option
+  let getOrElse = (t, f): 'a =>
+    switch t {
+    | Some(a) => a
+    | None => f()
     }
 }

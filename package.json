@@ -12,7 +12,7 @@
     "res:clean": "rescript clean",
     "res:dev": "rescript watch",
     "res:format": "rescript format",
-    "test": "npm run res:build && pta 'tests/*.mjs'",
+    "test": "pta 'tests/*.mjs'",
     "test-watch": "onchange --initial '{tests,src}/*.mjs' -- pta 'tests/*.mjs'",
     "prepare": "husky"
   },
