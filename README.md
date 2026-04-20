@@ -1,5 +1,6 @@
 ## Holbert NG
 
+
 This is a new, from-scratch development of my [reconceived design](https://liamoc.net/forest/loc-000V) of the Holbert proof assistant -- the browser based Higher Order Logic proof assistant.
 
 Rather than a standalone web-app, Holbert NG will be a library of web components that can be seamlessly integrated into online documents. 
