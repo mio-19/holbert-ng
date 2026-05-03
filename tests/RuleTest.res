@@ -31,19 +31,20 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   }
 }
 
+module Symbol = AtomDef.MakeAtomAndView(
+  Symbolic.Atom,
+  Symbolic.AtomView,
+  AtomDef.NilAtomList,
+  AtomDef.NilAtomListView,
+)
+module StringSymbol = AtomDef.MakeAtomAndView(
+  StringA.Atom,
+  StringA.AtomView,
+  Symbol.Atom,
+  Symbol.AtomView,
+)
+
 zoraBlock("string terms", t => {
-  module Symbol = AtomDef.MakeAtomAndView(
-    Symbolic.Atom,
-    Symbolic.AtomView,
-    AtomDef.NilAtomList,
-    AtomDef.NilAtomListView,
-  )
-  module StringSymbol = AtomDef.MakeAtomAndView(
-    StringA.Atom,
-    StringA.AtomView,
-    Symbol.Atom,
-    Symbol.AtomView,
-  )
   module StringSExp = SExp.Make(StringSymbol.Atom)
   let wrapString = (s): StringSExp.t => Atom(AtomDef.AnyValue(StringA.BaseAtom.Tag, s))
   let wrapSymbol = (s): StringSExp.t => Atom(AnyValue(Symbolic.BaseAtom.Tag, s))
@@ -67,6 +68,37 @@ zoraBlock("string terms", t => {
           wrapSymbol("p"),
         ],
       }),
+    },
+  )
+})
+
+zoraBlock("string HOTerms", t => {
+  module StringHOTerm = HOTerm.Make(StringSymbol.Atom)
+  let wrapString = (s): StringHOTerm.t => Symbol({
+    name: AtomDef.AnyValue(StringA.BaseAtom.Tag, s),
+    constructor: false,
+  })
+  let wrapSymbol = (s): StringHOTerm.t => Symbol({
+    name: AtomDef.AnyValue(Symbolic.BaseAtom.Tag, s),
+    constructor: false,
+  })
+  let app = StringHOTerm.app
+  module T = MakeTest(StringHOTerm, StringHOTerm)
+  t->T.testParseInner(
+    `[s1. ("$s1" p) |- ("($s1)" p)]`,
+    {
+      vars: ["s1"],
+      premises: [
+        {
+          vars: [],
+          premises: [],
+          conclusion: app(wrapString([StringA.Var({idx: 0})]), [wrapSymbol("p")]),
+        },
+      ],
+      conclusion: app(
+        wrapString([StringA.String("("), StringA.Var({idx: 0}), StringA.String(")")]),
+        [wrapSymbol("p")],
+      ),
     },
   )
 })

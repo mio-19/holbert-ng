@@ -17,66 +17,84 @@ module Make = (
   module ResultsView = {
     type menuState<'a> = {
       history: list<array<Results.t<MethodView.Method.t<Proof.checked>>>>, // Stack of previous menus
-      current: array<Results.t<MethodView.Method.t<Proof.checked>>>,       // What is currently visible
+      current: array<Results.t<MethodView.Method.t<Proof.checked>>>, // What is currently visible
     }
     type props = {
       initialNodes: array<Results.t<MethodView.Method.t<Proof.checked>>>,
-      onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => (),
-      onBlur: (ReactEvent.Focus.t) => ()
+      onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => unit,
+      onBlur: ReactEvent.Focus.t => unit,
     }
     @react.componentWithProps
     let make = (props: props) => {
-        let (state, setState) = React.useState(_ => {
-          history: list{},
-          current: props.initialNodes,
+      let (state, setState) = React.useState(_ => {
+        history: list{},
+        current: props.initialNodes,
+      })
+
+      let goBack = _ => {
+        setState(prev => {
+          switch prev.history {
+          | list{parent, ...rest} => {current: parent, history: rest}
+          | list{} => prev // Already at the root
+          }
         })
-      
-        let goBack = _ => {
-          setState(prev => {
-            switch prev.history {
-            | list{parent, ...rest} => {current: parent, history: rest}
-            | list{} => prev // Already at the root
+      }
+
+      let drillDown = (newNodes: array<Results.t<'a>>) => {
+        setState(prev => {
+          history: list{prev.current, ...prev.history},
+          current: newNodes,
+        })
+      }
+
+      <div className="drill-down-container">
+        {state.history != list{}
+          ? <button tabIndex=0 onBlur={props.onBlur} onClick={goBack} className="back-button">
+              {React.string("← Back")}
+            </button>
+          : React.null}
+
+        <div className="menu-options">
+          {state.current
+          ->Array.mapWithIndex((node, i) => {
+            switch node {
+            | Action(label, nextTree, subst) =>
+              <button
+                tabIndex=0
+                onBlur={props.onBlur}
+                key={label ++ i->Int.toString}
+                onClick={_ => props.onApply(nextTree, subst)}
+              >
+                {React.string(label ++ "")}
+              </button>
+
+            | Group(label, children) =>
+              <button
+                tabIndex=0
+                onBlur={props.onBlur}
+                key={label ++ i->Int.toString}
+                onClick={_ => drillDown(children)}
+              >
+                {React.string(label ++ " →")}
+              </button>
+
+            | Delay(label, getChildren) =>
+              <button
+                tabIndex=0
+                onBlur={props.onBlur}
+                key={label ++ i->Int.toString}
+                onClick={_ => drillDown(getChildren())}
+              >
+                {React.string(label ++ " ...")}
+              </button>
             }
           })
-        }
-      
-        let drillDown = (newNodes: array<Results.t<'a>>) => {
-          setState(prev => {
-            history: list{prev.current, ...prev.history},
-            current: newNodes,
-          })
-        }
-      
-        <div className="drill-down-container">
-          {state.history != list{} 
-            ? <button tabIndex=0 onBlur={props.onBlur} onClick={goBack} className="back-button"> {React.string("← Back")} </button>
-            : React.null}
-      
-          <div className="menu-options">
-            {state.current->Array.mapWithIndex((node, i) => {
-              switch node {
-              | Action(label, nextTree, subst) =>
-                  <button tabIndex=0 onBlur={props.onBlur}  key={label ++ i->Int.toString} onClick={_ => props.onApply(nextTree, subst)}>
-                    {React.string(label ++ "")}
-                  </button>
-      
-              | Group(label, children) =>
-                  <button tabIndex=0 onBlur={props.onBlur}  key={label ++ i->Int.toString} onClick={_ => drillDown(children)}>
-                    {React.string(label ++ " →")}
-                  </button>
-      
-              | Delay(label, getChildren) =>
-                  <button tabIndex=0 onBlur={props.onBlur}  key={label ++ i->Int.toString} onClick={_ => drillDown(getChildren())}>
-                    {React.string(label ++ " ...")}
-                  </button>
-              }
-            })->React.array}
-          </div>
+          ->React.array}
         </div>
-      }
+      </div>
     }
-  
-  
+  }
+
   type props = {
     proof: Proof.checked,
     scope: array<Term.meta>,
@@ -118,19 +136,19 @@ module Make = (
               let portal = switch sidebarRef.current->Nullable.toOption {
               | None => React.null
               | Some(node) =>
-                let res = options(props.gen);
-                Portal.createPortal(  
+                let res = options(props.gen)
+                Portal.createPortal(
                   <>
-                    {
-                    <ResultsView initialNodes=res
-                     onBlur
-                     onApply={(opt,subst)=>
-                          props.onChange(
-                            Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
-                            subst,
-                          )}
-                     ></ResultsView>
-                    }
+                    {<ResultsView
+                      initialNodes=res
+                      onBlur
+                      onApply={(opt, subst) =>
+                        props.onChange(
+                          Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
+                          subst,
+                        )}
+                    >
+                    </ResultsView>}
                   </>,
                   node,
                 )

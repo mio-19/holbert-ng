@@ -3,12 +3,35 @@ open HOTerm
 
 module Util = TestUtil.MakeTerm(HOTerm)
 
+module Symbol = AtomDef.MakeAtomAndView(
+  Symbolic.Atom,
+  Symbolic.AtomView,
+  AtomDef.NilAtomList,
+  AtomDef.NilAtomListView,
+)
+module StringSymbol = AtomDef.MakeAtomAndView(
+  StringA.Atom,
+  StringA.AtomView,
+  Symbol.Atom,
+  Symbol.AtomView,
+)
+module StringHOTerm = HOTerm.Make(StringSymbol.Atom)
+module StringUtil = TestUtil.MakeTerm(StringHOTerm)
+let wrapString = s => StringHOTerm.Symbol({
+  name: AtomDef.AnyValue(StringA.BaseAtom.Tag, s),
+  constructor: false,
+})
+let wrapSymbol = s => StringHOTerm.Symbol({
+  name: AtomDef.AnyValue(Symbolic.BaseAtom.Tag, s),
+  constructor: false,
+})
+
 let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
   let gen = HOTerm.makeGen()
   let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
   let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
   try {
-    let res0 = HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen))
+    let res0 = HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen))->Seq.head->Option.getExn
     let res = if reduce {
       HOTerm.reduceSubst(res0)
     } else {
@@ -58,6 +81,7 @@ zoraBlock("parse symbol", t => {
 zoraBlock("parse var", t => {
   t->block("single digit", t => t->Util.testParse("\\1", Var({idx: 1})))
   t->block("multi digit", t => t->Util.testParse("\\234", Var({idx: 234})))
+  t->block("scope", t => t->Util.testParse("0", ~scope=["0"], Var({idx: 0})))
 })
 
 zoraBlock("parse schematic", t => {
@@ -141,6 +165,53 @@ zoraBlock("parse and prettyprint", t => {
     t->Util.testParsePrettyPrint("(x. y. z. y)", "(x. y. z. y)")
     t->Util.testParsePrettyPrint("(x. y. z. x)", "(x. y. z. x)")
     t->Util.testParsePrettyPrint("(x. y. z. z y x)", "(x. y. z. z y x)")
+  })
+})
+
+zoraBlock("string HOTerm functor", t => {
+  t->block("parse string atom", t => {
+    t->StringUtil.testParse(`"x y"`, wrapString([StringA.String("x"), StringA.String("y")]))
+    t->StringUtil.testParse(`"$s"`, ~scope=["s"], wrapString([StringA.Var({idx: 0})]))
+    t->StringUtil.testParsePrettyPrint(`"x y"`, `"x y"`)
+  })
+  t->block("parse symbolic atom", t => {
+    t->StringUtil.testParse("x", wrapSymbol("x"))
+    t->StringUtil.testParse(
+      "@cons",
+      StringHOTerm.Symbol({
+        name: AtomDef.AnyValue(Symbolic.BaseAtom.Tag, "cons"),
+        constructor: true,
+      }),
+    )
+    t->StringUtil.testParse(
+      "(x. x)",
+      StringHOTerm.Lam({name: "x", body: StringHOTerm.Var({idx: 0})}),
+    )
+  })
+  t->block("unify string atom", t => {
+    let parse = input => t->StringUtil.parse(input)
+    let emptySubst = StringHOTerm.emptySubst
+    let substAdd = StringHOTerm.substAdd
+    t->equal(
+      StringHOTerm.unify(parse(`"a ?0() c"`), parse(`"a b c"`))->Seq.head,
+      Some(emptySubst->substAdd(0, wrapString([StringA.String("b")]))),
+    )
+    t->equal(
+      StringHOTerm.unify(parse(`(P "?1() a" "?1()")`), parse(`(P "a ?1()" "a")`))->Seq.head,
+      Some(emptySubst->substAdd(1, wrapString([StringA.String("a")]))),
+    )
+    let choices =
+      StringHOTerm.unify(parse(`"?1() a"`), parse(`"a ?1()"`))
+      ->Seq.take(2)
+      ->Seq.toArray
+    t->equal(
+      choices,
+      [
+        emptySubst->substAdd(1, wrapString([])),
+        emptySubst->substAdd(1, wrapString([StringA.String("a")])),
+      ],
+    )
+    t->equal(StringHOTerm.unify(parse(`"a"`), parse(`"b"`))->Seq.head, None)
   })
 })
 

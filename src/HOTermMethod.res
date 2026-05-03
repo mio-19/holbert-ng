@@ -12,7 +12,7 @@ module MakeRewriteHOTerm = (
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
   module Results = MethodResults(HOTerm)
-  
+
   let extractEqualityTermsFromJudgment = (judgment: Judgment.t): option<(HOTerm.t, HOTerm.t)> => {
     let term: HOTerm.t = judgment
     switch HOTerm.strip(term) {
@@ -202,7 +202,7 @@ module MakeRewriteHOTerm = (
       }
     })
 
-    ret->Dict.toArray->Array.map(((s,(a,b))) => Results.Action(s,a,b))
+    ret->Dict.toArray->Array.map(((s, (a, b))) => Results.Action(s, a, b))
   }
 
   let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, f: ('a, Rule.t) => 'b) => {
@@ -337,7 +337,7 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
       ret->Dict.set(`constructor_neq ${lhs} ${rhs}`, ((), HOTerm.makeSubst()))
     | _ => ()
     }
-    ret->Dict.toArray->Array.map(((s,(a,b))) => Results.Action(s,a,b))
+    ret->Dict.toArray->Array.map(((s, (a, b))) => Results.Action(s, a, b))
   }
 
   let check = (_it: t<'a>, _ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) =>
@@ -446,7 +446,7 @@ module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type 
       })
     | _ => ()
     }
-    ret->Dict.toArray->Array.map(((s,(a,b))) => Results.Action(s,a,b))
+    ret->Dict.toArray->Array.map(((s, (a, b))) => Results.Action(s, a, b))
   }
 
   let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) => {
