@@ -1,0 +1,20 @@
+\import{holbert-macros}
+\title{A proof about [Quantifiers](hng-0005)}
+\taxon{Example}
+\hol/proof{quants}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0004}{implication}
+  \hol/dep{hng-0003}{negation}
+  \hol/dep{hng-0005}{quantifiers}
+}{  
+  P.
+    (exists (x. not (P x)))
+    ----------------------- f
+    (not (all (a. P a)))
+
+  P. asm |: elim (--ExE asm (x. not (P x)) (not (all P))) {
+      x. 1 |- by (--NotI (all P)) {
+          X. 2 |- elim (--NotE 1 (P x) X) {
+              |- elim (--AllE 2 P x) {}}}}
+}  

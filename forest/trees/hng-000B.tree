@@ -1,0 +1,56 @@
+\taxon{Theorem}
+\title{Distributivity of [[hng-0001]] and [[hng-0002]] }
+\import{holbert-macros}
+
+\p{We are using our [special elimination rule](hng-0006) here. }
+
+\hol/proof{disjConjDistL}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0001}{conjunction}
+  \hol/dep{hng-0002}{disjunction}
+  \hol/dep{hng-0006}{conjElim}
+}{
+  P.Q.R.
+    (P || Q && R)
+    ------------- ||_&&distL
+    ((P || Q) && (P || R))
+
+  P. Q. R. H |- elim (--OrE H P (Q && R) ((P || Q) && (P || R))) {
+      1 |: by (--&&I (P || Q) (P || R)) {
+          |- by (--OrI1 P Q) {
+              |- by (1) {}}
+          |- by (--OrI1 P R) {
+              |- by (1) {}}}
+      1 |: elim (--&&E 1 Q R ((P || Q) && (P || R))) {
+          2 3 |: by (--&&I (P || Q) (P || R)) {
+              |: by (--OrI2 P Q) {
+                  |: by (2) {}}
+              |: by (--OrI2 P R) {
+                  |: by (3) {}}}}}
+}
+
+\hol/proof{conjDisjDistL}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0001}{conjunction}
+  \hol/dep{hng-0002}{disjunction}
+  \hol/dep{hng-0006}{conjElim}
+}{
+  P.Q.R.
+    (P && (Q || R))
+    --------------- &&_||distL
+    (P && Q || P && R)
+
+  P. Q. R. H |- elim (--&&E H P (Q || R) (P && Q || P && R)) {
+      1 2 |: elim (--OrE 2 Q R (P && Q || P && R)) {
+          3 |: by (--OrI1 (P && Q) (P && R)) {
+              |- by (--&&I P Q) {
+                  |- by (1) {}
+                  |- by (3) {}}}
+          3 |- by (--OrI2 (P && Q) (P && R)) {
+              |- by (--&&I P R) {
+                  |- by (1) {}
+                  |- by (3) {}}}}}
+}
+

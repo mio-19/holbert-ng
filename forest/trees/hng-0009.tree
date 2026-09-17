@@ -1,0 +1,20 @@
+\taxon{Theorem}
+\title{Commutativity of [[hng-0002]]}
+\import{holbert-macros}
+
+\hol/proof{disjComm}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0002}{disjunction}
+}{
+  P.Q.
+    (P || Q)
+    -------- ||comm
+    (Q || P)
+
+  P. Q. H |: elim (--OrE H P Q (Q || P)) {
+      1 |: by (--OrI2 Q P) {
+          |: by (1) {}}
+      1 |: by (--OrI1 Q P) {
+          |: by (1) {}}}
+}

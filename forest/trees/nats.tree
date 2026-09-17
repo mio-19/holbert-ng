@@ -2,13 +2,14 @@
 \title{Natural Numbers}
 \taxon{Definition} 
 \hol/induct{nat}{
-  \hol/dep{config}{config}
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}  
 }{
   ---- Z
-  (Nat @0)
+  (@0 Nat)
   
 n.
-  (Nat n)
+  (n Nat)
   ------- S
-  (Nat (@S n))
+  ((@S n) Nat)
 }

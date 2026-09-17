@@ -22,41 +22,70 @@ function fetchAsDocument(url: string): Promise<{ doc: Document; contentType: str
 		xhr.send();
 	});
 }
+let xsltDocPromise: Promise<Document> | null = null;
+function getXsltDoc(): Promise<Document> {
+  if (xsltDocPromise == null) {
+    xsltDocPromise = fetchAsDocument("/default.xsl").then(({doc}) => doc);
+  }
+  return xsltDocPromise;
+}
+
+let docInFlight: Record<string, Promise<Document>> = {};
+
+async function loadDoc(requestURI: string): Promise<Document> {
+  if (requestURI in docInFlight) {
+    return docInFlight[requestURI];
+  }
+  let promise = (async (): Promise<Document> => {
+    const { doc, contentType } = await fetchAsDocument(requestURI);
+    const isXml = /\bxml\b/i.test(contentType) && !/html/i.test(contentType);
+    if (isXml) {
+      const xsltDoc = await getXsltDoc();
+      const xsltProcessor = new XSLTProcessor();
+      xsltProcessor.importStylesheet(xsltDoc);
+      return xsltProcessor.transformToDocument(doc);
+    } else {
+      return doc;
+    }
+  })();
+  docInFlight[requestURI] = promise;
+  return promise;
+}
+
+let inFlight: Record<string, Promise<Handler>> = {};
 
 export async function load(url: string): Promise<Handler> {
-	if (url in database) {
-		console.log(database[url],"URL");
-		return database[url];
-	} else {
-		let requestURI = url.split('/').slice(0, -1).join("/");
-		const { doc, contentType } = await fetchAsDocument(requestURI);
-		const isXml = /\bxml\b/i.test(contentType) && !/html/i.test(contentType);
-		
-		let htmldoc: Document;
-		
-		if (isXml) {
-			const { doc: xsltDoc } = await fetchAsDocument("/default.xsl"); // one fetch for the stylesheet, unavoidable — it's a second resource
-			const xsltProcessor = new XSLTProcessor();
-			xsltProcessor.importStylesheet(xsltDoc);
-			htmldoc = xsltProcessor.transformToDocument(doc);
-		} else {
-			htmldoc = doc;
-		}
-				
-		for (let x of knownTags) {
-			for (let y of htmldoc.querySelectorAll(x)) {
-				window.customElements.upgrade(document.adoptNode(y));
-			}
-		}
-		while (toInitialise.length) {
-			database[toInitialise.shift() ?? ""]?.initialise();
-		}
-		if (!(url in database)) {
-			throw "ERROR"
-		} else {
-			return database[url];
-		}
-	}
+  if (url in database) {
+    return database[url];
+  }
+  if (url in inFlight) {
+    return inFlight[url];
+  }
+
+  let promise = (async (): Promise<Handler> => {
+    let requestURI = url.split('/').slice(0, -1).join("/");
+    let htmldoc = await loadDoc(requestURI);
+
+    for (let x of knownTags) {
+      for (let y of htmldoc.querySelectorAll(x)) {
+        window.customElements.upgrade(document.adoptNode(y));
+      }
+    }
+    while (toInitialise.length) {
+      database[toInitialise.shift() ?? ""]?.initialise();
+    }
+    if (!(url in database)) {
+      throw "ERROR";
+    }
+    return database[url];
+  })();
+
+  inFlight[url] = promise;
+  try {
+    return await promise;
+  } finally {
+    delete inFlight[url];
+  }
 }
 
 class Handler {

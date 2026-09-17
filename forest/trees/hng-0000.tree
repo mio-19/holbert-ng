@@ -1,0 +1,17 @@
+\import{holbert-macros}
+\title{Configuration}
+\hol/config{config}{Gentzen} 
+\hol/notation{notation}{
+  \hol/local{config}
+}{
+  infixl or _||_
+  infixl and _&&_
+  infixr implies _->_
+  tighter not than and
+  tighter and than or
+  tighter or than implies
+  
+  mixfix Nat _Nat
+  mixfix Even _Even
+  mixfix Odd _Odd
+}

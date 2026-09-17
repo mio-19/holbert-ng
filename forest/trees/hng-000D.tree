@@ -1,0 +1,4 @@
+\title{Higher-order abstract syntax}
+\p{We use Holbert's built-in lambda bindings to handle name binding, for example, when formalising quantifiers.}
+\transclude{hng-0005}
+\p{This is an example of \em{higher order abstract syntax}, where the binding structure of the object syntax is represented using (lambda) bindings of the meta-language.}

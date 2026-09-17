@@ -1,0 +1,20 @@
+\taxon{Theorem}
+\title{Commutativity of [[hng-0001]]}
+\import{holbert-macros}
+\p{Using an easier [elimination rule](hng-0006) to make this proof clearer.}
+\hol/proof{conjComm}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0001}{conjunction}
+  \hol/dep{hng-0006}{conjElim}
+}{
+  P.Q.
+    (P && Q)
+    ----------- &&comm
+    (Q && P)
+
+    P. Q. H |: elim (--&&E H P Q (Q && P)) {
+        1 2 |: by (--&&I Q P) {
+            |: by (2) {}
+            |: by (1) {}}}
+}

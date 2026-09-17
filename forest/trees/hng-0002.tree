@@ -1,0 +1,25 @@
+\title{Disjunction}
+\taxon{Definition}
+\import{holbert-macros}
+
+\hol/axioms{disjunction}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+}{
+  A.B.
+    A
+    ---- OrI1
+    (A || B)
+    
+  A.B.
+    B
+    ---- OrI2
+    (A || B)
+    
+  A.B.C.
+    (A || B)
+    [ A |- C]
+    [ B |- C]
+    --------- OrE
+    C
+}

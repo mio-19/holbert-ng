@@ -2,13 +2,14 @@
 \title{Even Numbers}
 \taxon{Definition} 
 \hol/induct{evens}{
-  \hol/dep{config}{config}
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}  
 }{
   ---- E-Z
-  (Even @0)
+  (@0 Even)
   
 n.
-  (Even n)
+  (n Even)
   ------- E-SS
-  (Even (@S (@S n)))
+  ((@S (@S n)) Even)
 }

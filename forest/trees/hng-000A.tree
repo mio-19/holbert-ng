@@ -1,0 +1,47 @@
+\taxon{Theorem}
+\title{Associativity of [[hng-0002]]}
+\import{holbert-macros}
+
+\hol/proof{disjAssoc1}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0002}{disjunction}
+}{
+  P.Q.R.
+    (P || Q || R)
+    ------------- ||assoc1
+    (P || (Q || R))
+
+  P. Q. R. H |- elim (--OrE H (P || Q) R (P || (Q || R))) {
+      1 |: elim (--OrE 1 P Q (P || (Q || R))) {
+          2 |: by (--OrI1 P (Q || R)) {
+              |: by (2) {}}
+          2 |: by (--OrI2 P (Q || R)) {
+              |: by (--OrI1 Q R) {
+                  |: by (2) {}}}}
+      1 |: by (--OrI2 P (Q || R)) {
+          |: by (--OrI2 Q R) {
+              |: by (1) {}}}}
+}
+
+\hol/proof{disjAssoc2}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0002}{disjunction}
+}{
+  P.Q.R.
+    (P || (Q || R))
+    --------------- ||assoc2
+    (P || Q || R)
+
+  P. Q. R. H |- elim (--OrE H P (Q || R) (P || Q || R)) {
+      1 |: by (--OrI1 (P || Q) R) {
+          |: by (--OrI1 P Q) {
+              |: by (1) {}}}
+      1 |: elim (--OrE 1 Q R (P || Q || R)) {
+          2 |: by (--OrI1 (P || Q) R) {
+              |: by (--OrI2 P Q) {
+                  |: by (2) {}}}
+          2 |: by (--OrI2 (P || Q) R) {
+              |: by (2) {}}}}
+}

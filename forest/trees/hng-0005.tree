@@ -1,0 +1,29 @@
+\title{Quantifiers}
+\taxon{Definition}
+\import{holbert-macros}
+
+\hol/axioms{quantifiers}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+}{
+  P.
+    [a. (P a)]
+    ---------- AllI
+    (all (x. P x))
+    
+  P.x.
+    (all (a. P a))
+    ------------------ AllE
+    (P x)
+    
+  P.x.
+    (P x)
+    ----- ExI
+    (exists (a. P a))
+    
+  P.C.
+    (exists (a. P a))
+    [x. (P x) |- C]
+    ------------------ ExE
+    C
+}

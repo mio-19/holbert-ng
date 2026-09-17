@@ -1,5 +1,5 @@
 \title{Testing Holbert-NG in Forester}
 \author/literal{Liam O'Connor}
+\p{This is an example forest to demonstrate the Holbert-ng proof assistant. }
 \transclude{nats}
 \transclude{theorem}
-\transclude{config}

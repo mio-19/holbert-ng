@@ -1,0 +1,43 @@
+\taxon{Theorem}
+\title{Associativity of [[hng-0001]]}
+\import{holbert-macros}
+
+\hol/proof{conjAssoc1}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0001}{conjunction}
+  \hol/dep{hng-0006}{conjElim}
+}{
+  P.Q.R.
+    (P && Q && R)
+    ------------- &&assoc1
+    (P && (Q && R))
+
+  P. Q. R. H |: elim (--&&E H (P && Q) R (P && (Q && R))) {
+      1 2 |: elim (--&&E 1 P Q (P && (Q && R))) {
+          3 4 |: by (--&&I P (Q && R)) {
+              |: by (3) {}
+              |: by (--&&I Q R) {
+                  |: by (4) {}
+                  |: by (2) {}}}}}
+}
+
+\hol/proof{conjAssoc2}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0001}{conjunction}
+  \hol/dep{hng-0006}{conjElim}
+}{
+  P.Q.R.
+    (P && (Q && R))
+    --------------- &&assoc2
+    (P && Q && R)
+
+  P. Q. R. H |: elim (--&&E H P (Q && R) (P && Q && R)) {
+      1 2 |: elim (--&&E 2 Q R (P && Q && R)) {
+          3 4 |: by (--&&I (P && Q) R) {
+              |: by (--&&I P Q) {
+                  |: by (1) {}
+                  |: by (3) {}}
+              |: by (4) {}}}}
+}

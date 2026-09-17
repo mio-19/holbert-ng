@@ -1,0 +1,20 @@
+\title{Negation}
+\taxon{Definition}
+\import{holbert-macros}
+
+\hol/axioms{negation}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+}{
+  A.
+    [X. A |- X]
+    ----------- NotI
+    (not A)
+    
+  A.X.
+    (not A)
+    A
+    -------- NotE
+    X
+}
+

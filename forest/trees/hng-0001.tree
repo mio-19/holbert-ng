@@ -1,0 +1,24 @@
+\title{Conjunction}
+\taxon{Definition}
+\import{holbert-macros}
+
+\hol/axioms{conjunction}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+}{
+  A.B.
+    A
+    B
+    ---- &&I
+    (A && B)
+    
+  A.B.
+    (A && B)
+    ---------- &&E1
+    A
+    
+  A.B.
+    (A && B)
+    ---------- &&E2
+    B
+}

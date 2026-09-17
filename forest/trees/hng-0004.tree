@@ -1,0 +1,19 @@
+\title{Implication}
+\taxon{Definition}
+\import{holbert-macros}
+
+\hol/axioms{implication}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+}{
+  A.B.
+    [ A |- B]
+    --------- ImpI
+    (A -> B)
+    
+  A.B.
+    (A -> B)
+    A
+    ------------ ImpE
+    B
+}

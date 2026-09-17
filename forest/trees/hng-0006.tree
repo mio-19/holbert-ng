@@ -1,0 +1,19 @@
+\taxon{Theorem}
+\title{General [[hng-0001]] Elimination}
+\import{holbert-macros}
+
+\hol/proof{conjElim}{
+  \hol/dep{hng-0000}{config}
+  \hol/dep{hng-0000}{notation}
+  \hol/dep{hng-0001}{conjunction}
+}{
+  P.Q.R.
+    (P && Q)
+    [ P Q |- R]
+    ----------- &&E
+    R
+
+  P. Q. R. 0 H |: by (H) {
+      |- elim (--&&E1 0 P Q) {}
+      |- elim (--&&E2 0 P Q) {}}
+}
