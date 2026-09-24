@@ -26,16 +26,20 @@ module Make = (
       <IdentifierView identifier=str />
       {React.string(".")}
     </span>
-  let makeEditableMeta = (str: string,~onChange: string => unit ) => {
-    let handleConfirm = s => switch SExp.parseMeta(String.trim(s)) {
-      | Ok((s',"")) => {onChange(s'); Ok(())}
+  let makeEditableMeta = (str: string, ~onChange: string => unit) => {
+    let handleConfirm = s =>
+      switch SExp.parseMeta(String.trim(s)) {
+      | Ok((s', "")) => {
+          onChange(s')
+          Ok()
+        }
       | Error(e) => Error(e)
-      | Ok((_,rest)) => Error(`Trailing text: ${rest}`)
+      | Ok((_, rest)) => Error(`Trailing text: ${rest}`)
       }
     <span className="rule-binder">
       <EditableLabel label={str} onConfirm={handleConfirm} />
       {React.string(".")}
-    </span>  
+    </span>
   }
   let parenthesise = f =>
     [

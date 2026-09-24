@@ -16,42 +16,49 @@ module type PARSE_LEAF = {
 }
 
 module Make = (L: PARSE_LEAF) => {
-  let rec parseAtom = (
-    g: compiled,
-    input: string,
-    ~scope: array<L.meta>,
-    ~gen=?,
-  ): result<(L.term, string), string> =>
-    L.parseLeaf(
-      input,
-      ~reserved=g.reserved,
-      ~scope,
-      ~gen?,
-      ~recur=(i, ~scope, ~gen=?) => parseTop(g, i, ~scope, ~gen?),
+  let rec parseAtom = (g: compiled, input: string, ~scope: array<L.meta>, ~gen=?): result<
+    (L.term, string),
+    string,
+  > =>
+    L.parseLeaf(input, ~reserved=g.reserved, ~scope, ~gen?, ~recur=(i, ~scope, ~gen=?) =>
+      parseTop(g, i, ~scope, ~gen?)
     )
   and parseApp = (g: compiled, input: string, ~scope, ~gen=?): result<(L.term, string), string> =>
     switch parseAtom(g, input, ~scope, ~gen?) {
     | Error(e) => Error(e)
     | Ok((head, rest)) => appLoop(g, head, rest, ~scope, ~gen?)
     }
-  and appLoop = (g: compiled, left: L.term, input: string, ~scope, ~gen=?): result<(L.term, string), string> =>
+  and appLoop = (g: compiled, left: L.term, input: string, ~scope, ~gen=?): result<
+    (L.term, string),
+    string,
+  > =>
     switch parseAtom(g, input, ~scope, ~gen?) {
     | Ok((arg, rest)) => appLoop(g, L.mkApp(left, arg), rest, ~scope, ~gen?)
     | Error(_) => Ok((left, input))
     }
-  and parseCategory = (g: compiled, cat: string, input: string, ~scope, ~gen=?): result<(L.term, string), string> =>
+  and parseCategory = (g: compiled, cat: string, input: string, ~scope, ~gen=?): result<
+    (L.term, string),
+    string,
+  > =>
     switch parseOperand(g, cat, input, ~scope, ~gen?) {
     | Error(e) => Error(e)
     | Ok((left, rest)) => infixLoop(g, cat, left, rest, ~scope, ~gen?)
     }
-  and parseOperand = (g: compiled, cat: string, input: string, ~scope, ~gen=?): result<(L.term, string), string> => {
-    let prefixOps =
-      g.ops->Array.filter(op =>
-        op.category == cat &&
-          (op.parts[0]
-          ->Option.map(p => switch p { | Lit(_) => true | Hole(_) => false })
-          ->Option.getOr(false))
-      )
+  and parseOperand = (g: compiled, cat: string, input: string, ~scope, ~gen=?): result<
+    (L.term, string),
+    string,
+  > => {
+    let prefixOps = g.ops->Array.filter(op =>
+      op.category == cat &&
+        op.parts[0]
+        ->Option.map(p =>
+          switch p {
+          | Lit(_) => true
+          | Hole(_) => false
+          }
+        )
+        ->Option.getOr(false)
+    )
     switch tryOps(g, prefixOps, None, input, ~scope, ~gen?) {
     | Some(Ok(_) as ok) => ok
     | Some(Error(_) as e) => e
@@ -73,21 +80,21 @@ module Make = (L: PARSE_LEAF) => {
       }
     }
   }
-  and infixLoop = (
-    g: compiled,
-    cat: string,
-    left: L.term,
-    input: string,
-    ~scope,
-    ~gen=?,
-  ): result<(L.term, string), string> => {
-    let infixOps =
-      g.ops->Array.filter(op =>
-        op.category == cat &&
-          (op.parts[0]
-          ->Option.map(p => switch p { | Hole(_) => true | Lit(_) => false })
-          ->Option.getOr(false))
-      )
+  and infixLoop = (g: compiled, cat: string, left: L.term, input: string, ~scope, ~gen=?): result<
+    (L.term, string),
+    string,
+  > => {
+    let infixOps = g.ops->Array.filter(op =>
+      op.category == cat &&
+        op.parts[0]
+        ->Option.map(p =>
+          switch p {
+          | Hole(_) => true
+          | Lit(_) => false
+          }
+        )
+        ->Option.getOr(false)
+    )
     switch tryOps(g, infixOps, Some(left), input, ~scope, ~gen?) {
     | Some(Ok((combined, rest))) =>
       // NOTE: checks whether ANY op is NonAssoc
@@ -138,7 +145,8 @@ module Make = (L: PARSE_LEAF) => {
     | Some(Lit(s)) =>
       let input = MixfixLex.skipWs(input)
       switch MixfixLex.takeIdent(input) {
-      | Some((tok, rest)) if tok == s => matchOp(g, op, i + 1, startIdx, rest, argsAcc, ~scope, ~gen?)
+      | Some((tok, rest)) if tok == s =>
+        matchOp(g, op, i + 1, startIdx, rest, argsAcc, ~scope, ~gen?)
       | _ => i == startIdx ? None : Some(Error(`expected "${s}"`))
       }
     | Some(Hole(pos)) =>
@@ -149,17 +157,17 @@ module Make = (L: PARSE_LEAF) => {
           : parseOperand(g, op.category, input, ~scope, ~gen?)
       switch sub {
       | Error(e) => Some(Error(e))
-      | Ok((arg, rest)) => matchOp(g, op, i + 1, startIdx, rest, Array.concat(argsAcc, [arg]), ~scope, ~gen?)
+      | Ok((arg, rest)) =>
+        matchOp(g, op, i + 1, startIdx, rest, Array.concat(argsAcc, [arg]), ~scope, ~gen?)
       }
-    }    
+    }
   and parseTop = (g: compiled, input: string, ~scope, ~gen=?): result<(L.term, string), string> => {
-    let attempts =
-      g.roots->Array.filterMap(r =>
-        switch parseCategory(g, r, input, ~scope, ~gen?) {
-        | Ok((_, rest)) as ok => Some((ok, String.length(rest)))
-        | Error(_) => None
-        }
-      )
+    let attempts = g.roots->Array.filterMap(r =>
+      switch parseCategory(g, r, input, ~scope, ~gen?) {
+      | Ok((_, rest)) as ok => Some((ok, String.length(rest)))
+      | Error(_) => None
+      }
+    )
     let fallback = parseApp(g, input, ~scope, ~gen?)
     switch attempts {
     | [] => fallback
@@ -174,6 +182,8 @@ module Make = (L: PARSE_LEAF) => {
     }
   }
 
-  let parse = (input: string, ~grammar: compiled, ~scope: array<L.meta>, ~gen=?): result<(L.term, string), string> =>
-    parseAtom(grammar, input, ~scope, ~gen?)
+  let parse = (input: string, ~grammar: compiled, ~scope: array<L.meta>, ~gen=?): result<
+    (L.term, string),
+    string,
+  > => parseAtom(grammar, input, ~scope, ~gen?)
 }

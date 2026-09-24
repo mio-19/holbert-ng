@@ -1,5 +1,5 @@
 open Signatures
-module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Term) => {
+module Make = (Term: TERM, Judgment: REWRITABLE_JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Method.Context(Term, Judgment)
   module Results = Method.MethodResults(Term)
@@ -13,11 +13,14 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     newGoal: 'a,
     subgoals: array<'a>,
   }
-  
-  let keywords = ["rewrite","rev_rewrite"]
+
+  let keywords = ["rewrite", "rev_rewrite"]
   type key = NewGoal | Subgoal(int)
   let subproofs = (step: t<'a>): array<(key, 'a)> =>
-    Array.concat([(NewGoal, step.newGoal)], step.subgoals->Array.mapWithIndex((v, i) => (Subgoal(i), v)))
+    Array.concat(
+      [(NewGoal, step.newGoal)],
+      step.subgoals->Array.mapWithIndex((v, i) => (Subgoal(i), v)),
+    )
   let setSubproof = (step: t<'a>, k: key, newVal: 'a): t<'a> =>
     switch k {
     | NewGoal => {...step, newGoal: newVal}
@@ -41,7 +44,10 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     | Forward => (lhs, rhs)
     | Backward => (rhs, lhs)
     }
-  let check = (step: t<'a>, context: Context.t, goal: Judgment.t, checkSubgoal): result<t<'b>, string> => {
+  let check = (step: t<'a>, context: Context.t, goal: Judgment.t, checkSubgoal): result<
+    t<'b>,
+    string,
+  > => {
     let keyName = Method.RuleRef.prettyPrint(step.ruleName, ~assms=context.localFactNames)
     switch context->Context.lookup(step.ruleName) {
     | None => Error(`no such rule: ${keyName}`)
@@ -59,11 +65,23 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
             let (lhs, rhs) = orient(step.direction, eqLhs, eqRhs)
             let lhs' = Term.upshift(lhs, localScope->Array.length)
             if !Term.equivalent(lhs', subterm) {
-              Error(`instantiated left-hand side (${lhs'->Term.prettyPrint(~grammar=Term.emptyGrammar,~scope=context.fixes)}) 
+              Error(
+                `instantiated left-hand side (${lhs'->Term.prettyPrint(
+                    ~grammar=Term.emptyGrammar,
+                    ~scope=context.fixes,
+                  )}) 
                      does not match the term at the given path 
-                     (${subterm->Term.prettyPrint(~grammar=Term.emptyGrammar, ~scope=context.fixes)})`)
+                     (${subterm->Term.prettyPrint(
+                    ~grammar=Term.emptyGrammar,
+                    ~scope=context.fixes,
+                  )})`,
+              )
             } else {
-              let newGoal = Judgment.replaceAt(goal, step.path, Term.reduce(Term.upshift(rhs, localScope->Array.length)))
+              let newGoal = Judgment.replaceAt(
+                goal,
+                step.path,
+                Term.reduce(Term.upshift(rhs, localScope->Array.length)),
+              )
               if Array.length(premises) != Array.length(step.subgoals) {
                 Error("subgoal count mismatch")
               } else {
@@ -72,7 +90,10 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                   direction: step.direction,
                   path: step.path,
                   values: step.values,
-                  newGoal: checkSubgoal(step.newGoal, {Rule.vars: [], premises: [], conclusion: newGoal}),
+                  newGoal: checkSubgoal(
+                    step.newGoal,
+                    {Rule.vars: [], premises: [], conclusion: newGoal},
+                  ),
                   subgoals: step.subgoals->Array.mapWithIndex((a, i) =>
                     checkSubgoal(a, premises->Array.getUnsafe(i))
                   ),
@@ -82,7 +103,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
           }
         }
       }
-    }  
+    }
   }
   let apply = (
     context: Context.t,
@@ -105,11 +126,17 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                 []
               } else {
                 Judgment.positions(goal)->Array.filterMap(((path, subterm, boundScope)) =>
-                  switch Term.unify(Term.upshift(lhs, boundScope->Array.length), subterm, ~gen)->Seq.head {
+                  switch Term.unify(
+                    Term.upshift(lhs, boundScope->Array.length),
+                    subterm,
+                    ~gen,
+                  )->Seq.head {
                   | None => None
                   | Some(subst) =>
                     let values = insts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
-                    let replacement = Term.reduce(Term.substitute(Term.upshift(rhs, boundScope->Array.length), subst))
+                    let replacement = Term.reduce(
+                      Term.substitute(Term.upshift(rhs, boundScope->Array.length), subst),
+                    )
                     let newGoal = Judgment.replaceAt(goal, path, replacement)
                     let newGoalRule: Rule.t = {Rule.vars: [], premises: [], conclusion: newGoal}
                     let subgoalRules = premises->Array.map(p => p->Rule.substitute(subst))
@@ -132,80 +159,105 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
         }
       }
 
-    let dirLabel = d => switch d { | Forward => "→" | Backward => "←" }
+    let dirLabel = d =>
+      switch d {
+      | Forward => "→"
+      | Backward => "←"
+      }
 
-    let results = context->Context.facts
+    let results =
+      context
+      ->Context.facts
       ->Array.filterMap(((ruleName, rule)) =>
         switch actionsFor(ruleName, rule) {
         | [] => None
         | [(step, subst)] =>
-            Some(Results.Action(
+          Some(
+            Results.Action(
               Results.Seq([Results.RefRule(ruleName), Results.Text(dirLabel(step.direction))]),
               step,
               subst,
-            ))
-        | many => Some(
+            ),
+          )
+        | many =>
+          Some(
             Results.Delay(
               Results.Seq([Results.RefRule(ruleName)]),
-              () => many->Array.map(((step, subst)) =>
-                Results.Action(
+              () =>
+                many->Array.map(((step, subst)) => Results.Action(
                   Results.Seq([
                     Results.Text(Judgment.prettyPrintPath(step.path)),
                     Results.Text(dirLabel(step.direction)),
                   ]),
                   step,
                   subst,
-                )
-              ),
+                )),
             ),
           )
-        })
+        }
+      )
     if results->Array.length > 0 {
-      Results.atGoal([Results.Group(Results.Text("Rewriting"),results)])
+      Results.atGoal([Results.Group(Results.Text("Rewriting"), results)])
     } else {
       Results.emptyAttached()
     }
   }
   let prettyPrint = (
-      it: t<'a>,
-      ~grammar,
-      ~scope,
-      ~assms,
-      ~indentation=0,
-      ~subprinter: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
-    ) => {
-      let args = it.values->Array.map(t => Term.prettyPrint(t, ~grammar, ~scope))
-      (if it.direction == Backward { "rev_rewrite" } else { "rewrite" })
-      ->String.concat(" (")
-      ->String.concat(Array.join([Method.RuleRef.prettyPrint(it.ruleName,~assms)]->Array.concat(args), " "))
-      ->String.concat(") ")
-      ->String.concat(Judgment.prettyPrintPath(it.path))
-      ->String.concat(" {")
-      ->String.concat(
-        if Array.length(it.subgoals) > 0 {
-          Util.newline
-        } else {
-          ""
-        },
-      )
-      ->String.concat(
-        it.subgoals
-        ->Array.map(s => subprinter(s, ~grammar, ~scope, ~assms, ~indentation=indentation + 2))
-        ->Array.join(Util.newline),
-      )
-      ->String.concat("}")
-      ->String.concat(Util.newline)
-      ->String.concat(subprinter(it.newGoal, ~grammar, ~scope, ~assms, ~indentation))
-      ->String.concat(Util.newline)
+    it: t<'a>,
+    ~grammar,
+    ~scope,
+    ~assms,
+    ~indentation=0,
+    ~subprinter: (
+      'a,
+      ~grammar: Term.grammar,
+      ~scope: array<Term.meta>,
+      ~assms: array<string>,
+      ~indentation: int=?,
+    ) => string,
+  ) => {
+    let args = it.values->Array.map(t => Term.prettyPrint(t, ~grammar, ~scope))
+    if it.direction == Backward {
+      "rev_rewrite"
+    } else {
+      "rewrite"
     }
+    ->String.concat(" (")
+    ->String.concat(
+      Array.join([Method.RuleRef.prettyPrint(it.ruleName, ~assms)]->Array.concat(args), " "),
+    )
+    ->String.concat(") ")
+    ->String.concat(Judgment.prettyPrintPath(it.path))
+    ->String.concat(" {")
+    ->String.concat(
+      if Array.length(it.subgoals) > 0 {
+        Util.newline
+      } else {
+        ""
+      },
+    )
+    ->String.concat(
+      it.subgoals
+      ->Array.map(s => subprinter(s, ~grammar, ~scope, ~assms, ~indentation=indentation + 2))
+      ->Array.join(Util.newline),
+    )
+    ->String.concat("}")
+    ->String.concat(Util.newline)
+    ->String.concat(subprinter(it.newGoal, ~grammar, ~scope, ~assms, ~indentation))
+    ->String.concat(Util.newline)
+  }
 
   exception InternalParseError(string)
 
   let parse = (input, ~keyword, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
-    let direction = if keyword == "rev_rewrite" { Backward } else { Forward }  
+    let direction = if keyword == "rev_rewrite" {
+      Backward
+    } else {
+      Forward
+    }
     let cur = ref(String.trim(input))
     if cur.contents->String.get(0) == Some("(") {
-      switch Method.RuleRef.parse(String.trim(cur.contents->String.sliceToEnd(~start=1)),~assms) {
+      switch Method.RuleRef.parse(String.trim(cur.contents->String.sliceToEnd(~start=1)), ~assms) {
       | Ok((ruleName, rest)) => {
           cur := rest
           let instantiation = []
@@ -220,8 +272,8 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
           }
           if cur.contents->String.get(0) == Some(")") {
             cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
-            let (path,rest) = Judgment.parsePath(cur.contents);
-            cur := String.trim(rest);
+            let (path, rest) = Judgment.parsePath(cur.contents)
+            cur := String.trim(rest)
             let subgoals = []
             if cur.contents->String.get(0) == Some("{") {
               cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
@@ -238,9 +290,12 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                 if cur.contents->String.get(0) == Some("}") {
                   cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
                   switch subparser(cur.contents, ~grammar, ~scope, ~assms, ~gen) {
-                  | Ok ((newGoal, rest)) => {
+                  | Ok((newGoal, rest)) => {
                       cur := String.trim(rest)
-                      Ok(({ruleName, direction, values:instantiation, path, newGoal, subgoals}, cur.contents))
+                      Ok((
+                        {ruleName, direction, values: instantiation, path, newGoal, subgoals},
+                        cur.contents,
+                      ))
                     }
                   | Error(e) => throw(InternalParseError(e))
                   }
@@ -264,7 +319,6 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     }
   }
 
-
   let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
     let newsgs = it.subgoals->Array.copy
     newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
@@ -274,5 +328,4 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
   let updateGoal = (it: t<'a>, f: 'a => 'a) => {
     {...it, newGoal: f(it.newGoal)}
   }
-
 }

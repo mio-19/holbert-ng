@@ -84,7 +84,7 @@ module type CAN_UNIFY = {
   let unify: (t, t, ~gen: gen=?) => Seq.t<subst>
   let substEqual: (subst, subst) => bool
   let prettyPrint: (t, ~scope: array<meta>) => string
-//  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
+  //  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
 }
 
 module MakeUnifyTester = (Subj: CAN_UNIFY) => {
@@ -181,12 +181,13 @@ module MakeTerm = (Term: TERM) => {
     }
   }
   let testParseFail = (t: Zora.t, input: string, ~scope=[]) => {
-    let res = Term.parse(input,~grammar=Term.emptyGrammar,  ~scope, ~gen=Term.makeGen())
+    let res = Term.parse(input, ~grammar=Term.emptyGrammar, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok((p, remaining)) =>
       t->fail(
         ~msg=`parse intended to fail, but succeeded: ${Term.prettyPrint(
-            p,~grammar=Term.emptyGrammar, 
+            p,
+            ~grammar=Term.emptyGrammar,
             ~scope,
           )}\nremaining: ${remaining}`,
       )
@@ -198,14 +199,14 @@ module MakeTerm = (Term: TERM) => {
 
     switch res {
     | Ok(res) => {
-        let result = Term.prettyPrint(res->Pair.first, ~grammar=Term.emptyGrammar,  ~scope)
+        let result = Term.prettyPrint(res->Pair.first, ~grammar=Term.emptyGrammar, ~scope)
         t->equal(result, expected, ~msg="prettyPrint output matches expected")
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
   let parse = (t: Zora.t, input: string, ~scope=[]): Term.t => {
-    let res = Term.parse(input, ~grammar=Term.emptyGrammar,  ~scope, ~gen=Term.makeGen())
+    let res = Term.parse(input, ~grammar=Term.emptyGrammar, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok((term, "")) => term
     | Ok((_, rest)) => {
@@ -242,7 +243,7 @@ module MakeTerm = (Term: TERM) => {
 
   let substArrayPrettyPrint = (_ss: array<Term.subst>) => {
     ""
-   // ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
+    // ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
   }
 
   let testUnify = (

@@ -8,7 +8,7 @@ module Make = (
   module Rule = Rule.Make(Term, Judgment)
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
-  type state = { rules: dict<Rule.t> }
+  type state = {rules: dict<Rule.t>}
   type props = {
     content: state,
     imports: Ports.t,
@@ -49,8 +49,9 @@ module Make = (
       }
     }
     ret.contents->Result.map(state => (
-      {rules: state }, 
-      {Ports.facts: state, ruleStyle: None, grammar: Term.emptyGrammar}))
+      {rules: state},
+      {Ports.facts: state, ruleStyle: None, grammar: Term.emptyGrammar},
+    ))
   }
 
   let make = props => {
@@ -68,7 +69,9 @@ module Make = (
           key={String.make(i)}
           style={props.imports.ruleStyle->Option.getOr(Hybrid)}
         >
-          <span className="rule-rulename-global"><IdentifierView identifier=n /></span>
+          <span className="rule-rulename-global">
+            <IdentifierView identifier=n />
+          </span>
         </RuleView>
       )
       ->React.array}

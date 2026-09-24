@@ -32,7 +32,7 @@ module Make = (Atom: AtomDef.ATOM): {
   type subst = Map.t<schematic, t>
   type grammar = unit
   let emptyGrammar = ()
-  let combineGrammars = (_,_) => ()
+  let combineGrammars = (_, _) => ()
   let substEqual = Util.mapEqual
   let mapSubst = Util.mapMapValues
   let makeSubst = () => {

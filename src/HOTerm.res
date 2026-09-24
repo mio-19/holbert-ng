@@ -78,7 +78,6 @@ let rec betaReduce = term =>
     }
   }
 
-
 let rec structEqual = (a, b) =>
   switch (a, b) {
   | (Symbol({name: n1, constructor: c1}), Symbol({name: n2, constructor: c2})) =>
@@ -90,7 +89,6 @@ let rec structEqual = (a, b) =>
     structEqual(f1, f2) && structEqual(a1, a2)
   | _ => false
   }
-
 
 // Does Var(depth) occur free in `t`?
 let rec occursFree = (t, depth) =>
@@ -117,7 +115,7 @@ let downshift1 = t => {
 // Contract eta-redexes bottom-up: Lam(App(f, Var(0))) ~> f, whenever
 // Var(0) isn't free in f. Assumes its input is already beta-normal
 // (produced by `betaReduce`).
-// Contraction can't introduce new beta redexes, so a single bottom-up 
+// Contraction can't introduce new beta redexes, so a single bottom-up
 // pass suffices.
 let rec etaNormalise = t => {
   let t' = switch t {
@@ -189,19 +187,16 @@ let rec strip = (term: t): (t, array<t>) => {
     (peeledFunc, Array.concat(peeledArgs, [arg]))
   | _ => (term, [])
   }
-}  
+}
 let rec unstrip = (term: t, args: array<t>): t => {
-    if args->Array.length == 0 {
-      term
-    } else {
-      let head = args[0]->Option.getExn
-      let rest = args->Array.sliceToEnd(~start=1)
-      unstrip(App({func: term, arg: head}), rest)
-    }
-  }  
-
-
-
+  if args->Array.length == 0 {
+    term
+  } else {
+    let head = args[0]->Option.getExn
+    let rest = args->Array.sliceToEnd(~start=1)
+    unstrip(App({func: term, arg: head}), rest)
+  }
+}
 
 let concrete = t => {
   let (head, _args) = strip(t)
@@ -210,7 +205,6 @@ let concrete = t => {
   | _ => true
   }
 }
-
 
 // Is `t` of the form `Schematic(n)[x_i0, ..., x_i(k-1)]` with each
 // x_ij a bound variable? Unlike strict Miller-pattern unification,
@@ -238,12 +232,7 @@ let asPattern = t => {
 
 // last index j such that arr[j] == p, if any
 let lastIndexOf = (arr, p) => {
-  let rec go = i =>
-    i < 0
-      ? None
-      : arr->Belt.Array.getExn(i) == p
-      ? Some(i)
-      : go(i - 1)
+  let rec go = i => i < 0 ? None : arr->Belt.Array.getExn(i) == p ? Some(i) : go(i - 1)
   go(arr->Array.length - 1)
 }
 
@@ -256,7 +245,7 @@ let lastIndexOf = (arr, p) => {
 // When a bound variable occurs more than once in `spine` (a
 // non-linear/quasi-pattern), occurrences of it in `rhs` are mapped
 // to the *rightmost* (last, i.e. innermost-lambda) spine position.
-// This is a deliberate choice among several sound solutions, not a 
+// This is a deliberate choice among several sound solutions, not a
 // canonical one.
 let makeSolution = (rhs, spineArr) => {
   let k = spineArr->Array.length
@@ -298,7 +287,6 @@ let freeVars = t => {
   go(t, 0)
   acc.contents
 }
-
 
 // Try to solve `a` (assumed reduced) as a pattern for `b` (also
 // reduced). Occurs check + scope check (b's free vars ⊆ a's spine).
@@ -342,7 +330,6 @@ let tryFlexFlexSame = (n, spine1, spine2, gen) =>
       Some(Belt.Map.Int.fromArray([(n, wrapLams(k, body))]))
     }
   }
-
 
 let unifyRigidHeaded = (t1, t2, gen, unifyStep) => {
   let (h1, a1) = strip(t1)
@@ -427,9 +414,7 @@ let parseMeta = (str: string) => {
   }
 }
 
-
 let mapTerms = (t, f) => f(t)
-
 
 type step = Func | Arg | Body
 type path = array<step>
@@ -459,55 +444,62 @@ let rec replaceAtFrom = (term: t, path: path, i: int, replacement: t): t =>
   }
 let replaceAt = (term, path, replacement) => replaceAtFrom(term, path, 0, replacement)
 
-let mkEquation = (a, b) =>
-  App({func: App({func: Symbol({name: "_=_", constructor: false}), arg: a}), arg: b})
+let mkEquation = (a, b) => App({
+  func: App({func: Symbol({name: "_=_", constructor: false}), arg: a}),
+  arg: b,
+})
 
 let asEquation = (t: t): option<(t, t)> =>
   switch t {
-  | App({func: App({func: Symbol({name: "_=_", constructor: false}), arg: a}), arg: b}) => Some((a, b))
+  | App({func: App({func: Symbol({name: "_=_", constructor: false}), arg: a}), arg: b}) =>
+    Some((a, b))
   | _ => None
   }
-  
+
 let positions = (term: t): array<(path, t, array<string>)> => {
   let rec go = (term, scope, path) => {
     let here = (path, term, scope)
     let children = switch term {
     | App({func, arg}) =>
-      Array.concat(go(func, scope, Array.concat(path, [Func])), go(arg, scope, Array.concat(path, [Arg])))
+      Array.concat(
+        go(func, scope, Array.concat(path, [Func])),
+        go(arg, scope, Array.concat(path, [Arg])),
+      )
     | Lam({name, body}) => go(body, Array.concat(scope, [name]), Array.concat(path, [Body]))
     | Symbol(_) | Var(_) | Schematic(_) => []
     }
     Array.concat([here], children)
   }
   go(term, [], [])
-}  
+}
 
-let prettyPrintStep = (s : step) => switch s {
+let prettyPrintStep = (s: step) =>
+  switch s {
   | Func => "F"
   | Arg => "A"
   | Body => "B"
-}
+  }
 
-let prettyPrintPath = (p : path) => p->Array.map(prettyPrintStep)->Array.join("")
+let prettyPrintPath = (p: path) => p->Array.map(prettyPrintStep)->Array.join("")
 
-let parsePath = (str:string) => {
+let parsePath = (str: string) => {
   let re = RegExp.fromStringWithFlags("([FAB]*)", ~flags="y")
-  let toStep = (ch) => 
+  let toStep = ch =>
     switch ch {
     | "F" => Func
     | "A" => Arg
-    | _   => Body    
+    | _ => Body
     }
   switch re->RegExp.exec(str) {
   | Some(res) => {
       let rest = String.sliceToEnd(str, ~start=RegExp.lastIndex(re))
       switch RegExp.Result.matches(res) {
-      | [] => ([],str)
-      | [n] => (n->String.split("")->Array.map(toStep),rest)
-      | _ => ([],str)
+      | [] => ([], str)
+      | [n] => (n->String.split("")->Array.map(toStep), rest)
+      | _ => ([], str)
       }
-    }    
-  | _ => ([],str)
+    }
+  | _ => ([], str)
   }
 }
 let freshenMetas = (~existing: array<meta>, ~incoming: array<meta>): array<meta> => {
@@ -521,9 +513,10 @@ let freshenMetas = (~existing: array<meta>, ~incoming: array<meta>): array<meta>
   })
 }
 
-let emptyGrammar = MixfixGrammar.compile(
-      MixfixGrammar.opFromName("eq", "_=_", ~assoc=NonAssoc)
-    )->Result.getOr(MixfixGrammar.emptyCompiled)
+let emptyGrammar =
+  MixfixGrammar.compile(MixfixGrammar.opFromName("eq", "_=_", ~assoc=NonAssoc))->Result.getOr(
+    MixfixGrammar.emptyCompiled,
+  )
 
 let combineGrammars = MixfixGrammar.combine
 
@@ -535,8 +528,8 @@ module ParseLeaf: MixfixParser.PARSE_LEAF
   type meta = meta
   type gen = gen
 
-  let debruijnRE = %re("/^\\(\d+)/")
-  let schematicRE = %re("/^\?(\d+)/")
+  let debruijnRE = /^\\(\d+)/
+  let schematicRE = /^\?(\d+)/
 
   let parseLeaf = (input, ~reserved, ~scope, ~gen=?, ~recur) => {
     let input = MixfixLex.skipWs(input)
@@ -635,9 +628,7 @@ module ParseLeaf: MixfixParser.PARSE_LEAF
 module Parser = MixfixParser.Make(ParseLeaf)
 let parse = Parser.parse
 
-
 module PrintLeaf = (O: MixfixPrinter.PRINT_TARGET) => {
-  
   type term = t
   type meta = meta
   type out = O.out
@@ -650,7 +641,7 @@ module PrintLeaf = (O: MixfixPrinter.PRINT_TARGET) => {
           O.leaf(~kind="lambda-punct", "("),
           O.leaf(~kind="binder", name),
           O.leaf(~kind="lambda-punct", ". "),
-          recur(body, localIdx+1, Array.concat( [name],scope), MixfixPrinter.Top),
+          recur(body, localIdx + 1, Array.concat([name], scope), MixfixPrinter.Top),
           O.leaf(~kind="lambda-punct", ")"),
         ]),
       )
@@ -672,16 +663,16 @@ module PrintLeaf = (O: MixfixPrinter.PRINT_TARGET) => {
         constructor
           ? O.leaf(~kind="constructor", `@${name}`)
           : Belt.Set.String.has(reserved, name)
-            ? O.leaf(~kind="symbol-escaped", `\`${name}`)
-            : O.leaf(~kind="symbol", name),
+          ? O.leaf(~kind="symbol-escaped", `\`${name}`)
+          : O.leaf(~kind="symbol", name),
       )
     | App(_) => None
     }
 
   let tryStrip = term => {
     let (head, args) = strip(term)
-    if (args->Array.length > 0) {
-      Some((head,args))
+    if args->Array.length > 0 {
+      Some((head, args))
     } else {
       None
     }
@@ -692,10 +683,12 @@ module PrintLeaf = (O: MixfixPrinter.PRINT_TARGET) => {
     | Symbol({name, constructor: false}) => Some(name)
     | _ => None
     }
-
 }
 
-module StringPrinter = MixfixPrinter.Make(MixfixPrinter.StringTarget, PrintLeaf(MixfixPrinter.StringTarget))
+module StringPrinter = MixfixPrinter.Make(
+  MixfixPrinter.StringTarget,
+  PrintLeaf(MixfixPrinter.StringTarget),
+)
 
-
-let prettyPrint = (term, ~grammar, ~scope) => StringPrinter.prettyPrintWithGrammar(term,~parentheses=true,~grammar,~scope)
+let prettyPrint = (term, ~grammar, ~scope) =>
+  StringPrinter.prettyPrintWithGrammar(term, ~parentheses=true, ~grammar, ~scope)

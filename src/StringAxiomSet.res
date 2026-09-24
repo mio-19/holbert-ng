@@ -11,7 +11,7 @@ module Make = (
   module Ports = Ports(Term, Term)
   type state = {
     raw: dict<Rule.t>,
-    derived: dict<Rule.t>
+    derived: dict<Rule.t>,
   }
 
   type props = {
@@ -143,7 +143,7 @@ module Make = (
       let results = Dict.make()
       let ret = ref(Error("impossible"))
       while go.contents {
-        switch Rule.parseTopLevel(cur.contents, ~grammar=imports.grammar,  ~scope=[]) {
+        switch Rule.parseTopLevel(cur.contents, ~grammar=imports.grammar, ~scope=[]) {
         | Ok((t, n), rest) =>
           if n->String.trim == "" {
             go := false
@@ -187,7 +187,14 @@ module Make = (
           derived->Dict.set(`${group.name}_mutualInduct`, derive(group, mentionedGroups))
         }
       })
-      ({raw, derived}, {Ports.facts: raw->Dict.copy->Dict.assign(derived), ruleStyle: None, grammar: Term.emptyGrammar})
+      (
+        {raw, derived},
+        {
+          Ports.facts: raw->Dict.copy->Dict.assign(derived),
+          ruleStyle: None,
+          grammar: Term.emptyGrammar,
+        },
+      )
     })
   }
 

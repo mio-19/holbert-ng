@@ -4,29 +4,28 @@ type rec t =
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
   | App({func: t, arg: t})
-  
+
 include Signatures.TERM
   with type t := t
   and type meta = string
   and type schematic = int
   and type subst = Belt.Map.Int.t<t>
-  and type grammar = MixfixGrammar.compiled 
+  and type grammar = MixfixGrammar.compiled
 
 let mapTerms: (t, t => t) => t
 let strip: t => (t, array<t>)
 let unstrip: (t, array<t>) => t
 
-
 type path
 
-let mkEquation: (t,t) => t
+let mkEquation: (t, t) => t
 
 // From REWRITABLE_JUDGMENT
-let asEquation: t => option<(t, t)> 
+let asEquation: t => option<(t, t)>
 let locate: (t, path) => option<(t, array<string>)>
 let replaceAt: (t, path, t) => t
-let prettyPrintPath : path => string
+let prettyPrintPath: path => string
 let positions: t => array<(path, t, array<string>)>
-let parsePath : string => (path, string)
-module PrintLeaf : (O: MixfixPrinter.PRINT_TARGET) 
-  => MixfixPrinter.PRINT_LEAF with type out = O.out and type term = t and type meta = meta
+let parsePath: string => (path, string)
+module PrintLeaf: (O: MixfixPrinter.PRINT_TARGET) =>
+(MixfixPrinter.PRINT_LEAF with type out = O.out and type term = t and type meta = meta)

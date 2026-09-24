@@ -1,5 +1,5 @@
-let wsRE = %re("/^\s*/")
-let identRE = %re("/^[^\s.()\[\]][^\s.()\[\]]*/")
+let wsRE = /^\s*/
+let identRE = /^[^\s.()\[\]][^\s.()\[\]]*/
 
 let charAt = (s: string, i: int): string => String.charAt(s, i)
 let sliceToEnd = (s: string, ~start: int): string => String.sliceToEnd(s, ~start)

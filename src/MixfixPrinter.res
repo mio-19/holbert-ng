@@ -12,7 +12,12 @@ type shape = ALambda | AnAtom | AnApp | AnOp(string)
 type printCtx = Top | AppFunc | AppArg | InCategory(string, holePos)
 
 let holeCount = (op: opDecl): int =>
-  op.parts->Array.reduce(0, (n, p) => switch p { | Hole(_) => n + 1 | Lit(_) => n })
+  op.parts->Array.reduce(0, (n, p) =>
+    switch p {
+    | Hole(_) => n + 1
+    | Lit(_) => n
+    }
+  )
 
 let effectiveHolePos = (assoc: assoc, i: int, total: int): holePos =>
   switch assoc {
@@ -23,8 +28,7 @@ let effectiveHolePos = (assoc: assoc, i: int, total: int): holePos =>
 
 let tighterThanStrict = (g: compiled, a: string, b: string): bool => {
   let rec go = (frontier: array<string>, seen: Belt.Set.String.t) =>
-    frontier->Array.some(c => c == a) ||
-      {
+    frontier->Array.some(c => c == a) || {
         let next = frontier->Array.flatMap(c => g.immediateTighter->Dict.get(c)->Option.getOr([]))
         let next = next->Array.filter(c => !Belt.Set.String.has(seen, c))
         Array.length(next) == 0
@@ -37,8 +41,16 @@ let tighterThanStrict = (g: compiled, a: string, b: string): bool => {
 let needsParens = (g: compiled, shape: shape, ctx: printCtx): bool =>
   switch ctx {
   | Top => false
-  | AppFunc => switch shape { | AnOp(_) => true | ALambda | AnAtom | AnApp => false }
-  | AppArg => switch shape { | AnAtom | ALambda => false | AnApp | AnOp(_) => true }
+  | AppFunc =>
+    switch shape {
+    | AnOp(_) => true
+    | ALambda | AnAtom | AnApp => false
+    }
+  | AppArg =>
+    switch shape {
+    | AnAtom | ALambda => false
+    | AnApp | AnOp(_) => true
+    }
   | InCategory(cat, pos) =>
     switch shape {
     | ALambda | AnAtom | AnApp => false
@@ -67,16 +79,25 @@ module type PRINT_LEAF = {
 }
 
 module Make = (O: PRINT_TARGET, L: PRINT_LEAF with type out = O.out) => {
-  let rec prettyPrintAt = (g: compiled, term: L.term, localIdx: int, scope: array<L.meta>, ctx: printCtx): O.out =>
-    switch L.printLeaf(term, localIdx, scope, ctx, ~reserved=g.reserved, ~recur=(t,i, s, c) => prettyPrintAt(g, t, i, s, c)) {
+  let rec prettyPrintAt = (
+    g: compiled,
+    term: L.term,
+    localIdx: int,
+    scope: array<L.meta>,
+    ctx: printCtx,
+  ): O.out =>
+    switch L.printLeaf(term, localIdx, scope, ctx, ~reserved=g.reserved, ~recur=(t, i, s, c) =>
+      prettyPrintAt(g, t, i, s, c)
+    ) {
     | Some(out) => out
     | None =>
       switch L.tryStrip(term) {
-      | Some((headTerm, args)) => 
+      | Some((headTerm, args)) =>
         switch L.tryOpHead(headTerm) {
-        | Some(name) => 
+        | Some(name) =>
           switch g.byName->Dict.get(name) {
-          | Some(op) if Array.length(args) >= holeCount(op) => printOpApplication(g, op, args,localIdx, scope, ctx)
+          | Some(op) if Array.length(args) >= holeCount(op) =>
+            printOpApplication(g, op, args, localIdx, scope, ctx)
           | _ => printPlainApp(g, headTerm, args, localIdx, scope, ctx)
           }
         | None => printPlainApp(g, headTerm, args, localIdx, scope, ctx)
@@ -84,12 +105,28 @@ module Make = (O: PRINT_TARGET, L: PRINT_LEAF with type out = O.out) => {
       | None => O.leaf(~kind="unprintable", "?")
       }
     }
-  and printPlainApp = (g: compiled, head: L.term, args: array<L.term>, localIdx: int, scope: array<L.meta>, ctx: printCtx): O.out => {
+  and printPlainApp = (
+    g: compiled,
+    head: L.term,
+    args: array<L.term>,
+    localIdx: int,
+    scope: array<L.meta>,
+    ctx: printCtx,
+  ): O.out => {
     let headOut = prettyPrintAt(g, head, localIdx, scope, AppFunc)
-    let full = O.spaced(Array.concat([headOut], args->Array.map(a => prettyPrintAt(g, a, localIdx, scope, AppArg))))
+    let full = O.spaced(
+      Array.concat([headOut], args->Array.map(a => prettyPrintAt(g, a, localIdx, scope, AppArg))),
+    )
     needsParens(g, AnApp, ctx) ? O.parens(full) : full
   }
-  and printOpApplication = (g: compiled, op: opDecl, allArgs: array<L.term>, localIdx: int, scope: array<L.meta>, ctx: printCtx): O.out => {
+  and printOpApplication = (
+    g: compiled,
+    op: opDecl,
+    allArgs: array<L.term>,
+    localIdx: int,
+    scope: array<L.meta>,
+    ctx: printCtx,
+  ): O.out => {
     let n = holeCount(op)
     let opArgs = Array.slice(allArgs, ~start=0, ~end=n)
     let extra = Array.sliceToEnd(allArgs, ~start=n)
@@ -101,7 +138,13 @@ module Make = (O: PRINT_TARGET, L: PRINT_LEAF with type out = O.out) => {
           let i = holeIdx.contents
           holeIdx := i + 1
           let pos = effectiveHolePos(op.assoc, i, n)
-          prettyPrintAt(g, opArgs->Belt.Array.getExn(i), localIdx, scope, InCategory(op.category, pos))
+          prettyPrintAt(
+            g,
+            opArgs->Belt.Array.getExn(i),
+            localIdx,
+            scope,
+            InCategory(op.category, pos),
+          )
         }
       }
     )
@@ -111,13 +154,19 @@ module Make = (O: PRINT_TARGET, L: PRINT_LEAF with type out = O.out) => {
     if Array.length(extra) == 0 {
       opOut
     } else {
-      let full = O.spaced(Array.concat([opOut], extra->Array.map(a => prettyPrintAt(g, a, localIdx, scope, AppArg))))
+      let full = O.spaced(
+        Array.concat([opOut], extra->Array.map(a => prettyPrintAt(g, a, localIdx, scope, AppArg))),
+      )
       needsParens(g, AnApp, ctx) ? O.parens(full) : full
     }
   }
 
-  let prettyPrintWithGrammar = (term: L.term, ~parentheses: bool, ~grammar: compiled, ~scope: array<L.meta>): O.out =>
-    prettyPrintAt(grammar, term, 0, scope, parentheses ? AppArg : Top)
+  let prettyPrintWithGrammar = (
+    term: L.term,
+    ~parentheses: bool,
+    ~grammar: compiled,
+    ~scope: array<L.meta>,
+  ): O.out => prettyPrintAt(grammar, term, 0, scope, parentheses ? AppArg : Top)
 }
 
 module StringTarget: PRINT_TARGET with type out = string = {

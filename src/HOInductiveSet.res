@@ -22,8 +22,32 @@ type predicateGroup = {
 
 let makeKey = (name, arity) => name ++ "§" ++ Int.toString(arity)
 let letters = [
-  "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-  "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+  "a",
+  "b",
+  "c",
+  "d",
+  "e",
+  "f",
+  "g",
+  "h",
+  "i",
+  "j",
+  "k",
+  "l",
+  "m",
+  "n",
+  "o",
+  "p",
+  "q",
+  "r",
+  "s",
+  "t",
+  "u",
+  "v",
+  "w",
+  "x",
+  "y",
+  "z",
 ]
 
 let nameForIndex = i => {
@@ -32,8 +56,32 @@ let nameForIndex = i => {
   cycle == 0 ? letter : letter ++ Int.toString(cycle)
 }
 let upperLetters = [
-  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+  "M",
+  "N",
+  "O",
+  "P",
+  "Q",
+  "R",
+  "S",
+  "T",
+  "U",
+  "V",
+  "W",
+  "X",
+  "Y",
+  "Z",
 ]
 
 let predicateNameForIndex = i => {
@@ -43,14 +91,13 @@ let predicateNameForIndex = i => {
   cycle == 0 ? letter : letter ++ Int.toString(cycle)
 }
 
-let makeVarNames = (arity: int) =>
-  Array.fromInitializer(~length=arity, nameForIndex)
+let makeVarNames = (arity: int) => Array.fromInitializer(~length=arity, nameForIndex)
 let makeVarArgs = (arity: int) => Array.fromInitializer(~length=arity, i => Term.Var({idx: i}))
 
 let extractPredicateSignature = (rule: Rule.t): option<(string, int)> => {
   let (head, args) = Term.strip(rule.conclusion)
   switch head {
-  | Symbol({name: name}) => Some((name, Array.length(args)))
+  | Symbol({name}) => Some((name, Array.length(args)))
   | _ => None
   }
 }
@@ -72,89 +119,86 @@ let groupByPredicate = (rules: dict<Rule.t>): array<predicateGroup> =>
     let (name, arity) = extractPredicateSignature(firstRule)->Option.getExn
     {name, arity, rules: predicates}
   })
-  let generateInductionRule = (group: predicateGroup, allGroups: array<predicateGroup>): Rule.t => {
-    let {name: str, arity: i} = group
-    let numFormers = Array.length(allGroups)
-    let groupIndex = Util.mustFindIndex(allGroups, g => g.name == str && g.arity == i)
+let generateInductionRule = (group: predicateGroup, allGroups: array<predicateGroup>): Rule.t => {
+  let {name: str, arity: i} = group
+  let numFormers = Array.length(allGroups)
+  let groupIndex = Util.mustFindIndex(allGroups, g => g.name == str && g.arity == i)
 
-    let findFormerIndex = (name, arity) =>
-      Util.mustFindIndex(allGroups, g => g.name == name && g.arity == arity)
+  let findFormerIndex = (name, arity) =>
+    Util.mustFindIndex(allGroups, g => g.name == name && g.arity == arity)
 
-    let outerVars = Array.concat(
-      makeVarNames(i),
-      Array.fromInitializer(~length=numFormers, predicateNameForIndex),
-    )
+  let outerVars = Array.concat(
+    makeVarNames(i),
+    Array.fromInitializer(~length=numFormers, predicateNameForIndex),
+  )
 
-    let generateInductiveHypothesis = (
-      premise: Rule.t,
-      offset: int,
-      scope: array<string>,
-    ): option<Rule.t> => {
-      let (head, args) = Term.strip(premise.conclusion)
-      switch head {
-      | Symbol({name: name}) =>
-        let formerIndex = findFormerIndex(name, Array.length(args))
-        let freshVars = Term.freshenMetas(~existing=scope, ~incoming=premise.vars)
-        Some({
-          Rule.vars: freshVars,
-          premises: premise.premises,
-          conclusion: Term.unstrip(
-            Term.Var({idx: offset + Array.length(premise.vars) + i + formerIndex}),
-            args,
-          ),
-        })
-      | _ => None
-      }
-    }
-
-    let caseSubgoal = (constructorRule: Rule.t): Rule.t => {
-      let offset = Array.length(constructorRule.vars)
-      let freshConstructorVars = Term.freshenMetas(~existing=outerVars, ~incoming=constructorRule.vars)
-      let initialScope = Array.concat(outerVars, freshConstructorVars)
-
-      let (inductiveHypotheses, _finalScope) = constructorRule.premises->Array.reduce(
-        ([], initialScope),
-        ((acc, scope), premise) =>
-          switch generateInductiveHypothesis(premise, offset, scope) {
-          | Some(ihRule) => (Array.concat(acc, [ihRule]), Array.concat(scope, ihRule.vars))
-          | None => (acc, scope)
-          },
-      )
-
-      let (conclusionHead, conclusionArgs) = Term.strip(constructorRule.conclusion)
-      let typeIndex = switch conclusionHead {
-      | Symbol({name: name}) =>
-        findFormerIndex(name, Array.length(conclusionArgs))
-      | _ => throw(Util.Unreachable("Constructor conclusion must have a Symbol head"))
-      }
-
-      {
-        Rule.vars: freshConstructorVars,
-        premises: Array.concat(constructorRule.premises, inductiveHypotheses),
-        conclusion: Term.unstrip(Term.Var({idx: offset + i + typeIndex}), conclusionArgs),
-      }
-    }
-
-    let allConstructors = Array.flatMap(allGroups, g => g.rules)
-    let subgoals = Array.map(allConstructors, ((_, rule)) => caseSubgoal(rule))
-
-    {
-      Rule.vars: outerVars,
-      premises: [
-        {
-          Rule.vars: [],
-          premises: [],
-          conclusion: Term.unstrip(
-            Term.Symbol({name: str, constructor: false}),
-            makeVarArgs(i),
-          ),
-        },
-        ...subgoals,
-      ],
-      conclusion: Term.unstrip(Term.Var({idx: i + groupIndex}), makeVarArgs(i)),
+  let generateInductiveHypothesis = (premise: Rule.t, offset: int, scope: array<string>): option<
+    Rule.t,
+  > => {
+    let (head, args) = Term.strip(premise.conclusion)
+    switch head {
+    | Symbol({name}) =>
+      let formerIndex = findFormerIndex(name, Array.length(args))
+      let freshVars = Term.freshenMetas(~existing=scope, ~incoming=premise.vars)
+      Some({
+        Rule.vars: freshVars,
+        premises: premise.premises,
+        conclusion: Term.unstrip(
+          Term.Var({idx: offset + Array.length(premise.vars) + i + formerIndex}),
+          args,
+        ),
+      })
+    | _ => None
     }
   }
-  
+
+  let caseSubgoal = (constructorRule: Rule.t): Rule.t => {
+    let offset = Array.length(constructorRule.vars)
+    let freshConstructorVars = Term.freshenMetas(
+      ~existing=outerVars,
+      ~incoming=constructorRule.vars,
+    )
+    let initialScope = Array.concat(outerVars, freshConstructorVars)
+
+    let (inductiveHypotheses, _finalScope) = constructorRule.premises->Array.reduce(
+      ([], initialScope),
+      ((acc, scope), premise) =>
+        switch generateInductiveHypothesis(premise, offset, scope) {
+        | Some(ihRule) => (Array.concat(acc, [ihRule]), Array.concat(scope, ihRule.vars))
+        | None => (acc, scope)
+        },
+    )
+
+    let (conclusionHead, conclusionArgs) = Term.strip(constructorRule.conclusion)
+    let typeIndex = switch conclusionHead {
+    | Symbol({name}) => findFormerIndex(name, Array.length(conclusionArgs))
+    | _ => throw(Util.Unreachable("Constructor conclusion must have a Symbol head"))
+    }
+
+    {
+      Rule.vars: freshConstructorVars,
+      premises: Array.concat(constructorRule.premises, inductiveHypotheses),
+      conclusion: Term.unstrip(Term.Var({idx: offset + i + typeIndex}), conclusionArgs),
+    }
+  }
+
+  let allConstructors = Array.flatMap(allGroups, g => g.rules)
+  let subgoals = Array.map(allConstructors, ((_, rule)) => caseSubgoal(rule))
+
+  {
+    Rule.vars: outerVars,
+    premises: [
+      {
+        Rule.vars: [],
+        premises: [],
+        conclusion: Term.unstrip(Term.Symbol({name: str, constructor: false}), makeVarArgs(i)),
+      },
+      ...subgoals,
+    ],
+    conclusion: Term.unstrip(Term.Var({idx: i + groupIndex}), makeVarArgs(i)),
+  }
+}
+
 module StringCmp = Belt.Id.MakeComparable({
   type t = string
   let cmp = Pervasives.compare
@@ -163,8 +207,7 @@ module StringCmp = Belt.Id.MakeComparable({
 let extractInductiveType = (premise: Rule.t): option<(string, int)> => {
   let (head, args) = Term.strip(premise.conclusion)
   switch head {
-  | Symbol({name: name, constructor: false}) =>
-    Some((name, Array.length(args)))
+  | Symbol({name, constructor: false}) => Some((name, Array.length(args)))
   | _ => None
   }
 }
@@ -250,10 +293,7 @@ let generateCasesRule = (group: predicateGroup): Rule.t => {
       {
         Rule.vars: [],
         premises: [],
-        conclusion: Term.unstrip(
-          Term.Symbol({name: str, constructor: false}),
-          makeVarArgs(arity),
-        ),
+        conclusion: Term.unstrip(Term.Symbol({name: str, constructor: false}), makeVarArgs(arity)),
       },
       ...subgoals,
     ],
@@ -303,8 +343,12 @@ let deserialise = (str: string, ~imports: Ports.t) => {
     }
   }
   ret.contents->Result.map(state => (
-    {rules:state},
-    {Ports.facts: state->Dict.copy->Dict.assign(derived(state)), ruleStyle: None, grammar: Term.emptyGrammar},
+    {rules: state},
+    {
+      Ports.facts: state->Dict.copy->Dict.assign(derived(state)),
+      ruleStyle: None,
+      grammar: Term.emptyGrammar,
+    },
   ))
 }
 
@@ -323,7 +367,9 @@ let make = props => {
         grammar={props.imports.grammar}
         style={props.imports.ruleStyle->Option.getOr(Hybrid)}
       >
-        <span className="rule-rulename-global"><IdentifierView identifier=n /></span>
+        <span className="rule-rulename-global">
+          <IdentifierView identifier=n />
+        </span>
       </RuleView>
     )
     ->React.array}
@@ -343,7 +389,9 @@ let make = props => {
             key={String.make(i)}
             style={props.imports.ruleStyle->Option.getOr(Hybrid)}
           >
-            <span className="rule-rulename-global"><IdentifierView identifier=n /></span>
+            <span className="rule-rulename-global">
+              <IdentifierView identifier=n />
+            </span>
           </RuleView>
         )
         ->React.array}
@@ -351,4 +399,3 @@ let make = props => {
     </section>
   </div>
 }
-

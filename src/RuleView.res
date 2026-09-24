@@ -36,7 +36,16 @@ module Make = (
             <span key={String.make(i)} className="rule-context">
               {React.createElement(
                 make,
-                withKey({rule: p, scope, children: React.string(""), grammar: props.grammar, style: props.style}, i),
+                withKey(
+                  {
+                    rule: p,
+                    scope,
+                    children: React.string(""),
+                    grammar: props.grammar,
+                    style: props.style,
+                  },
+                  i,
+                ),
               )}
             </span>
           )
@@ -83,7 +92,13 @@ module Make = (
               {React.array(
                 premises->Array.mapWithIndex((p, i) =>
                   <td className="rule-cell rule-premise" key={String.make(i)}>
-                    <Premise rule={p} scope={scope} grammar={props.grammar} key={String.make(i)} style={props.style}>
+                    <Premise
+                      rule={p}
+                      scope={scope}
+                      grammar={props.grammar}
+                      key={String.make(i)}
+                      style={props.style}
+                    >
                       {React.string("")}
                     </Premise>
                   </td>
@@ -127,7 +142,13 @@ module Make = (
                 React.array(
                   premises->Array.mapWithIndex((p, i) =>
                     <td className="rule-cell rule-premise" key={String.make(i)}>
-                      <Premise rule={p} scope={scope} grammar={props.grammar}  key={String.make(i)} style={props.style}>
+                      <Premise
+                        rule={p}
+                        scope={scope}
+                        grammar={props.grammar}
+                        key={String.make(i)}
+                        style={props.style}
+                      >
                         {React.string("")}
                       </Premise>
                     </td>

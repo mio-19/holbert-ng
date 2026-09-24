@@ -1,1 +1,1 @@
-  include Signatures.TERM_VIEW with module Term := HOTerm
+include Signatures.TERM_VIEW with module Term := HOTerm

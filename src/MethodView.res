@@ -6,7 +6,7 @@ module type METHOD_VIEW = {
   module Method: PROOF_METHOD with module Term := Term and module Judgment := Judgment
   type props<'a> = {
     method: Method.t<'a>,
-    ctx:Method.Context.t,
+    ctx: Method.Context.t,
     ruleStyle: RuleView.style,
     grammar: Term.grammar,
     gen: Term.gen,
@@ -17,7 +17,7 @@ module type METHOD_VIEW = {
     "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
     "grammar": Term.grammar,
-    "gen": Term.gen,    
+    "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
   let make: (srProps<'a> => React.element) => props<'a> => React.element
@@ -25,26 +25,30 @@ module type METHOD_VIEW = {
 }
 
 module RuleRefView = {
-
   @react.component
   let make = (~assms: array<string>, ~ruleRef: RuleRef.t) => {
     switch ruleRef {
     | Local({index}) =>
       switch assms[index] {
       | None =>
-        <span className="rule-ref rule-ref--invalid"> {React.string(`#${Belt.Int.toString(index)}`)} </span>
+        <span className="rule-ref rule-ref--invalid">
+          {React.string(`#${Belt.Int.toString(index)}`)}
+        </span>
       | Some(name) =>
-        let lastIndexWithName = assms->Belt.Array.reduceWithIndex(-1, (acc, n, i) =>
-          n == name ? i : acc
-        )
+        let lastIndexWithName =
+          assms->Belt.Array.reduceWithIndex(-1, (acc, n, i) => n == name ? i : acc)
         let shadowed = lastIndexWithName != index
         if shadowed {
           <span className="rule-ref rule-rulename-local rule-ref-shadowed">
             {React.string(name)}
-            <span className="rule-ref__index"> {React.string(`@${Belt.Int.toString(index)}`)} </span>
+            <span className="rule-ref__index">
+              {React.string(`@${Belt.Int.toString(index)}`)}
+            </span>
           </span>
         } else {
-          <span className="rule-ref rule-rulename-local"> <IdentifierView identifier=name /> </span>
+          <span className="rule-ref rule-rulename-local">
+            <IdentifierView identifier=name />
+          </span>
         }
       }
     | Global({name}) =>
@@ -54,13 +58,13 @@ module RuleRefView = {
           {React.string(name)}
         </span>
       } else {
-        <span className="rule-ref rule-rulename-global"> <IdentifierView identifier=name /> </span>
+        <span className="rule-ref rule-rulename-global">
+          <IdentifierView identifier=name />
+        </span>
       }
     }
   }
 }
-
-
 
 module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Method = Derivation(Term, Judgment)
@@ -68,7 +72,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     method: Method.t<'a>,
     ctx: Method.Context.t,
     ruleStyle: RuleView.style,
-    grammar: Term.grammar,    
+    grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
@@ -76,15 +80,17 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     "proof": 'a,
     "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
-    "grammar": Term.grammar,    
+    "grammar": Term.grammar,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
-  let summary = props => <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
+  let summary = props =>
+    <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
-        <span className="typcn typcn-media-play"></span>{summary(props)}
+        <span className="typcn typcn-media-play"></span>
+        {summary(props)}
         {if props.method.subgoals->Array.length > 0 {
           <ul className="subgoals">
             {props.method.subgoals
@@ -106,8 +112,9 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
             })
             ->React.array}
           </ul>
-        } else { React.null } 
-        }
+        } else {
+          React.null
+        }}
       </div>
     }
 }
@@ -130,8 +137,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
-  let summary = props => 
-  <>
+  let summary = props => <>
     <span className="rule-rulename-elim">
       <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
     </span>
@@ -139,33 +145,36 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
       <RuleRefView ruleRef=props.method.elimName assms=props.ctx.localFactNames />
     </sup>
   </>
-  
-  let make = (subRender: srProps<'a> => React.element) => props => {
+
+  let make = (subRender: srProps<'a> => React.element) =>
+    props => {
       <div>
-        <span className="typcn typcn-media-play"></span>{summary(props)}
+        <span className="typcn typcn-media-play"></span>
+        {summary(props)}
         {if props.method.subgoals->Array.length > 0 {
-        <ul className="subgoals">
-          {props.method.subgoals->Array.mapWithIndex((sg, i) => {
-            <li key={String.make(i)}>
-              {React.createElement(
-                subRender,
-                {
-                  "proof": sg,
-                  "ctx": props.ctx,
-                  "ruleStyle": props.ruleStyle,
-                  "grammar": props.grammar,                  
-                  "gen": props.gen,
-                  "onChange": (newa, subst: Term.subst) =>
-                    props.onChange(props.method->Method.setSubproof(i, newa), subst),
-                },
-              )}
-            </li>
-          })
-          ->React.array}
-        </ul>
-        
-        } else { React.null }
-        }
+          <ul className="subgoals">
+            {props.method.subgoals
+            ->Array.mapWithIndex((sg, i) => {
+              <li key={String.make(i)}>
+                {React.createElement(
+                  subRender,
+                  {
+                    "proof": sg,
+                    "ctx": props.ctx,
+                    "ruleStyle": props.ruleStyle,
+                    "grammar": props.grammar,
+                    "gen": props.gen,
+                    "onChange": (newa, subst: Term.subst) =>
+                      props.onChange(props.method->Method.setSubproof(i, newa), subst),
+                  },
+                )}
+              </li>
+            })
+            ->React.array}
+          </ul>
+        } else {
+          React.null
+        }}
       </div>
     }
 }
@@ -189,16 +198,21 @@ module LemmaView = (
     "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
     "grammar": Term.grammar,
-    "gen": Term.gen,    
+    "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
-  let summary = props => <span>{React.string("lemma")}</span>
+  let summary = props => <span> {React.string("lemma")} </span>
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
         <b> {React.string("have ")} </b>
-        <RuleView rule={props.method.rule} scope={props.ctx.fixes} grammar={props.grammar} style={props.ruleStyle}>
+        <RuleView
+          rule={props.method.rule}
+          scope={props.ctx.fixes}
+          grammar={props.grammar}
+          style={props.ruleStyle}
+        >
           {React.null}
         </RuleView>
         {React.createElement(
@@ -207,7 +221,7 @@ module LemmaView = (
             "proof": props.method.proof,
             "ctx": props.ctx,
             "ruleStyle": props.ruleStyle,
-            "grammar": props.grammar,            
+            "grammar": props.grammar,
             "gen": props.gen,
             "onChange": (proof, subst) => {props.onChange({...props.method, proof}, subst)},
           },
@@ -219,7 +233,7 @@ module LemmaView = (
             "ctx": props.ctx,
             "ruleStyle": props.ruleStyle,
             "grammar": props.grammar,
-            "gen": props.gen,            
+            "gen": props.gen,
             "onChange": (show, subst) => {props.onChange({...props.method, show}, subst)},
           },
         )}
@@ -239,7 +253,7 @@ module CombineMethodView = (
   module Method = Combine(Term, Judgment, Method1View.Method, Method2View.Method)
   type props<'a> = {
     method: Method.t<'a>,
-    ctx: Method.Context.t, 
+    ctx: Method.Context.t,
     ruleStyle: RuleView.style,
     grammar: Term.grammar,
     gen: Term.gen,
@@ -247,24 +261,26 @@ module CombineMethodView = (
   }
   type srProps<'a> = Method1View.srProps<'a>
   let summary = props =>
-      switch props.method {
-      | First(m) => Method1View.summary({
-          method: m,
-          ctx: props.ctx,
-          ruleStyle: props.ruleStyle,
-          grammar: props.grammar,
-          gen: props.gen,
-          onChange: (n, s) => props.onChange(First(n), s),
-        })
-      | Second(m) => Method2View.summary({
-          method: m,
-          ctx: props.ctx,
-          ruleStyle: props.ruleStyle,
-          grammar: props.grammar,
-          gen: props.gen,
-          onChange: (n, s) => props.onChange(Second(n), s),
-        })
-      }
+    switch props.method {
+    | First(m) =>
+      Method1View.summary({
+        method: m,
+        ctx: props.ctx,
+        ruleStyle: props.ruleStyle,
+        grammar: props.grammar,
+        gen: props.gen,
+        onChange: (n, s) => props.onChange(First(n), s),
+      })
+    | Second(m) =>
+      Method2View.summary({
+        method: m,
+        ctx: props.ctx,
+        ruleStyle: props.ruleStyle,
+        grammar: props.grammar,
+        gen: props.gen,
+        onChange: (n, s) => props.onChange(Second(n), s),
+      })
+    }
   let make = (subrender: srProps<'a> => React.element) =>
     props => {
       switch props.method {
@@ -282,7 +298,7 @@ module CombineMethodView = (
           method: m,
           ctx: props.ctx,
           ruleStyle: props.ruleStyle,
-          grammar: props.grammar,          
+          grammar: props.grammar,
           gen: props.gen,
           onChange: (n, s) => props.onChange(Second(n), s),
         })

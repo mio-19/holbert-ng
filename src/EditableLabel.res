@@ -1,5 +1,3 @@
-
-
 @react.component
 let make = (~label: string, ~onConfirm: string => result<unit, string>) => {
   let (isEditing, setIsEditing) = React.useState(() => false)
@@ -42,17 +40,24 @@ let make = (~label: string, ~onConfirm: string => result<unit, string>) => {
             onChange={evt => setTempText(_ => ReactEvent.Form.target(evt)["value"])}
             onKeyDown={evt => {
               let key = ReactEvent.Keyboard.key(evt)
-              if key == "Enter" { handleConfirm(evt) }
-              else if key == "Escape" { handleCancel(evt) }
+              if key == "Enter" {
+                handleConfirm(evt)
+              } else if key == "Escape" {
+                handleCancel(evt)
+              }
             }}
             autoFocus=true
           />
           <span
             className="editor-button button-icon button-icon-blue typcn typcn-tick"
-           onClick={handleConfirm}> </span>
-           <span
-             className="editor-button button-icon button-icon-red typcn typcn-times"
-          onClick={handleCancel}> </span>
+            onClick={handleConfirm}
+          >
+          </span>
+          <span
+            className="editor-button button-icon button-icon-red typcn typcn-times"
+            onClick={handleCancel}
+          >
+          </span>
         </div>
 
         {switch errorMsg {
@@ -61,7 +66,8 @@ let make = (~label: string, ~onConfirm: string => result<unit, string>) => {
             <span> {React.string(msg)} </span>
             <span
               className="editor-button button-icon button-icon-grey typcn typcn-times"
-             onClick={dismissError}>
+              onClick={dismissError}
+            >
             </span>
           </div>
         | None => React.null
@@ -74,7 +80,8 @@ let make = (~label: string, ~onConfirm: string => result<unit, string>) => {
           setTempText(_ => text)
           setErrorMsg(_ => None)
           setIsEditing(_ => true)
-        }}>
+        }}
+      >
         <IdentifierView identifier=text />
       </span>
     }}

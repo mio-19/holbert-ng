@@ -17,7 +17,8 @@ let deserialise = (input: string, ~imports as _: Ports.t) =>
   switch MixfixGrammar.parseDecls(String.trim(input)) {
   | Ok((grammar, "")) =>
     switch MixfixGrammar.compile(grammar) {
-    | Ok(compiled) => Ok(({grammar, compiled}, {Ports.facts: Dict.make(), ruleStyle: None, grammar: compiled}))
+    | Ok(compiled) =>
+      Ok(({grammar, compiled}, {Ports.facts: Dict.make(), ruleStyle: None, grammar: compiled}))
     | Error(s) => Error(s)
     }
   | Error(s) => Error(s)
@@ -42,7 +43,9 @@ module OpRow = {
     <div className="grammar-op-row">
       <AssocBadge assoc={op.assoc} />
       <span className="grammar-op-category"> {React.string(op.category)} </span>
-      <span className="grammar-op-name term-symbol"> <IdentifierView identifier={op.name} /> </span>
+      <span className="grammar-op-name term-symbol">
+        <IdentifierView identifier={op.name} />
+      </span>
     </div>
 }
 
@@ -64,7 +67,9 @@ let make = props => {
     } else {
       <div className="grammar-section">
         <div className="grammar-section-title"> {React.string("Operators")} </div>
-        {grammar.ops->Array.mapWithIndex((op, i) => <OpRow key={Int.toString(i)} op />)->React.array}
+        {grammar.ops
+        ->Array.mapWithIndex((op, i) => <OpRow key={Int.toString(i)} op />)
+        ->React.array}
       </div>
     }}
     {if Array.length(grammar.tighterThan) == 0 {

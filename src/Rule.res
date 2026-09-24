@@ -177,7 +177,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
 
-  let rec prettyPrintInline = (rule: t, ~grammar : Term.grammar, ~scope=[]: array<Term.meta>) => {
+  let rec prettyPrintInline = (rule: t, ~grammar: Term.grammar, ~scope=[]: array<Term.meta>) => {
     switch rule {
     | {vars: [], premises: [], conclusion: c} => Judgment.prettyPrint(c, ~grammar, ~scope)
     | _ => {
@@ -225,7 +225,9 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       rule.premises
       ->Array.map(r => prettyPrintInline(r, ~grammar, ~scope=[...rule.vars, ...scope]))
       ->vinculise
-      ->Array.concat([Judgment.prettyPrint(rule.conclusion, ~grammar, ~scope=[...rule.vars, ...scope])])
+      ->Array.concat([
+        Judgment.prettyPrint(rule.conclusion, ~grammar, ~scope=[...rule.vars, ...scope]),
+      ])
       ->Array.map(s => String.concat("  ", s))
       ->Array.join(Util.newline),
     )

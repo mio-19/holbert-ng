@@ -72,12 +72,18 @@ let compile = (g: grammar): result<compiled, string> => {
       false
     } else {
       let visiting' = Belt.Set.String.add(visiting, cat)
-      immediateTighter->Dict.get(cat)->Option.getOr([])->Array.some(t => hasCycle(t, visiting', done_))
+      immediateTighter
+      ->Dict.get(cat)
+      ->Option.getOr([])
+      ->Array.some(t => hasCycle(t, visiting', done_))
     }
 
   let allCategories =
-    g.categories->Array.reduce([], (acc, c) => acc->Array.includes(c) ? acc : Array.concat(acc, [c]))
-  let cyclic = allCategories->Array.some(c => hasCycle(c, Belt.Set.String.empty, Belt.Set.String.empty))
+    g.categories->Array.reduce([], (acc, c) =>
+      acc->Array.includes(c) ? acc : Array.concat(acc, [c])
+    )
+  let cyclic =
+    allCategories->Array.some(c => hasCycle(c, Belt.Set.String.empty, Belt.Set.String.empty))
 
   if cyclic {
     Error("tighterThan relation contains a cycle")
@@ -87,7 +93,12 @@ let compile = (g: grammar): result<compiled, string> => {
     let reserved =
       g.ops
       ->Array.flatMap(op =>
-        op.parts->Array.filterMap(p => switch p { | Lit(s) => Some(s) | Hole(_) => None })
+        op.parts->Array.filterMap(p =>
+          switch p {
+          | Lit(s) => Some(s)
+          | Hole(_) => None
+          }
+        )
       )
       ->Belt.Set.String.fromArray
     let byName = Dict.make()
@@ -116,8 +127,7 @@ let combine = (a: compiled, b: compiled): compiled => {
 
   let reachable = (from: string, to_: string): bool => {
     let rec go = (frontier: array<string>, seen: Belt.Set.String.t) =>
-      frontier->Array.some(c => c == to_) ||
-        {
+      frontier->Array.some(c => c == to_) || {
           let next =
             frontier
             ->Array.flatMap(c => immediateTighter->Dict.get(c)->Option.getOr([]))
@@ -131,7 +141,9 @@ let combine = (a: compiled, b: compiled): compiled => {
 
   // Add b's edges one at a time, checking reachability against the
   // graph.
-  b.immediateTighter->Dict.toArray->Array.forEach(((looser, tighters)) =>
+  b.immediateTighter
+  ->Dict.toArray
+  ->Array.forEach(((looser, tighters)) =>
     tighters->Array.forEach(tighter => {
       if !reachable(looser, tighter) {
         let existing = immediateTighter->Dict.get(looser)->Option.getOr([])
@@ -153,7 +165,6 @@ let combine = (a: compiled, b: compiled): compiled => {
   {ops, byName, immediateTighter, reserved, roots}
 }
 
-
 let emptyCompiled: compiled = {
   ops: [],
   byName: Dict.make(),
@@ -162,9 +173,8 @@ let emptyCompiled: compiled = {
   roots: [],
 }
 
-
-let assocKeywordRE = %re("/^(infixl|infixr|infix|mixfix)\b/")
-let opNameRE = %re("/^[^\s.()\[\]][^\s.()\[\]]*/")
+let assocKeywordRE = /^(infixl|infixr|infix|mixfix)\b/
+let opNameRE = /^[^\s.()\[\]][^\s.()\[\]]*/
 
 let takeOpName = (s: string): option<(string, string)> => {
   let s = MixfixLex.skipWs(s)
@@ -246,7 +256,6 @@ let parseDecls = (input: string): result<(grammar, string), string> => {
   go(input, empty)
 }
 
-
 let assocKeyword = (op: opDecl): string =>
   switch op.assoc {
   | Left => "infixl"
@@ -260,7 +269,11 @@ let assocKeyword = (op: opDecl): string =>
 
 let printOpDecl = (op: opDecl): string => `${assocKeyword(op)} ${op.category} ${op.name}`
 
-let printTighterDecl = ((tighter, looser): (string, string)): string => `tighter ${tighter} than ${looser}`
+let printTighterDecl = ((tighter, looser): (string, string)): string =>
+  `tighter ${tighter} than ${looser}`
 
 let prettyPrintGrammar = (g: grammar): string =>
-  Array.concat(g.ops->Array.map(printOpDecl), g.tighterThan->Array.map(printTighterDecl))->Array.join("\n")
+  Array.concat(
+    g.ops->Array.map(printOpDecl),
+    g.tighterThan->Array.map(printTighterDecl),
+  )->Array.join("\n")

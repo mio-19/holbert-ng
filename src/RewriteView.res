@@ -1,5 +1,5 @@
 open Signatures
-module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Term) => {
+module Make = (Term: TERM, Judgment: REWRITABLE_JUDGMENT with module Term := Term) => {
   module Context = Method.Context(Term, Judgment)
   module Method = Rewrite.Make(Term, Judgment)
 
@@ -20,22 +20,23 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
-  let summary = props => <span className="rule-rulename-rewrite">
-    <MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
-    <sup>{
-      switch props.method.direction {
-      | Method.Forward => React.string("→")
-      | Method.Backward => React.string("←")
-      }
-    }</sup>
+  let summary = props =>
+    <span className="rule-rulename-rewrite">
+      <MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
+      <sup>
+        {switch props.method.direction {
+        | Method.Forward => React.string("→")
+        | Method.Backward => React.string("←")
+        }}
+      </sup>
     </span>
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
-        <span className="typcn typcn-media-play"></span>{summary(props)}
-        {
-          if props.method.subgoals->Array.length > 0 { 
-            <ul className="subgoals">
+        <span className="typcn typcn-media-play"></span>
+        {summary(props)}
+        {if props.method.subgoals->Array.length > 0 {
+          <ul className="subgoals">
             {props.method.subgoals
             ->Array.mapWithIndex((sg, i) => {
               <li key={String.make(i)}>
@@ -54,21 +55,23 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
               </li>
             })
             ->React.array}
-            </ul>
-          } else {
-            React.string("")
-          }
-        }
+          </ul>
+        } else {
+          React.string("")
+        }}
         <div className="proof-denest">
-        {React.createElement(subRender,{
-          "proof": props.method.newGoal,
-          "ctx": props.ctx,
-          "ruleStyle": props.ruleStyle,
-          "grammar": props.grammar,
-          "gen": props.gen,
-          "onChange": (newa, subst: Term.subst) => 
-            props.onChange(props.method->Method.updateGoal(_=>newa), subst), 
-        })}
+          {React.createElement(
+            subRender,
+            {
+              "proof": props.method.newGoal,
+              "ctx": props.ctx,
+              "ruleStyle": props.ruleStyle,
+              "grammar": props.grammar,
+              "gen": props.gen,
+              "onChange": (newa, subst: Term.subst) =>
+                props.onChange(props.method->Method.updateGoal(_ => newa), subst),
+            },
+          )}
         </div>
       </div>
     }

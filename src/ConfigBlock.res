@@ -13,9 +13,15 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 
   let deserialise = str =>
     switch str {
-    | "Gentzen" => Ok((Gentzen, {Ports.facts: Dict.make(), ruleStyle: Some(Gentzen), grammar: Term.emptyGrammar}))
-    | "Linear" => Ok((Linear, {Ports.facts: Dict.make(), ruleStyle: Some(Linear), grammar: Term.emptyGrammar}))
-    | "Hybrid" => Ok((Hybrid, {Ports.facts: Dict.make(), ruleStyle: Some(Hybrid), grammar: Term.emptyGrammar}))
+    | "Gentzen" =>
+      Ok((
+        Gentzen,
+        {Ports.facts: Dict.make(), ruleStyle: Some(Gentzen), grammar: Term.emptyGrammar},
+      ))
+    | "Linear" =>
+      Ok((Linear, {Ports.facts: Dict.make(), ruleStyle: Some(Linear), grammar: Term.emptyGrammar}))
+    | "Hybrid" =>
+      Ok((Hybrid, {Ports.facts: Dict.make(), ruleStyle: Some(Hybrid), grammar: Term.emptyGrammar}))
     | _ => Error("unknown rule style")
     }
 
@@ -42,7 +48,10 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       switch deserialise(value) {
       | Ok((sty, _)) => {
           setStyle(_ => sty)
-          props.onChange(sty, ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty), grammar: Term.emptyGrammar})
+          props.onChange(
+            sty,
+            ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty), grammar: Term.emptyGrammar},
+          )
         }
       | Error(_) => ()
       }
@@ -50,10 +59,16 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 
     <div className="settings-panel">
       <div className="settings-row">
-        <label className="settings-label" htmlFor="rule-style-select"> {React.string("Rule display style")} </label>
-        <select id="rule-style-select" className="settings-select" value={serialise(style)} onChange>
+        <label className="settings-label" htmlFor="rule-style-select">
+          {React.string("Rule display style")}
+        </label>
+        <select
+          id="rule-style-select" className="settings-select" value={serialise(style)} onChange
+        >
           {[Gentzen, Linear, Hybrid]
-          ->Array.map(n => <option key={serialise(n)} value={serialise(n)}> {React.string(serialise(n))} </option>)
+          ->Array.map(n =>
+            <option key={serialise(n)} value={serialise(n)}> {React.string(serialise(n))} </option>
+          )
           ->React.array}
         </select>
         <div className="settings-desc"> {React.string(describe(style))} </div>

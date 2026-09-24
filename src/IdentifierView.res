@@ -10,10 +10,10 @@ let symbolSubstitutions: Dict.t<string> = Dict.fromArray([
   ("bot", "⊥"),
 ])
 
-let trailingDigitsRE = %re("/^([\s\S]*[^\d])(\^)?(\d+)$/")
+let trailingDigitsRE = /^([\s\S]*[^\d])(\^)?(\d+)$/
 
 let renderTokens = (s: string): array<React.element> => {
-  let re = %re("/(§\p{L}+)|(\p{L}+)|(\p{N}+)|([^\p{L}\p{N}§]+)/gu")
+  let re = /(§\p{L}+)|(\p{L}+)|(\p{N}+)|([^\p{L}\p{N}§]+)/gu
   let out = []
   let rec loop = i =>
     switch RegExp.exec(re, s) {
@@ -26,21 +26,23 @@ let renderTokens = (s: string): array<React.element> => {
       let other = matches[3]->Option.getOr("")
       let substOrPlain = (token, cls) =>
         switch symbolSubstitutions->Dict.get(token) {
-        | Some(sym) => <span key={Int.toString(i)} className="ident-op-lit"> {React.string(sym)} </span>
+        | Some(sym) =>
+          <span key={Int.toString(i)} className="ident-op-lit"> {React.string(sym)} </span>
         | None => <span key={Int.toString(i)} className=cls> {React.string(token)} </span>
         }
-      let el =
-        if bold != "" {
-          <span key={Int.toString(i)} className="ident-bold"> {React.string(String.sliceToEnd(bold, ~start=1))} </span>
-        } else if letters != "" {
-          substOrPlain(letters, "ident-letters")
-        } else if digits != "" {
-          <span key={Int.toString(i)} className="ident-digits"> {React.string(digits)} </span>
-        } else if other != "" {
-          substOrPlain(other, "ident-letters")
-        } else {
-          React.null
-        }
+      let el = if bold != "" {
+        <span key={Int.toString(i)} className="ident-bold">
+          {React.string(String.sliceToEnd(bold, ~start=1))}
+        </span>
+      } else if letters != "" {
+        substOrPlain(letters, "ident-letters")
+      } else if digits != "" {
+        <span key={Int.toString(i)} className="ident-digits"> {React.string(digits)} </span>
+      } else if other != "" {
+        substOrPlain(other, "ident-letters")
+      } else {
+        React.null
+      }
       out->Array.push(el)
       loop(i + 1)
     }
@@ -59,8 +61,14 @@ let renderPiece = (piece: string, key: int): React.element =>
       caret != ""
         ? <sup className="ident-sup"> {React.string(digits)} </sup>
         : <sub className="ident-sub"> {React.string(digits)} </sub>
-    <span key={Int.toString(key)} className="ident-piece"> {renderTokens(base)->React.array} {digitsEl} </span>
-  | None => <span key={Int.toString(key)} className="ident-piece"> {renderTokens(piece)->React.array} </span>
+    <span key={Int.toString(key)} className="ident-piece">
+      {renderTokens(base)->React.array}
+      {digitsEl}
+    </span>
+  | None =>
+    <span key={Int.toString(key)} className="ident-piece">
+      {renderTokens(piece)->React.array}
+    </span>
   }
 
 @react.component
@@ -72,7 +80,9 @@ let make = (~identifier: string) => {
       i == 0
         ? [renderPiece(piece, i)]
         : [
-            <span key={`sep${Int.toString(i)}`} className="ident-sep"> {React.string("␣")} </span>,
+            <span key={`sep${Int.toString(i)}`} className="ident-sep">
+              {React.string("␣")}
+            </span>,
             renderPiece(piece, i),
           ]
     )

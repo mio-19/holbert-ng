@@ -13,7 +13,7 @@ module ConstructorDisjointness = {
   let map = (step: t<'a>, _f: 'a => 'b): t<'b> => {factName: step.factName}
   type key = unit
   let subproofs = _ => []
-  let setSubproof = (it,_,_) => it
+  let setSubproof = (it, _, _) => it
   let ctorHead = t =>
     switch Term.strip(t) {
     | (Term.Symbol({name, constructor: true}), args) => Some((name, Array.length(args)))
@@ -40,8 +40,8 @@ module ConstructorDisjointness = {
     switch context->Context.lookup(step.factName) {
     | None => Error(`no such fact: ${keyName}`)
     | Some({Rule.vars: [], premises: [], conclusion}) =>
-      isDisjointEquation(conclusion) 
-        ? Ok({factName: step.factName}) 
+      isDisjointEquation(conclusion)
+        ? Ok({factName: step.factName})
         : Error(`fact ${keyName} is not a constructor disjointness`)
     | Some(_) => Error(`fact ${keyName} is not a plain assumption`)
     }
@@ -61,32 +61,52 @@ module ConstructorDisjointness = {
         Some(
           Results.atAssumption(
             i,
-            [Results.Action(Results.Text(`disjointness`), {factName: Local({index: i})}, Term.makeSubst())],
+            [
+              Results.Action(
+                Results.Text(`disjointness`),
+                {factName: Local({index: i})},
+                Term.makeSubst(),
+              ),
+            ],
           ),
         )
       | _ => None
       }
-    )->Array.reduce(Results.emptyAttached(), Results.combine)
-    
-  let prettyPrint = (
-      it: t<'a>,
-      ~grammar as _,
-      ~scope as _,
-      ~assms,
-      ~indentation as _=0,
-      ~subprinter as _: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
-    ) => 
-      "disjointness "
-      ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
-      ->String.concat(Util.newline)
+    )
+    ->Array.reduce(Results.emptyAttached(), Results.combine)
 
-  let parse = (input, ~keyword as _, ~grammar as _, ~scope as _, ~assms, ~gen as _, ~subparser as _) =>
-    switch Method.RuleRef.parse(String.trim(input),~assms) {
-    | Ok((ruleName, rest)) => Ok(({factName: ruleName},rest))
+  let prettyPrint = (
+    it: t<'a>,
+    ~grammar as _,
+    ~scope as _,
+    ~assms,
+    ~indentation as _=0,
+    ~subprinter as _: (
+      'a,
+      ~grammar: Term.grammar,
+      ~scope: array<Term.meta>,
+      ~assms: array<string>,
+      ~indentation: int=?,
+    ) => string,
+  ) =>
+    "disjointness "
+    ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
+    ->String.concat(Util.newline)
+
+  let parse = (
+    input,
+    ~keyword as _,
+    ~grammar as _,
+    ~scope as _,
+    ~assms,
+    ~gen as _,
+    ~subparser as _,
+  ) =>
+    switch Method.RuleRef.parse(String.trim(input), ~assms) {
+    | Ok((ruleName, rest)) => Ok(({factName: ruleName}, rest))
     | _ => Error("Expected fact name")
     }
 }
-
 
 module ConstructorInjectivity = {
   module Term = HOTerm
@@ -102,8 +122,8 @@ module ConstructorInjectivity = {
   let substitute = (step: t<'a>, _subst: Term.subst): t<'a> => step
   let map = (step: t<'a>, f: 'a => 'b): t<'b> => {factName: step.factName, subgoal: f(step.subgoal)}
   type key = unit
-  
-  let subproofs = it => [((),it.subgoal)]
+
+  let subproofs = it => [((), it.subgoal)]
 
   let setSubproof = (it: t<'a>, _key: unit, g) => {
     {...it, subgoal: g}
@@ -114,14 +134,20 @@ module ConstructorInjectivity = {
     | None => None
     | Some((a, b)) =>
       switch (Term.strip(a), Term.strip(b)) {
-      | ((Term.Symbol({name: n1, constructor: true}), argsA), (Term.Symbol({name: n2, constructor: true}), argsB))
-        if n1 == n2 && Array.length(argsA) == Array.length(argsB) =>
+      | (
+          (Term.Symbol({name: n1, constructor: true}), argsA),
+          (Term.Symbol({name: n2, constructor: true}), argsB),
+        ) if n1 == n2 && Array.length(argsA) == Array.length(argsB) =>
         Some(Belt.Array.zip(argsA, argsB))
       | _ => None
       }
     }
 
-  let mkPremiseRule = ((x, y)): Rule.t => {Rule.vars: [], premises: [], conclusion: Term.mkEquation(x, y)}
+  let mkPremiseRule = ((x, y)): Rule.t => {
+    Rule.vars: [],
+    premises: [],
+    conclusion: Term.mkEquation(x, y),
+  }
 
   let check = (
     step: t<'a>,
@@ -154,63 +180,66 @@ module ConstructorInjectivity = {
     _gen: Term.gen,
     mkSubgoal: Rule.t => 'a,
   ): Results.attached<t<'a>> =>
-      context.localFacts
-      ->Array.mapWithIndex((rule, i) => (i, rule))
-      ->Array.filterMap(((i, rule)) =>
-        switch rule {
-        | {Rule.vars: [], premises: []} =>
-          switch injectivityPairs(rule.conclusion) {
-          | None => None
-          | Some(pairs) =>
-            let subgoalRule: Rule.t = {
-              Rule.vars: [],
-              premises: pairs->Array.map(mkPremiseRule),
-              conclusion: rule.conclusion,
-            }
-            Some(
-              Results.atAssumption(
-                i,
-                [
-                  Results.Action(
-                    Results.Text(`injectivity`),
-                    {factName:Local({index:i}), subgoal: subgoalRule->mkSubgoal},
-                    Term.makeSubst(),
-                  ),
-                ],
-              ),
-            )
+    context.localFacts
+    ->Array.mapWithIndex((rule, i) => (i, rule))
+    ->Array.filterMap(((i, rule)) =>
+      switch rule {
+      | {Rule.vars: [], premises: []} =>
+        switch injectivityPairs(rule.conclusion) {
+        | None => None
+        | Some(pairs) =>
+          let subgoalRule: Rule.t = {
+            Rule.vars: [],
+            premises: pairs->Array.map(mkPremiseRule),
+            conclusion: rule.conclusion,
           }
-        | _ => None
+          Some(
+            Results.atAssumption(
+              i,
+              [
+                Results.Action(
+                  Results.Text(`injectivity`),
+                  {factName: Local({index: i}), subgoal: subgoalRule->mkSubgoal},
+                  Term.makeSubst(),
+                ),
+              ],
+            ),
+          )
         }
-      )->Array.reduce(Results.emptyAttached(), Results.combine)
-   
+      | _ => None
+      }
+    )
+    ->Array.reduce(Results.emptyAttached(), Results.combine)
+
   let prettyPrint = (
-        it: t<'a>,
-        ~grammar,
-        ~scope,
-        ~assms,
-        ~indentation=0,
-        ~subprinter: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
-      ) =>
-      "injectivity "
-      ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
-      ->String.concat(Util.newline)
-      ->String.concat(subprinter(it.subgoal, ~grammar, ~scope, ~assms, ~indentation))
-      ->String.concat(Util.newline)
+    it: t<'a>,
+    ~grammar,
+    ~scope,
+    ~assms,
+    ~indentation=0,
+    ~subprinter: (
+      'a,
+      ~grammar: Term.grammar,
+      ~scope: array<Term.meta>,
+      ~assms: array<string>,
+      ~indentation: int=?,
+    ) => string,
+  ) =>
+    "injectivity "
+    ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
+    ->String.concat(Util.newline)
+    ->String.concat(subprinter(it.subgoal, ~grammar, ~scope, ~assms, ~indentation))
+    ->String.concat(Util.newline)
   exception InternalParseError(string)
-    
+
   let parse = (input, ~keyword as _, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
-    switch Method.RuleRef.parse(String.trim(input),~assms) {
-    | Ok((ruleName, rest)) => {
-        switch subparser(String.trim(rest), ~grammar, ~scope, ~assms, ~gen) {
-        | Ok((sg, rest)) =>
-            Ok(({subgoal:sg, factName:ruleName}, rest))
-        | Error(e) => Error(e)
-        }
+    switch Method.RuleRef.parse(String.trim(input), ~assms) {
+    | Ok((ruleName, rest)) =>
+      switch subparser(String.trim(rest), ~grammar, ~scope, ~assms, ~gen) {
+      | Ok((sg, rest)) => Ok(({subgoal: sg, factName: ruleName}, rest))
+      | Error(e) => Error(e)
       }
     | _ => Error("Expected fact name")
     }
   }
-
-        
 }
