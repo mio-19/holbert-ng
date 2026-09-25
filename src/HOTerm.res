@@ -415,6 +415,10 @@ let tryFlexSolveFCU = (a, b) =>
   | None => None
   }
 
+
+let useFCU = true
+let tryFlexSolve_ = useFCU ? tryFlexSolveFCU : tryFlexSolve
+
 // M[spine1] =?= M[spine2], same M, spines differ: keep only the
 // positions where they agree, solve M in terms of a smaller fresh
 // metavariable applied to just those positions.
@@ -486,10 +490,10 @@ let rec unifyStep = (t1, t2, gen) => {
       switch (asPattern(t1), asPattern(t2)) {
       | (Some((n1, s1)), Some((n2, s2))) if n1 == n2 => tryFlexFlexSame(n1, s1, s2, gen)
       | _ =>
-        switch tryFlexSolve(t1, t2) {
+        switch tryFlexSolve_(t1, t2) {
         | Some(s) => Some(s)
         | None =>
-          switch tryFlexSolve(t2, t1) {
+          switch tryFlexSolve_(t2, t1) {
           | Some(s) => Some(s)
           | None => unifyRigidHeaded(t1, t2, gen, unifyStep)
           }
