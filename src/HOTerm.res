@@ -419,6 +419,10 @@ let tryFlexSolveFCU = (a, b) =>
 let useFCU = true
 let tryFlexSolve_ = useFCU ? tryFlexSolveFCU : tryFlexSolve
 
+let asPattern_ = useFCU ? asFCPattern : t => {
+  asPattern(t)->Option.map(((n, spine)) => (n, spine->Array.map(p => Var({idx: p}))))
+}
+
 // M[spine1] =?= M[spine2], same M, spines differ: keep only the
 // positions where they agree, solve M in terms of a smaller fresh
 // metavariable applied to just those positions.
@@ -432,7 +436,7 @@ let tryFlexFlexSame = (n, spine1, spine2, gen) =>
     } else {
       let agree =
         Belt.Array.range(0, k - 1)->Belt.Array.keep(i =>
-          spine1->Belt.Array.getExn(i) == spine2->Belt.Array.getExn(i)
+          equivalent(spine1->Belt.Array.getExn(i), spine2->Belt.Array.getExn(i))
         )
       let n' = fresh(g)
       let body = agree->Array.reduce(Schematic({schematic: n'}), (acc, i) => App({
@@ -487,7 +491,7 @@ let rec unifyStep = (t1, t2, gen) => {
     | (Lam({body: b1}), _) => unifyStep(b1, App({func: upshift(t2, 1), arg: Var({idx: 0})}), gen)
     | (_, Lam({body: b2})) => unifyStep(App({func: upshift(t1, 1), arg: Var({idx: 0})}), b2, gen)
     | _ =>
-      switch (asPattern(t1), asPattern(t2)) {
+      switch (asPattern_(t1), asPattern_(t2)) {
       | (Some((n1, s1)), Some((n2, s2))) if n1 == n2 => tryFlexFlexSame(n1, s1, s2, gen)
       | _ =>
         switch tryFlexSolve_(t1, t2) {
