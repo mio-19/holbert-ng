@@ -9,13 +9,8 @@
   <xsl:template match="/">
     <html xmlns="http://www.w3.org/1999/xhtml" data-base-url="{/f:tree/@base-url}">
       <head>
-        <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/dreampulse/computer-modern-web-font@master/fonts.css"/>
-        <link rel="stylesheet" type="text/css" href="{/f:tree/@base-url}typicons.min.css" />
-        <link rel="stylesheet" type="text/css" href="{/f:tree/@base-url}holbert.css" />
-          <script type="module" crossorigin="true" src="{/f:tree/@base-url}holbert.js"></script>
-         
         <meta name="viewport" content="width=device-width" />
-        <link rel="stylesheet" href="{/f:tree/@base-url}style.css" />
+        <link rel="stylesheet" href="{/f:tree/@base-url}legacy-style.css" />
         <link rel="stylesheet" href="{/f:tree/@base-url}katex.min.css" />
         <script type="text/javascript">
           <xsl:if test="/f:tree/f:frontmatter/f:source-path">
